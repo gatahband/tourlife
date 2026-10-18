@@ -838,7 +838,7 @@ h2.ctr { text-align: center; }
 @keyframes mpulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
 
 /* Scouting report */
-.shead span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.scouthead span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .scard h2.sname { font-size: 24px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--text); margin: 2px 0 10px; }
 .sname small { font-size: 14px; color: var(--muted); font-weight: 600; margin-left: 6px; }
 .ssect { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
@@ -874,3 +874,10 @@ h2.ctr { text-align: center; }
 .pbtns { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 14px; }
 .pbtns .btn { margin-top: 0; }
 @media (max-width: 560px) { .sboxes, .wxnums { grid-template-columns: 1fr; } .ptable { font-size: 14px; } .ptable th, .ptable td { padding: 8px 5px; } }
+.motags li { list-style: none; }
+.motags details summary { cursor: pointer; list-style: none; }
+.motags details summary::-webkit-details-marker { display: none; }
+.motags details summary::after { content: 'ⓘ'; margin-left: 6px; opacity: .6; font-size: .9em; }
+.motags details[open] summary::after { content: '▴'; }
+.motags details p { margin: 4px 0 6px 22px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.motags details p b { color: var(--text); }

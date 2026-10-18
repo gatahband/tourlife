@@ -564,7 +564,7 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
   const btns = `<div class="pbtns">${diffs.length ? `<button type="button" class="btn" id="coachUse">Use the coach's plan</button>` : ''}` +
     `<button type="button" class="btn ghost" id="${planBtn}">Change my plan</button></div>`;
 
-  return `<div class="card scard"><div class="shead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}</h2></div>` +
+  return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}</h2></div>` +
     h2hLine(c, opp) + morale +
     sec('Conditions and matchup', weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
     sec('Know your opponent', know) +

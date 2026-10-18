@@ -1463,6 +1463,7 @@ function createCourt() {
           if (zoomCord) followFocus(s);
         });
         marks.push({ ...s.spot, out: false });
+        banner = { text: 'NET CORD!', t0: clock(), big: true };
         {
           // Dribbles on in the direction it was going, with a couple of little hops.
           const dx = s.spot.x - s.at.x, dy = s.spot.y, L = Math.hypot(dx, dy) || 1;
@@ -1501,7 +1502,10 @@ function createCourt() {
           } else {
             if (!marked) {
               marks.push({ ...s.bounce, out: !isIn(s.bounce) }); marked = true;
-              if (s.kind === 'ace') banner = { text: 'ACE!', t0: clock(), big: true }; // big and loud, every view
+              // Big and loud, every view: aces, drop-shot winners and passing-shot winners.
+              const inside = isIn(s.bounce);
+              const pop = s.kind === 'ace' ? 'ACE!' : s.final && inside && s.goodDrop && s.kind === 'drop' ? 'DROPPER!' : s.final && inside && s.kind === 'pass' ? 'WINNER!' : null;
+              if (pop) banner = { text: pop, t0: clock(), big: true };
               if (o.cinematic && s.fx === 'shake') { cam.shake = 14; cam.shakeT0 = clock(); }
             }
             const u = (t - s.tb) / (1 - s.tb);

@@ -832,5 +832,7 @@ h2.ctr { text-align: center; }
 .mobar i { position: absolute; top: -4px; width: 4px; height: 14px; border-radius: 2px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 6px rgba(0,0,0,.6); }
 .motags { list-style: none; padding: 0; margin: 4px 0 0; font-size: 13px; line-height: 1.6; }
 .motags .up { color: #9fe3b4; } .motags .down { color: #ffb3ad; }
-.mtag rect { fill: rgba(10, 132, 255, .92); }
-.mtag text { fill: #fff; font: 700 7px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; }
+.mtag rect { fill: #0a84ff; stroke: #fff; stroke-width: 1; }
+.mtag text { fill: #fff; font: 700 9px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; text-transform: none; letter-spacing: 0; }
+.mpulse { fill: none; stroke: #0a84ff; stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: mpulse 1.8s ease-out infinite; }
+@keyframes mpulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }

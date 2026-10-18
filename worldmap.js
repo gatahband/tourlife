@@ -83,9 +83,11 @@ function mapHtml(opts) {
     pts.forEach((p, i) => { const [x, y] = proj(p); marks += `<circle cx="${x}" cy="${y}" r="${i === pts.length - 1 ? 3.4 : 2.2}" class="${i === pts.length - 1 ? 'mhere' : 'mstop'}"/>`; });
     // Name the dot you're on, so it stands out from the rest.
     if (opts.hereLabel && pts.length) {
-      const [x, y] = proj(pts[pts.length - 1]), tx = Math.max(30, Math.min(MAP_W - 30, x)), w = opts.hereLabel.length * 4.4 + 10;
-      marks += `<g class="mtag"><rect x="${(tx - w / 2).toFixed(1)}" y="${(y - 19).toFixed(1)}" width="${w.toFixed(1)}" height="11" rx="3"/>` +
-        `<text x="${tx.toFixed(1)}" y="${(y - 11).toFixed(1)}">${esc(opts.hereLabel)}</text></g>`;
+      const [x, y] = proj(pts[pts.length - 1]), w = opts.hereLabel.length * 5.6 + 14, tx = Math.max(w / 2 + 4, Math.min(MAP_W - w / 2 - 4, x));
+      const up = y > 30, ty = up ? y - 24 : y + 9; // above the dot, or below it near the top edge
+      marks += `<circle cx="${x}" cy="${y}" r="6" class="mpulse"/>` +
+        `<g class="mtag"><rect x="${(tx - w / 2).toFixed(1)}" y="${ty.toFixed(1)}" width="${w.toFixed(1)}" height="15" rx="7.5"/>` +
+        `<text x="${tx.toFixed(1)}" y="${(ty + 10.8).toFixed(1)}">${esc(opts.hereLabel)}</text></g>`;
     }
   }
   setTimeout(async () => {
@@ -114,6 +116,6 @@ function itineraryHtml(c, p) {
   const km = path.slice(1).reduce((t, n, i) => t + (NATION_LL[n] && NATION_LL[path[i]] ? kmBetween(NATION_LL[path[i]], NATION_LL[n]) : 0), 0);
   const last = stops.slice(-5).map(s => esc(s.city)).join(' → ');
   return `<div class="itin"><div class="gbhead"><b>Season ${season} itinerary</b><span>${stops.length} event${stops.length === 1 ? '' : 's'} · ${km.toLocaleString('en-US')} km</span></div>` +
-    mapHtml({ path, hereLabel: `📍 ${stops.length && stops[stops.length - 1].n === here ? stops[stops.length - 1].city : here === p.nation ? 'Home' : (nationInfo(here) || [here, '', here])[2]}` }) +
+    mapHtml({ path, hereLabel: `You're here: ${stops.length && stops[stops.length - 1].n === here ? stops[stops.length - 1].city : here === p.nation ? 'Home' : (nationInfo(here) || [here, '', here])[2]}` }) +
     `<p class="hint center">${stops.length ? `${stops.length > 5 ? '… → ' : '🏠 → '}${last}` : 'Your season starts here. Every event you play adds a stop.'}</p></div>`;
 }

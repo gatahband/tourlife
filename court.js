@@ -924,7 +924,7 @@ function createCourt() {
         else if (app !== null && hitter(n - 1) === app && k === n - 3 && k > 0) kind = 'approach';
         else if (app !== null && hitter(n - 1) !== app && k === n - 2) kind = 'approach';
         if (app === hitter(n - 1) && k === n - 2 && kind !== 'serve') kind = 'pass';
-        shots.push({ by: hitter(k), kind });
+        shots.push({ by: hitter(k), kind, passWin: k === n - 1 && clean && app !== null && app === loser });
       }
       if (app !== null && !clean && hitter(n - 1) === app) shots[n - 1].volleyErr = true;
       end = clean ? (app === winner ? 'volley' : app === loser ? 'pass' : 'winner')
@@ -1274,7 +1274,7 @@ function createCourt() {
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
-        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final,
+        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin,
       });
       // Where everyone ends up after this shot.
       cur[recv] = { x: lerp(r0.x, body.x, reach), y: lerp(r0.y, body.y, reach) };
@@ -1504,7 +1504,7 @@ function createCourt() {
               marks.push({ ...s.bounce, out: !isIn(s.bounce) }); marked = true;
               // Big and loud, every view: aces, drop-shot winners and passing-shot winners.
               const inside = isIn(s.bounce);
-              const pop = s.kind === 'ace' ? 'ACE!' : s.final && inside && s.goodDrop && s.kind === 'drop' ? 'DROPPER!' : s.final && inside && s.kind === 'pass' ? 'WINNER!' : null;
+              const pop = s.kind === 'ace' ? 'ACE!' : s.final && inside && s.goodDrop && s.kind === 'drop' ? 'DROPPER!' : s.final && inside && (s.passWin || s.kind === 'pass') ? 'WINNER!' : null;
               if (pop) banner = { text: pop, t0: clock(), big: true };
               if (o.cinematic && s.fx === 'shake') { cam.shake = 14; cam.shakeT0 = clock(); }
             }

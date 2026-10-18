@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tour Life</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1792353858">
 </head>
 <body>
   <main class="wrap" id="creator">
     <header>
       <h1>Create Your Player</h1>
       <p class="sub">Build your identity. Your attributes define your game.</p>
-      <button type="button" id="cImport" class="link">Played before? Open your saved career</button>
+      <button type="button" id="cImport" class="link">⬆️ Played before? Load my progress</button>
     </header>
 
     <section class="card" id="cSaves" hidden>
@@ -129,7 +129,12 @@
     </section>
     <button id="edit" class="btn ghost">Edit Player</button>
     <button id="share" class="btn">🎾 Join real tournaments</button>
-    <button id="backup" class="link">📱 Play on another device / back up</button>
+    <div class="savebar">
+      <button id="saveProg" class="btn ghost">⬇️ Save my progress</button>
+      <button id="loadProg" class="btn ghost">⬆️ Load my progress</button>
+    </div>
+    <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
+    <button id="backup" class="link">More ways to move or back up</button>
     <button id="helpBtn" class="link">❓ How to play</button>
     <a href="#admin" class="link adminlink">Admin</a>
     <button id="reset" class="link">Switch or start a new career</button>
@@ -230,30 +235,31 @@
 
   <div id="modal" class="modal" hidden><div id="sheet" class="sheet"></div></div>
 
-  <script src="names.js"></script>
-  <script src="sim.js"></script>
-  <script src="court.js"></script>
-  <script src="story.js"></script>
-  <script src="stats.js"></script>
-  <script src="calendar.js"></script>
+  <script>window.TL_VERSION = "1792353858";</script>
+  <script src="names.js?v=1792353858"></script>
+  <script src="sim.js?v=1792353858"></script>
+  <script src="court.js?v=1792353858"></script>
+  <script src="story.js?v=1792353858"></script>
+  <script src="stats.js?v=1792353858"></script>
+  <script src="calendar.js?v=1792353858"></script>
   <!-- Netlify picks this form up at deploy time; share.js submits it with fetch. -->
   <form name="send-player" data-netlify="true" netlify-honeypot="bot-field" hidden>
     <input name="bot-field"><input name="player"><input name="nation"><input name="ovr"><input name="rank">
     <input name="record"><input name="contact"><textarea name="note"></textarea><textarea name="code"></textarea>
   </form>
-  <script src="ranking.js"></script>
-  <script src="weather.js"></script>
-  <script src="realplayers.js"></script>
-  <script src="fairplay.js"></script>
-  <script src="rivals.js"></script>
-  <script src="tournaments.js"></script>
-  <script src="training.js"></script>
-  <script src="sponsors.js"></script>
-  <script src="career.js"></script>
-  <script src="achievements.js"></script>
-  <script src="share.js"></script>
-  <script src="help.js"></script>
-  <script src="player.js"></script>
-  <script src="admin.js"></script>
+  <script src="ranking.js?v=1792353858"></script>
+  <script src="weather.js?v=1792353858"></script>
+  <script src="realplayers.js?v=1792353858"></script>
+  <script src="fairplay.js?v=1792353858"></script>
+  <script src="rivals.js?v=1792353858"></script>
+  <script src="tournaments.js?v=1792353858"></script>
+  <script src="training.js?v=1792353858"></script>
+  <script src="sponsors.js?v=1792353858"></script>
+  <script src="career.js?v=1792353858"></script>
+  <script src="achievements.js?v=1792353858"></script>
+  <script src="share.js?v=1792353858"></script>
+  <script src="help.js?v=1792353858"></script>
+  <script src="player.js?v=1792353858"></script>
+  <script src="admin.js?v=1792353858"></script>
 </body>
 </html>

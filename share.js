@@ -59,6 +59,37 @@ function download(name, text) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+// --- Save / load progress: one tap each, on any device ---------------------------------
+// Save: on phones and tablets the share sheet opens (Save to Files, AirDrop, Messages, email);
+// on computers the file downloads. Load: pick that file.
+async function saveProgress() {
+  const p = readJSON(SAVE_KEY), c = loadCareer();
+  const name = `${p.name.replace(/[^\w-]+/g, '-')}-TourLife-week${c.week}.txt`;
+  const text = await encodeSave(fullSave());
+  const file = typeof File === 'function' ? new File([text], name, { type: 'text/plain' }) : null;
+  if (file && navigator.canShare && navigator.canShare({ files: [file] }) && /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent)) {
+    try { await navigator.share({ files: [file], title: `${p.name}: TourLife progress` }); toast('✅ Progress saved', 'Keep that file: open it with "Load my progress" on any device.'); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  download(name, text);
+  toast('✅ Progress saved', 'It is in your Downloads. Open it with "Load my progress" on any device.');
+}
+
+function loadProgress() {
+  const inp = $('loadFile');
+  inp.value = '';
+  inp.onchange = async () => {
+    const f = inp.files[0];
+    if (!f) return;
+    try {
+      const obj = await decodeSave(await f.text());
+      const c = obj.career || {};
+      if (confirm(`Load ${obj.player.name}'s career (season ${seasonOfWeek(c.week || 1)}, week ${weekInSeason(c.week || 1)})? The career on this device is kept in your saved careers.`)) importSave(obj);
+    } catch { alert("That file isn't a TourLife save. Pick the file you saved with \"Save my progress\"."); }
+  };
+  inp.click();
+}
+
 // --- Move to another device ----------------------------------------------------------
 // The career rides inside a link (#load=…), so no account or server is needed. Older seasons' matches
 // are trimmed first to keep the link short.
@@ -86,6 +117,25 @@ async function checkTransferLink() {
   } catch { toast("That career link didn't work", 'It may have been cut off. Try sending it again.'); }
 }
 setTimeout(checkTransferLink, 400);
+
+// --- Updates ---------------------------------------------------------------------------
+// Each publish stamps a version (deploy-gh.sh). When a newer one is out, a bar offers a one-tap update;
+// progress is untouched (it lives in the browser, not in the game files).
+async function checkForUpdate() {
+  if (!window.TL_VERSION || document.querySelector('.update-bar')) return;
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    const { v } = await r.json();
+    if (!v || v === window.TL_VERSION) return;
+    const b = document.createElement('button');
+    b.className = 'update-bar';
+    b.textContent = '🎾 A new version of TourLife is ready. Tap to update.';
+    b.onclick = () => { location.href = `${location.pathname}?v=${v}${location.hash}`; };
+    document.body.appendChild(b);
+  } catch {}
+}
+setTimeout(checkForUpdate, 3000);
+setInterval(checkForUpdate, 5 * 60 * 1000);
 
 // --- Send my player (Netlify Forms) ------------------------------------------------
 // The matching hidden form is in index.html so Netlify picks it up when the site is deployed.

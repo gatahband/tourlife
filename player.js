@@ -240,6 +240,8 @@ function build() {
   $('reset').onclick = openSwitcher;
   $('share').onclick = openShare;
   $('backup').onclick = openBackup;
+  $('saveProg').onclick = saveProgress;
+  $('loadProg').onclick = loadProgress;
   $('helpBtn').onclick = () => openHelp(0);
   $('cImport').onclick = openImport;
   $('dHome').onclick = () => { renderTournaments(current.player); showScreen('home'); };

@@ -769,3 +769,6 @@ h2.ctr { text-align: center; }
 .wallet span { color: var(--muted); font-size: 13px; } .wallet b { font-size: 18px; }
 .tripcost { font-size: 13px; color: var(--muted); margin: 8px 0 0; } .tripcost b { color: var(--text); } .tripcost b.down { color: var(--bad); }
 .connrow { font-size: 14px; margin: 4px 0; }
+.savebar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.savebar .btn { margin: 0; }
+.update-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60; background: #0a84ff; color: #fff; border: 0; border-radius: 14px; padding: 14px 20px; font: inherit; font-size: 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.45); cursor: pointer; max-width: 92vw; }

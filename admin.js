@@ -140,8 +140,25 @@ async function fetchNewPlayers() {
   return ingestPlayers(found);
 }
 
-// Put results.json live: a new deploy that reuses every current file and swaps in the new results.
+// GitHub hosting (gatahband.github.io/tourlife): results.json is updated straight in the repository.
+const GH_REPO = 'gatahband/tourlife';
+async function publishGitHub() {
+  const gh = nfConf().gh;
+  const api = (path, opts = {}) => fetch(`https://api.github.com/repos/${GH_REPO}${path}`, { ...opts, headers: { Authorization: `Bearer ${gh}`, Accept: 'application/vnd.github+json', ...(opts.headers || {}) } });
+  const cur = await api('/contents/results.json');
+  const sha = cur.ok ? (await cur.json()).sha : undefined;
+  const text = JSON.stringify(publishResults());
+  const content = btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+  const res = await api('/contents/results.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Results from the Admin page', content, sha }) });
+  if (!res.ok) throw new Error(res.status === 401 ? 'GitHub said the token is wrong or expired.' : `GitHub error ${res.status}`);
+  return true;
+}
+
+// Put results.json live: on GitHub if connected, otherwise a Netlify deploy that reuses every current
+// file and swaps in the new results.
 async function publishLive() {
+  if (nfConf().gh) return publishGitHub();
   const site = await nfSite();
   const info = await nfApi(`/sites/${site}`);
   const files = await nfApi(`/deploys/${info.published_deploy.id}/files`);
@@ -233,7 +250,10 @@ function renderAdEvents() {
   $('adBody').innerHTML = `<div class="shrow adbig"><button type="button" class="btn huge" id="adNew">🏆 New tournament</button>` +
     `<button type="button" class="btn huge ghost" id="adExh">🎾 New one-on-one match</button></div>` +
     (finished ? `<section class="card"><h2>Send results to players</h2><p class="hint">${finished} finished event${finished === 1 ? '' : 's'}. Players see their results (and ranking points from tournaments) next time they open their game.</p>` +
-      (nfConf().token ? `<button type="button" class="btn" id="adPub">📤 Send results to players</button>` : `<p class="hint">Connect to your site on the Players tab to send results with one tap.</p><button type="button" class="btn ghost" id="adPubFile">Save the results file instead</button>`) +
+      (nfConf().gh || nfConf().token ? `<button type="button" class="btn" id="adPub">📤 Send results to players</button>` : '') +
+      (nfConf().gh ? '' : `<details class="paste"><summary>Connect GitHub to send results (one time)</summary><p class="hint">Paste your GitHub token (the one with "repo" ticked). It's saved on this computer only.</p>` +
+        `<input type="password" id="ghKey" class="inp" placeholder="ghp_…"><button type="button" class="btn small" id="ghSave">Connect GitHub</button></details>`) +
+      `<button type="button" class="link" id="adPubFile">Save the results file instead</button>` +
       `<p class="hint" id="adPubMsg"></p></section>` : '') +
     `<section class="card"><h2>Your tournaments</h2>` +
     (evs.length ? `<div class="adlist">${evs.map(ev => {
@@ -250,6 +270,7 @@ function renderAdEvents() {
     try { await publishLive(); $('adPubMsg').innerHTML = '✅ Sent! Players will see their results next time they open the game.'; $('adPub').textContent = '📤 Send results to players'; $('adPub').disabled = false; }
     catch (e) { $('adPubMsg').textContent = `❌ ${e.message}`; $('adPub').disabled = false; $('adPub').textContent = '📤 Send results to players'; }
   };
+  if ($('ghSave')) $('ghSave').onclick = () => { const v = $('ghKey').value.trim(); if (v) { writeJSON(NF_KEY, { ...nfConf(), gh: v }); renderAdmin(); } };
   if ($('adPubFile')) $('adPubFile').onclick = () => {
     download('results.json', JSON.stringify(publishResults()));
     $('adPubMsg').innerHTML = '✅ Saved <b>results.json</b> to your Downloads.';

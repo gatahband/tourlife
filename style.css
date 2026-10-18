@@ -423,9 +423,9 @@ body.noscroll { overflow: hidden; }
 .ovrpill { color: var(--text); font-weight: 700; }
 
 /* Fatigue bar */
-.fbar { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.fbar { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
 .fbar b { color: var(--text); font-weight: 600; }
-.ftrack { height: 8px; border-radius: 99px; background: var(--field); overflow: hidden; }
+.ftrack { height: 14px; border-radius: 99px; background: var(--field); overflow: hidden; }
 .ftrack i { display: block; height: 100%; border-radius: 99px; }
 .ftrack i.ok { background: var(--good); } .ftrack i.fine { background: #64d2ff; } .ftrack i.warn { background: #ffd60a; } .ftrack i.bad { background: var(--bad); }
 
@@ -574,7 +574,7 @@ body.noscroll { overflow: hidden; }
 .mfx { font-size: 12px; margin-left: 4px; } .mfx.up { color: var(--good); } .mfx.down { color: var(--bad); }
 
 /* Check-in and coach's report */
-.checkin { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.checkin { margin: 18px 0 14px; border-top: 1px solid var(--line); padding-top: 12px; }
 .risk.ok { color: var(--good); } .risk.warn { color: #ff9f0a; } .risk.bad { color: var(--bad); }
 #dWithdraw { color: var(--bad); }
 .coachrep { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }

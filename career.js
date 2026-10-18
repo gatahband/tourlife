@@ -449,8 +449,8 @@ function checkInHtml(p) {
   const f = p.fatigue || 0, [risk, cls] = injuryRisk(f), pen = tiredness(p);
   return `<div class="checkin"><h3 class="ssec">How you're feeling</h3>${fatigueBar(f)}` +
     (rustOf(current.career) >= 0.001 ? `<p class="hint">🧊 ${rustText(current.career)}</p>` : '') +
-    `<p class="hint">Injury risk: <b class="risk ${cls}">${risk}</b>.${pen >= 0.005 ? ` Tiredness costs you <b class="risk ${f >= 85 ? 'bad' : 'warn'}">−${(pen * 100).toFixed(1)}% on points</b>.` : ''} ${f >= 72 ? 'Playing on this tired could get you hurt. You can pull out and keep what you have earned.' : 'Each match adds fatigue; three-setters add more.'}</p>` +
-    `<button type="button" class="link" id="dWithdraw">Withdraw from the tournament</button></div>`;
+    `<p class="hint center">Injury risk: <b class="risk ${cls}">${risk}</b>.${pen >= 0.005 ? ` Tiredness costs you <b class="risk ${f >= 85 ? 'bad' : 'warn'}">−${(pen * 100).toFixed(1)}% on points</b>.` : ''} ${f >= 72 ? 'Playing on this tired could get you hurt. You can pull out and keep what you have earned.' : 'Each match adds fatigue; three-setters add more.'}</p>` +
+    `</div>`;
 }
 
 // --- Coach: full scouting report and a counter-plan --------------------------------------

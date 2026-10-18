@@ -756,8 +756,9 @@ function renderDraw() {
     act.innerHTML = `<p class="hint">Next: ${roundLabel(entry)}${inQual(entry) ? ` · qualifying: win ${entry.qual.need - entry.qual.round} more to reach the main draw` : ''}</p>` +
       vsHeader(entry, opp) +
       (entry.live ? '' : prematchHtml(entry, opp)) +
+      (entry.live ? '' : checkInHtml(current.player)) +
       `<button type="button" class="btn" id="dPlay">${entry.live ? 'Resume Match' : 'Play Match'}</button>` +
-      (entry.live ? '' : checkInHtml(current.player));
+      (entry.live ? '' : `<div class="center"><button type="button" class="link" id="dWithdraw">Withdraw from the tournament</button></div>`);
     $('dPlay').onclick = () => openMatch();
     if (!entry.live) bindPrematch(entry, opp, renderDraw);
     if ($('dWithdraw')) $('dWithdraw').onclick = () => {

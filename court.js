@@ -72,7 +72,7 @@ function createCourt() {
     cv.style.height = H + 'px';
     cv.width = W * dpr; cv.height = H * dpr;
     S = W / VIEW_LEN;
-    fpsF = W * 0.55;
+    fpsF = W * 0.72; // a slightly tighter lens than a wide GoPro: the far player and ball read bigger
     cam.cx = W / 2; cam.cy = H / 2;
     const df = CAM_Y - FAR_Y, dn = CAM_Y - NEAR_Y;
     F = (BOTTOM - TOP) * H / (CAM_Z * (1 / dn - 1 / df));
@@ -111,7 +111,7 @@ function createCourt() {
     if (focusPt) {
       const hd = Math.hypot(focusPt.x - e.x, focusPt.y - e.y);
       // A natural glance, not a full head turn: limited turn and tilt so the court stays readable.
-      if (hd > 0.5) rel = clamp(wrap(Math.atan2(focusPt.x - e.x, focusPt.y - e.y) - base), -0.55, 0.55);
+      if (hd > 0.5) rel = clamp(wrap(Math.atan2(focusPt.x - e.x, focusPt.y - e.y) - base), -0.4, 0.4);
       // Capped both ways so the court stays in view. On the serve (toss and contact) only a slight lift:
       // the ball goes high but the court across the net stays on screen.
       const serving = tossing || (holding && label.racket === 'serve');
@@ -125,8 +125,10 @@ function createCourt() {
         const o = pos[1 - side];
         const t = away ? { x: lerp(ball.x, o.x, 0.6), y: lerp(ball.y, o.y, 0.6) } : ball;
         const r = wrap(Math.atan2(t.x - e.x, t.y - e.y) - base);
-        rel = Math.abs(r) > 1.25 ? 0 : clamp(r, -0.95, 0.95);
+        // Eyes follow the ball, the head only turns a little: the court stays steady on screen.
+        rel = Math.abs(r) > 1.25 ? 0 : clamp(r * 0.6, -0.42, 0.42);
       }
+      rate = 0.07;
     }
     head.rel = rel;
     const target = base + rel + head.off;
@@ -302,16 +304,12 @@ function createCourt() {
     const z = cam.zoom;
     ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (W / 2 - cam.cx * z + sx), dpr * (H / 2 - cam.cy * z + sy));
 
-    ctx.fillStyle = look.out;
-    ctx.fillRect(-W, -H, W * 3, H * 3);
+    if (fps) drawArena();
+    else { ctx.fillStyle = look.out; ctx.fillRect(-W, -H, W * 3, H * 3); }
     if (c === 'broadcast' || c === 'reverse') {
       const [, farY] = P(0, c === 'reverse' ? BASE + 7 : -BASE - 7);
       ctx.fillStyle = 'rgba(0,0,0,.28)';
       ctx.fillRect(-W, -H, W * 3, Math.max(0, farY) + H);
-    } else if (fps) {
-      // Sky / stands above the horizon.
-      ctx.fillStyle = 'rgba(0,0,0,.32)';
-      ctx.fillRect(-W, -H, W * 3, H / 2 - fpsF * Math.tan(head.pitch) + H);
     } else if (c === 'side') {
       const [, farY] = P(DOUBLES + 7, 0);
       ctx.fillStyle = 'rgba(0,0,0,.3)';
@@ -538,6 +536,55 @@ function createCourt() {
   }
 
 
+  // First person: the arena around the court. Sky (or a dark roof indoors), the run-off, sponsor boards
+  // along the back and sides, and stands full of people rising behind them.
+  const ARENA_Y = BASE + 6.4, ARENA_X = DOUBLES + 3.7, BOARD_H = 1.0, STAND_D = 16, STAND_H = 9;
+  const CROWD = ['#d8d4cc', '#c9b8a0', '#8e8e93', '#5a6270', '#3b4250', '#b04a42', '#4a6fa5', '#e0dcd3', '#7a6a58', '#2f5d8a', '#c8a96b', '#6b7d5a'];
+  const SEATS = Array.from({ length: 3200 }, (_, i) => {
+    const h = Math.imul(i + 7, 2654435761) >>> 0;
+    return { side: i % 4, u: ((h >>> 4) % 1000) / 1000, v: ((h >>> 14) % 1000) / 1000, col: CROWD[(h >>> 24) % CROWD.length] };
+  });
+  const SEATS_BY_SIDE = [0, 1, 2, 3].map(k => SEATS.filter(st => st.side === k));
+  function drawArena() {
+    const sky = ctx.createLinearGradient(0, -H, 0, H);
+    if (indoorFlag) { sky.addColorStop(0, '#07090d'); sky.addColorStop(1, '#1b2029'); }
+    else { sky.addColorStop(0, '#2c64a8'); sky.addColorStop(0.75, '#8fb8e0'); sky.addColorStop(1, '#c9dcef'); }
+    ctx.fillStyle = sky; ctx.fillRect(-W, -H, W * 3, H * 3);
+    const Y = ARENA_Y, X = ARENA_X;
+    // Each side: inner edge a→b (at the boards), and which way is outwards.
+    const sides = [
+      { a: [-X, -Y], b: [X, -Y], o: [0, -1], t: [1, 0] }, { a: [X, Y], b: [-X, Y], o: [0, 1], t: [-1, 0] },
+      { a: [-X, Y], b: [-X, -Y], o: [-1, 0], t: [0, -1] }, { a: [X, -Y], b: [X, Y], o: [1, 0], t: [0, 1] },
+    ];
+    const outer = (pt, sd, sgn) => [pt[0] + sd.o[0] * STAND_D + sd.t[0] * STAND_D * sgn, pt[1] + sd.o[1] * STAND_D + sd.t[1] * STAND_D * sgn];
+    const mid = sd => camSpace((sd.a[0] + sd.b[0]) / 2 + sd.o[0] * 6, (sd.a[1] + sd.b[1]) / 2 + sd.o[1] * 6, 3).d;
+    sides.map((sd, i) => ({ sd, i, d: mid(sd) })).sort((p, q) => q.d - p.d).forEach(({ sd, i }) => {
+      const A = outer(sd.a, sd, -1), B = outer(sd.b, sd, 1);
+      // Stands: a slope from the top of the boards up and back, with tier lines and a crowd.
+      poly([[sd.a[0], sd.a[1], BOARD_H], [sd.b[0], sd.b[1], BOARD_H], [B[0], B[1], STAND_H], [A[0], A[1], STAND_H]], indoorFlag ? '#1d222c' : '#2a3140');
+      ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1;
+      for (let v = 0.2; v < 1; v += 0.2) {
+        const p1 = [lerp(sd.a[0], A[0], v), lerp(sd.a[1], A[1], v)], p2 = [lerp(sd.b[0], B[0], v), lerp(sd.b[1], B[1], v)];
+        line(p1[0], p1[1], p2[0], p2[1], lerp(BOARD_H, STAND_H, v));
+      }
+      for (const st of SEATS_BY_SIDE[i]) {
+        const v = 0.04 + st.v * 0.92;
+        const ix = lerp(sd.a[0], sd.b[0], st.u), iy = lerp(sd.a[1], sd.b[1], st.u);
+        const ox = lerp(A[0], B[0], st.u), oy = lerp(A[1], B[1], st.u);
+        const cs = camSpace(lerp(ix, ox, v), lerp(iy, oy, v), lerp(BOARD_H, STAND_H, v) + 0.3);
+        if (cs.d < 1) continue;
+        const [x, y, k] = projCS(cs), sz = clamp(k * 0.32, 1, 5);
+        ctx.fillStyle = st.col; ctx.fillRect(x - sz / 2, y - sz, sz, sz);
+      }
+      // Sponsor boards along the bottom, with a bright top edge.
+      poly([[sd.a[0], sd.a[1], 0], [sd.b[0], sd.b[1], 0], [sd.b[0], sd.b[1], BOARD_H], [sd.a[0], sd.a[1], BOARD_H]], indoorFlag ? '#0d2236' : '#0e3352');
+      ctx.strokeStyle = 'rgba(100,210,255,.55)'; ctx.lineWidth = 1.5;
+      line(sd.a[0], sd.a[1], sd.b[0], sd.b[1], BOARD_H);
+    });
+    // The run-off around the court, inside the boards.
+    poly([[-X, -Y], [X, -Y], [X, Y], [-X, Y]], look.out);
+  }
+
   function drawNet() {
     const X = DOUBLES + 0.9, c = camera();
     if (c === 'top') {
@@ -644,7 +691,7 @@ function createCourt() {
     const [sx, sy, k] = P(ball.x, ball.y, 0);
     const [bx, by] = P(ball.x, ball.y, ball.h);
     // Capped so a ball right at the camera (first person) doesn't fill the screen.
-    const r = r0 || clamp(k * 0.12, 2.2, 12);
+    const r = r0 || (isFps() ? clamp(k * 0.13, 3.2, 14) : clamp(k * 0.12, 2.2, 12));
     ctx.fillStyle = 'rgba(0,0,0,.3)';
     ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = COLORS.ball;

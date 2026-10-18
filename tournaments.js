@@ -876,6 +876,8 @@ function openMatch() {
   if (anim.replayKey !== key) { anim.replayKey = key; anim.replays = []; }
   renderPoints();
   renderMatch();
+  // Came back mid-set (a refresh): pick the set up right where you left it.
+  if (entry.live.inSet && entry.live.snap && !anim.running) watchMatch();
 }
 
 function matchPlayers(entry, m) {
@@ -885,7 +887,13 @@ function matchPlayers(entry, m) {
 // Plays the next set in the engine, logs its summary, then (optionally) replays it on court.
 async function playOneSet(animate = true) {
   if (anim.running) return;
-  const entry = current.entry, { m, log } = entry.live, ev = eventOf(entry);
+  const entry = current.entry, L = entry.live, ev = eventOf(entry);
+  // Each set runs on its own saved random seed, from a saved starting state, with every big-point call
+  // recorded. So if the page is refreshed mid-set, the set replays exactly as it was and fast-forwards
+  // to the point you'd reached.
+  if (L.inSet && L.snap) L.m = JSON.parse(L.snap);
+  else { L.inSet = true; L.seed = (Math.random() * 4294967296) >>> 0; L.calls = []; L.shownSaved = 0; L.snap = JSON.stringify(L.m); writeJSON(ENTRY_KEY, entry); }
+  const { m, log } = L, rng = seeded(L.seed), target = L.shownSaved || 0;
   const ps = matchPlayers(entry, m);
   const me = m.a === 0 ? 0 : 1, op = 1 - me;
   const before = JSON.parse(JSON.stringify(m.stats));
@@ -901,15 +909,30 @@ async function playOneSet(animate = true) {
     anim.running = true; anim.live = true;
     renderMatch();
     const A = makeAnimator(m.sets.slice(), m.sets.length + 1);
+    let step = 0;
     set = await playSetLive(m, ps, ev, async info => {
+      step++;
       const fresh = m.points.slice(shown);
+      if (fresh.length) {
+        // Points you'd already watched before a refresh go by instantly.
+        const ff = shown < target, was = Court.skip;
+        if (ff) Court.skip = true;
+        await A.play(fresh, false);
+        if (ff) Court.skip = was;
+      }
       shown = m.points.length;
-      if (fresh.length) await A.play(fresh, false);
-      if (info.bp !== null || info.press) await bigPoint(info, ps, me);
-    });
+      if (shown > (L.shownSaved || 0)) { L.shownSaved = shown; writeJSON(ENTRY_KEY, entry); }
+      if (info.bp !== null || info.press) {
+        if (shown < target) {
+          const rc = (L.calls || []).find(c => c.step === step), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
+          if (rc && rc.id === 'off') anim.noCalls = true;
+          if (call) makeCall(m, ps, me, call);
+        } else { anim.step = step; await bigPoint(info, ps, me); }
+      }
+    }, rng);
     await A.play(m.points.slice(shown), true);
     anim.live = false;
-  } else set = playSet(m, ps, ev);
+  } else set = playSet(m, ps, ev, rng);
   const d = i => ({
     bpWon: m.stats[i].bpWon - before[i].bpWon, bpChances: m.stats[i].bpChances - before[i].bpChances,
     bpSaved: m.stats[i].bpSaved - before[i].bpSaved, bpFaced: m.stats[i].bpFaced - before[i].bpFaced,
@@ -929,6 +952,7 @@ async function playOneSet(animate = true) {
   const points = m.points;
   m.points = [];
   entry.live.total = (entry.live.total || 0) + points.length;
+  L.inSet = false; L.snap = null; L.calls = []; L.shownSaved = 0;
   writeJSON(ENTRY_KEY, entry);
   if (animate) {
     anim.running = false;
@@ -961,6 +985,9 @@ function bigPoint(info, ps, me) {
     const finish = id => {
       clearInterval(iv);
       if (id === 'off') anim.noCalls = true;
+      // Remember the call, so a refresh mid-set replays the point the same way.
+      const L = current.entry && current.entry.live;
+      if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step); L.calls.push({ step: anim.step, id }); }
       const call = calls.find(c => c.id === id);
       if (call) makeCall(m, ps, me, call);
       box.hidden = true; box.onclick = null;

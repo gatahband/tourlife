@@ -179,29 +179,41 @@ async function publishLive() {
   return true;
 }
 
-// One-time setup box (shown until a key is saved).
+// One-time setup: paste a key. GitHub keys (ghp_…) are for sending results; Netlify keys (nfp_…) are for
+// collecting players who joined. The box works out which is which.
 function connectHtml() {
-  return `<section class="card"><h2>Connect to your site (one time)</h2>` +
-    `<p class="hint">Paste your Netlify access token so this page can collect players and send out results by itself. ` +
-    `Make one in Netlify: your picture → User settings → Applications → New access token. It's saved on this computer only.</p>` +
-    `<input type="password" id="nfKey" class="inp big" placeholder="Paste the token here">` +
-    `<button type="button" class="btn" id="nfSave">Connect</button><p class="hint" id="nfMsg"></p></section>`;
+  const c = nfConf();
+  const row = (ok, txt) => `<div class="connrow">${ok ? '✅' : '⬜'} ${txt}</div>`;
+  return `<section class="card"><h2>Connect (one time)</h2>` +
+    row(!!c.token, 'Netlify key: collects players who press "Join real tournaments"') +
+    row(!!c.gh, 'GitHub key: sends results out to players') +
+    `<input type="password" id="nfKey" class="inp big" placeholder="Paste a Netlify or GitHub key">` +
+    `<button type="button" class="btn" id="nfSave">Connect</button><p class="hint" id="nfMsg">Keys are saved on this computer only.</p></section>`;
 }
 function bindConnect(after) {
   if (!$('nfSave')) return;
   $('nfSave').onclick = async () => {
-    const token = $('nfKey').value.trim();
-    if (!token) return;
-    writeJSON(NF_KEY, { token });
-    $('nfMsg').textContent = 'Checking…';
-    try { await nfSite(); after(); } catch (e) { writeJSON(NF_KEY, null); $('nfMsg').textContent = `❌ ${e.message}`; }
+    const key = $('nfKey').value.trim();
+    if (!key) return;
+    const c = nfConf();
+    if (/^(ghp_|github_pat_)/.test(key)) {
+      $('nfMsg').textContent = 'Checking with GitHub…';
+      const r = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${key}` } }).catch(() => null);
+      if (!r || !r.ok) { $('nfMsg').textContent = '❌ GitHub said that key is wrong or expired.'; return; }
+      writeJSON(NF_KEY, { ...c, gh: key });
+      return after();
+    }
+    writeJSON(NF_KEY, { ...c, token: key, site: null });
+    $('nfMsg').textContent = 'Checking with Netlify…';
+    try { await nfSite(); after(); }
+    catch (e) { writeJSON(NF_KEY, c); $('nfMsg').textContent = `❌ ${e.message} (Netlify keys start with nfp_; GitHub keys with ghp_.)`; }
   };
 }
 
 function renderAdPlayers() {
   const list = adminPlayers().sort((a, b) => overall(b.player) - overall(a.player));
   const connected = !!nfConf().token;
-  $('adBody').innerHTML = (connected ? '' : connectHtml()) +
+  $('adBody').innerHTML = (connected && nfConf().gh ? '' : connectHtml()) +
     `<section class="card"><h2>Players who joined</h2>` +
     (connected ? `<button type="button" class="btn huge" id="adFetch">🔄 Get new players</button>` +
       `<p class="hint">Picks up everyone who pressed "Join real tournaments" in their game. Sending again just updates their player.</p>` : '') +

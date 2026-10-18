@@ -799,3 +799,24 @@ h2.ctr { text-align: center; }
 .gbbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .gbbtns .btn { margin: 0; width: 100%; }
 .hlbtn { grid-column: 1 / -1; margin: 0 0 4px; }
+
+/* World maps */
+.wmap { display: block; width: 100%; height: auto; background: #0f1d2c; border-radius: 12px; }
+.mland { fill: #2a3b4f; stroke: #3b5068; stroke-width: .4; }
+.mroute { fill: none; stroke: #ffd60a; stroke-width: 1.6; stroke-dasharray: 4 3; }
+.mpath { fill: none; stroke: #0a84ff; stroke-width: 1.1; opacity: .75; }
+.mhere { fill: #0a84ff; stroke: #fff; stroke-width: 1; }
+.mdest { fill: #ff453a; stroke: #fff; stroke-width: 1; }
+.mstop { fill: #8ab4ff; }
+.routebox { margin: 4px 0 12px; }
+.routebox .hint, .itin .hint { margin: 6px 0 0; }
+.itin { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Centering fixes */
+#hOvr .ovrexp { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+#hOvr .ovrexp .rcell { flex: 0 1 calc((100% - 20px) / 3); min-width: 150px; }
+.stylebox summary { text-align: center; padding-top: 4px; }
+.stylebox summary .top, .stylebox summary .hint { text-align: center; }
+.stylebox .chev { position: static; display: inline-block; margin-top: 6px; }
+.routebox .wmap { max-width: 440px; margin: 0 auto; }
+.itin .wmap { max-width: 520px; margin: 0 auto; }

@@ -387,6 +387,7 @@ function renderCareerBits(c, p) {
     c.goals.map(g => `<div class="grow2 ${g.claimed ? 'gdone' : ''}"><span class="gicon">${g.claimed ? '✅' : '🎯'}</span>` +
       `<div class="gtext"><b>${g.text}</b><small>🎁 ${g.claimed ? 'Earned: ' : ''}${g.rtext}</small></div><span class="gprog">${g.claimed ? 'Done' : goalProgress(c, g)}</span></div>`).join('') +
     (perks.length ? `<div class="perks"><b>Your rewards</b>${perks.map(x => `<div>${x}</div>`).join('')}</div>` : '') +
+    itineraryHtml(c, p) +
     `<div class="gbbtns"><button type="button" class="btn small ghost" id="gbBadges">🏅 Achievements (${nBadges})</button>` +
     `<button type="button" class="btn small ghost" id="gbHl">🎬 Highlights (${nHl})</button></div></div>`;
   $('gbHl').onclick = () => openHighlights();

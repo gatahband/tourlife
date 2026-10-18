@@ -388,14 +388,13 @@ function eventPreview(ev, mode, canEnter) {
   if (mode === 'qual') notes.push(`🎟️ You'd have to win ${ev.tier === 'GS' ? 3 : 2} qualifying matches first.`);
   if (wc) notes.push('🎟️ A wildcard puts you straight into the main draw, whatever your ranking.');
   const cost = tripCost(c, ev, wc ? 'main' : mode), travel = travelDays(c.location || p.nation, ev.nation);
-  notes.push(`✈️ ${money(cost)} for the trip${travel ? `, ${travel} day${travel === 1 ? '' : 's'} of travel` : ''}. Win it: ${money(prizeFor(ev.tier, ROUND_NAMES.length))} and ${POINTS[ev.tier][ROUND_NAMES.length]} ranking points.`);
+  notes.push(`🏆 Win it: ${money(prizeFor(ev.tier, ROUND_NAMES.length))} and ${POINTS[ev.tier][ROUND_NAMES.length]} ranking points.${travel ? ` (${travel} day${travel === 1 ? '' : 's'} of travel to get there.)` : ''}`);
   const verdict = title >= 0.35 ? 'You should be among the favourites.' : title >= 0.12 ? 'A real shot at the title.' : qf >= 0.35 ? 'A good week means a deep run.' : 'Tough field for you: a win or two would be a good week.';
   return `<div class="evchances"><div><b>${pct(qf)}</b><span>Reach the Quarter-Finals</span></div><div><b>${pct(title)}</b><span>Win the Title</span></div></div>` +
     `<p class="big">${verdict}</p><ul class="evnotes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` +
-    `<div class="wallet"><span>In the bank</span><b>${money(c.money)}</b></div>` +
     (canEnter ? `<div class="shrow"><button type="button" class="btn small" data-confirm="${ev.id}" data-mode="${mode}">${wc ? `🎟️ Use a wildcard (${c.perks.wildcards} left)` : mode === 'qual' ? 'Enter qualifying' : 'Enter this event'}</button><button type="button" class="btn small ghost" data-close="1">Not this one</button></div>` +
       `<p class="tripcost">This week costs <b>${money(cost)}</b> (flights and hotel). You'd have <b class="${c.money - cost < 0 ? 'down' : ''}">${money(c.money - cost)}</b> left.</p>`
-      : `<p class="hint">Simulated for a typical draw. It opens next week.</p>`);
+      : `<p class="tripcost">The trip would cost <b>${money(cost)}</b> (flights and hotel); you have <b>${money(c.money)}</b> now. Simulated for a typical draw; it opens next week.</p>`);
 }
 
 // Enter / Enter qualifying / Locked, depending on your ranking.

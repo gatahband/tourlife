@@ -78,7 +78,7 @@ function compactHistory(c) {
     h.matches = h.matches.map(m => m.compact ? m : {
       compact: true, round: m.round, won: m.won, score: m.score, real: m.real,
       opponent: m.opponent && { name: m.opponent.name, nation: m.opponent.nation, id: m.opponent.id, seed: m.opponent.seed },
-      sets: m.sets, stats: keepStats(m.stats), oppStats: keepStats(m.oppStats), moments: [],
+      sets: m.sets, styles: m.styles, stats: keepStats(m.stats), oppStats: keepStats(m.oppStats), moments: [],
     });
   }
 }

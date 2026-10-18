@@ -537,6 +537,7 @@ function prematchHtml(entry, oi) {
 // them, and your plan next to the coach's.
 function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}) {
   const c = current.career, r = scoutReport(opp);
+  const titleCase = t => t.replace(/(^|\s)\S/g, x => x.toUpperCase());
   const sec = (title, body) => `<section class="ssect"><h3>${title}</h3>${body}</section>`;
   const box = (title, items, cls) => `<div class="sbox ${cls}"><h4>${title}</h4>` +
     (items.length ? `<ul>${items.map(x => `<li>${x}</li>`).join('')}</ul>` : '<p class="hint">Nothing stands out.</p>') + `</div>`;
@@ -544,8 +545,8 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
   const coach = hasTeam(c, 'coach'), lvl = coach ? teamLevel(c, 'coach') : 0;
   const near = v => lvl >= 3 ? Math.round(v) : Math.round(v / 2) * 2;
   const know = `<div class="sboxes">${box('💪 Strengths', r.strengths, 'up')}${box('🩹 Weaknesses', r.weaknesses, 'down')}</div>` +
-    (r.tendencies.length ? `<h4 class="sh4">Their habits</h4><div class="chips">${r.tendencies.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '') +
-    (lvl >= 2 ? `<h4 class="sh4">Ratings (your coach's read)</h4>${coachCompare(me, opp, near, lvl >= 3)}` : '');
+    (r.tendencies.length ? `<h4 class="sh4">Their Habits</h4><div class="chips">${r.tendencies.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '') +
+    (lvl >= 2 ? `<h4 class="sh4">Ratings (Your Coach's Read)</h4>${coachCompare(me, opp, near, lvl >= 3)}` : '');
   const beat = r.counters.length ? `<ol class="beat">${r.counters.map(x => `<li>${x}</li>`).join('')}</ol>` : '<p class="hint">No obvious holes. Play your game.</p>';
 
   // Your plan, with the coach's suggestion beside each setting.
@@ -559,17 +560,17 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
   }).join('');
   const table = `<table class="ptable"><thead><tr><th></th><td>You</td>${coach ? '<td>Coach says</td><td class="them">They play</td>' : ''}</tr></thead><tbody>${rows}</tbody></table>`;
   const note = !coach ? `<p class="hint coachtease">🧑‍🏫 Hire a coach (Home → Money &amp; Team) to see how they play and get a counter-plan.</p>`
-    : diffs.length ? `<p class="coachsays">🧑‍🏫 ${teamOf(c, 'coach').name} suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'} (highlighted).</p>`
-    : `<p class="coachsays ok">🧑‍🏫 ${teamOf(c, 'coach').name}: your plan is spot on for this one.</p>`;
-  const btns = `<div class="pbtns">${diffs.length ? `<button type="button" class="btn" id="coachUse">Use the coach's plan</button>` : ''}` +
-    `<button type="button" class="btn ghost" id="${planBtn}">Change my plan</button></div>`;
+    : diffs.length ? `<p class="coachsays">🧑‍🏫 ${titleCase(teamOf(c, 'coach').name)} suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'} (highlighted).</p>`
+    : `<p class="coachsays ok">🧑‍🏫 ${titleCase(teamOf(c, 'coach').name)}: Your plan is spot on for this one.</p>`;
+  const btns = `<div class="pbtns">${diffs.length ? `<button type="button" class="btn" id="coachUse">Use the Coach's Plan</button>` : ''}` +
+    `<button type="button" class="btn ghost" id="${planBtn}">Change My Plan</button></div>`;
 
   return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}</h2></div>` +
     h2hLine(c, opp) + morale +
-    sec('Conditions and matchup', weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
-    sec('Know your opponent', know) +
-    sec('How to beat them', beat) +
-    sec('Your game plan', note + table + btns) + `</div>`;
+    sec('Conditions & Matchup', weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
+    sec('Know Your Opponent', know) +
+    sec('How To Beat Them', beat) +
+    sec('Your Game Plan', note + table + btns) + `</div>`;
 }
 
 function bindPrematch(entry, oi, rerender) {

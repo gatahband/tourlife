@@ -851,7 +851,7 @@ h2.ctr { text-align: center; }
 .wxnums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .wxnums span { background: var(--card); border-radius: 10px; padding: 8px 10px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
 .wxnums b { font-size: 15px; }
-.mutop { font-size: 15px; } .matchup p { margin: 6px 0 0; color: var(--text); line-height: 1.45; }
+.mutop { font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px; } .mutop span:last-child { text-align: right; } .muvs { flex-shrink: 0; } .matchup p { margin: 6px 0 0; color: var(--text); line-height: 1.45; }
 .sboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .sbox { background: var(--field); border-radius: 12px; padding: 12px 14px; border-left: 4px solid var(--line); }
 .sbox.up { border-left-color: var(--good); } .sbox.down { border-left-color: var(--bad); }
@@ -881,3 +881,6 @@ h2.ctr { text-align: center; }
 .motags details[open] summary::after { content: '▴'; }
 .motags details p { margin: 4px 0 6px 22px; color: var(--muted); font-size: 13px; line-height: 1.4; }
 .motags details p b { color: var(--text); }
+.murec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.murec span { flex: 1 1 auto; }
+.murec b { background: var(--card); border-radius: 99px; padding: 4px 12px; color: var(--text); font-weight: 600; }

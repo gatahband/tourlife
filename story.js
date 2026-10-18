@@ -448,7 +448,19 @@ function matchupHtml(me, o) {
   if ((theirs.name === 'Big Server' || theirs.name === 'First-Strike Player') && mine.name === 'Return Specialist') extra.push('Your return can take the sting out of their serve.');
   if (theirs.name === 'Serve-and-Volleyer') extra.push('They follow most first serves to the net.');
   if (theirs.name === 'Tactician') extra.push('Watch for the drop shot.');
-  return `<div class="matchup"><div class="mutop">🆚 You: <b>${mine.name}</b> · Them: <b>${theirs.name}</b></div><p>${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</p></div>`;
+  return `<div class="matchup"><div class="mutop"><span>You: <b>${mine.name}</b></span><span class="muvs">🆚</span><span>Them: <b>${theirs.name}</b></span></div><p>${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</p>${styleRecordHtml(theirs.name)}</div>`;
+}
+
+// Your win-loss record against a playstyle, this season and over your career.
+function styleRecordHtml(style) {
+  const c = current.career;
+  if (!c) return '';
+  const season = seasonOfWeek(c.week);
+  const all = [...c.history.flatMap(h => h.matches.map(m => [m, h.week])), ...((current.entry && current.entry.matches) || []).map(m => [m, c.week])]
+    .filter(([m]) => m.styles && m.styles[1] === style);
+  const wl = list => `${list.filter(([m]) => m.won).length}–${list.filter(([m]) => !m.won).length}`;
+  const plural = /s$/.test(style) ? style : style + 's';
+  return `<div class="murec"><span>Your record vs ${plural}</span><b>Season ${wl(all.filter(([, w]) => seasonOfWeek(w) === season))}</b><b>Career ${wl(all)}</b></div>`;
 }
 
 // After the match: how the clash of styles actually played out.

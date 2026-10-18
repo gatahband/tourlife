@@ -87,8 +87,8 @@ function weatherHtml(ev, me, opp) {
   const sm = detectStyles(me.attrs, me.fav)[0].name, so = detectStyles(opp.attrs, opp.fav)[0].name;
   const a = wxEdge(me, sm, ev), b = wxEdge(opp, so, ev);
   const pct = x => `${x >= 0 ? '+' : '−'}${(Math.abs(x) * 100).toFixed(1)}%`;
-  const verdict = a - b > 0.004 ? '<b class="up">The conditions suit you.</b>' : b - a > 0.004 ? '<b class="down">The conditions suit them.</b>' : 'The conditions suit neither of you much.';
-  return `<div class="wxbox"><b>${wxLabel(ev)}</b> <span class="hint">${WEATHER[k].desc}</span>` +
-    `<p>For your ${sm} game: <b class="${a >= 0 ? 'up' : 'down'}">${pct(a)} on points</b> · for their ${so} game: <b class="${b >= 0 ? 'up' : 'down'}">${pct(b)}</b>. ${verdict}` +
-    `${WX_EFFECT[k].heat > 1.2 ? ' The heat will tire you faster.' : ''}</p></div>`;
+  const verdict = a - b > 0.004 ? '<span class="wxv up">Suits you</span>' : b - a > 0.004 ? '<span class="wxv down">Suits them</span>' : '<span class="wxv">Even</span>';
+  return `<div class="wxbox"><div class="wxtop"><b>${wxLabel(ev)}</b>${verdict}</div><p class="hint">${WEATHER[k].desc}</p>` +
+    `<div class="wxnums"><span>Your ${sm} game <b class="${a >= 0 ? 'up' : 'down'}">${pct(a)}</b></span><span>Their ${so} game <b class="${b >= 0 ? 'up' : 'down'}">${pct(b)}</b></span></div>` +
+    `${WX_EFFECT[k].heat > 1.2 ? '<p class="hint">🥵 The heat will tire you faster.</p>' : ''}</div>`;
 }

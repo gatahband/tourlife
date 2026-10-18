@@ -836,3 +836,41 @@ h2.ctr { text-align: center; }
 .mtag text { fill: #fff; font: 700 9px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; text-transform: none; letter-spacing: 0; }
 .mpulse { fill: none; stroke: #0a84ff; stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: mpulse 1.8s ease-out infinite; }
 @keyframes mpulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+
+/* Scouting report */
+.shead span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.scard h2.sname { font-size: 24px; font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--text); margin: 2px 0 10px; }
+.sname small { font-size: 14px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+.ssect { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+.ssect h3 { margin: 0 0 10px; font-size: 17px; font-weight: 700; }
+.ssect .wxbox, .ssect .matchup { background: var(--field); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; font-size: 15px; }
+.wxtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 16px; }
+.wxv { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--card); color: var(--muted); white-space: nowrap; }
+.wxv.up { color: var(--good); background: rgba(48,209,88,.12); } .wxv.down { color: var(--bad); background: rgba(255,69,58,.12); }
+.wxbox .hint { margin: 4px 0 0; font-size: 14px; }
+.wxnums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.wxnums span { background: var(--card); border-radius: 10px; padding: 8px 10px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.wxnums b { font-size: 15px; }
+.mutop { font-size: 15px; } .matchup p { margin: 6px 0 0; color: var(--text); line-height: 1.45; }
+.sboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sbox { background: var(--field); border-radius: 12px; padding: 12px 14px; border-left: 4px solid var(--line); }
+.sbox.up { border-left-color: var(--good); } .sbox.down { border-left-color: var(--bad); }
+.sbox h4, .sh4 { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.sh4 { margin-top: 14px; color: var(--muted); }
+.sbox ul { margin: 0; padding: 0 0 0 18px; display: grid; gap: 4px; font-size: 15px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--field); border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: 14px; }
+.beat { margin: 0; padding: 0; list-style: none; counter-reset: beat; display: grid; gap: 8px; }
+.beat li { counter-increment: beat; background: var(--field); border-radius: 12px; padding: 12px 14px 12px 48px; position: relative; font-size: 15px; line-height: 1.45; }
+.beat li::before { content: counter(beat); position: absolute; left: 14px; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: #ffd60a; color: #000; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.coachsays { margin: 0 0 10px; font-size: 15px; } .coachsays.ok { color: var(--good); }
+.ptable { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ptable thead td { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 0 8px 6px; }
+.ptable th { text-align: left; font-weight: 500; color: var(--muted); padding: 9px 8px; white-space: nowrap; }
+.ptable td { padding: 9px 8px; }
+.ptable tbody tr { border-top: 1px solid var(--line); }
+.ptable tr.diff { background: rgba(255,214,10,.10); } .ptable tr.diff b { color: #ffd60a; }
+.ptable .ok { color: var(--good); } .ptable .them { color: var(--muted); }
+.pbtns { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 14px; }
+.pbtns .btn { margin-top: 0; }
+@media (max-width: 560px) { .sboxes, .wxnums { grid-template-columns: 1fr; } .ptable { font-size: 14px; } .ptable th, .ptable td { padding: 8px 5px; } }

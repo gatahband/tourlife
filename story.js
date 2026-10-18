@@ -448,7 +448,7 @@ function matchupHtml(me, o) {
   if ((theirs.name === 'Big Server' || theirs.name === 'First-Strike Player') && mine.name === 'Return Specialist') extra.push('Your return can take the sting out of their serve.');
   if (theirs.name === 'Serve-and-Volleyer') extra.push('They follow most first serves to the net.');
   if (theirs.name === 'Tactician') extra.push('Watch for the drop shot.');
-  return `<div class="matchup">🆚 <b>Your ${mine.name} game vs their ${theirs.name} game:</b> ${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</div>`;
+  return `<div class="matchup"><div class="mutop">🆚 You: <b>${mine.name}</b> · Them: <b>${theirs.name}</b></div><p>${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</p></div>`;
 }
 
 // After the match: how the clash of styles actually played out.

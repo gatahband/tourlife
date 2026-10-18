@@ -667,6 +667,7 @@ button.rvrow:hover { background: var(--field); }
 .badge { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; opacity: .45; filter: grayscale(1); }
 .badge.on { opacity: 1; filter: none; border-color: #ffd60a55; }
 .badge span { font-size: 24px; } .badge b { font-size: 13px; } .badge small { font-size: 11px; color: var(--muted); }
+.badge small.bdate { color: #ffd60a; font-weight: 600; margin-top: 2px; }
 .toast { position: fixed; top: 16px; left: 50%; transform: translate(-50%, -120%); background: #1c2230; border: 1px solid #ffd60a88; border-radius: 14px; padding: 12px 18px; z-index: 50; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: transform .35s; max-width: 90vw; }
 .toast.on { transform: translate(-50%, 0); }
 .toast b { color: #ffd60a; } .toast small { color: var(--muted); }

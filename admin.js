@@ -21,12 +21,14 @@ function openAdmin() {
   if (sessionStorage.getItem('tourlife.admin') === 'ok') return renderAdmin();
   $('admin').innerHTML = `<div class="card adlock"><h2>Admin</h2>` +
     `<input type="password" id="adPass" class="inp big" placeholder="Password" autocomplete="current-password">` +
-    `<button type="button" class="btn" id="adGo">Unlock</button><p class="hint" id="adMsg"></p></div>`;
+    `<button type="button" class="btn" id="adGo">Unlock</button><p class="hint" id="adMsg">This page is for the site owner.</p>` +
+    `<button type="button" class="link" id="adLeave">‹ Back to the game</button></div>`;
   const go = async () => {
     if (await sha256($('adPass').value) === ADMIN_HASH) { sessionStorage.setItem('tourlife.admin', 'ok'); renderAdmin(); }
     else $('adMsg').textContent = 'Wrong password.';
   };
   $('adGo').onclick = go;
+  $('adLeave').onclick = () => { history.replaceState(null, '', location.pathname); location.reload(); };
   $('adPass').onkeydown = e => { if (e.key === 'Enter') go(); };
   $('adPass').focus();
 }

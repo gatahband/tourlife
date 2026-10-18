@@ -138,6 +138,7 @@ function advanceWeek() {
   c.lastRank = currentRank(c);
   weeklyMoney(c);
   noteWeek(c);
+  moraleWeek(c, p);
   c.week++;
   if (weekInSeason(c.week) === 1) newSeason(c, p);
   c.downtime = null;
@@ -195,6 +196,7 @@ function renderOvr(p) {
     `<h3 class="ssec">Your chances at the levels you can play</h3>` +
     `<div class="ovrexp">${levels.map(cell).join('')}</div>` +
     fatigueBar(p.fatigue || 0) +
+    moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     `<p class="hint">Simulated title and quarter-final chances per event at each level you can enter now (on hard courts, in good conditions). Surfaces, weather, your plan and form swing them.</p>`;
   // Fill in any odds not worked out yet, one at a time so the page stays responsive.
   const todo = [...$('hOvr').querySelectorAll('[data-odds]')].filter(el => el.querySelector('b').textContent === '…');

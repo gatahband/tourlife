@@ -208,6 +208,17 @@ function swingLine(rec, oppName) {
   }).filter(Boolean).join(' ');
 }
 
+// Off the court: the biggest morale factors going into the match.
+function moraleLine(rec) {
+  const t = rec.moraleTags || [];
+  if (!t.length) return '';
+  const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
+  const ups = t.filter(x => x.v > 0), downs = t.filter(x => x.v < 0);
+  if (downs.length && !ups.length) return `Off the court, ${downs.map(x => lc(x.text)).join(' and ')} weighed on you.`;
+  if (ups.length && !downs.length) return `Off the court, you had a lift: ${ups.map(x => lc(x.text)).join(' and ')}.`;
+  return `Off the court: ${lc(ups[0].text)} helped, but ${lc(downs[0].text)} didn't.`;
+}
+
 // Big-point calls: how many you made and how many came off.
 function callsLine(rec) {
   if (!rec.calls) return '';
@@ -236,7 +247,7 @@ function matchStory(rec, ev, player) {
   return [
     `${openingLine(rec, ev, rec.opponent)} ${surfaceLine(rec, ev, player)}`,
     `${setsLine(rec, oppName)} ${swingLine(rec, oppName)} ${breakLine(rec, oppName)} ${extrasLine(rec, oppName)} ${styleLine(rec, oppName)}`.trim(),
-    `${planLine(rec, oppName)} ${adjustLine(rec)} ${callsLine(rec)} ${mindLine(rec, player, oppName)} ${closingLine(rec)} ${typeof h2hStory === 'function' ? h2hStory(rec) : ''}`.trim(),
+    `${planLine(rec, oppName)} ${moraleLine(rec)} ${adjustLine(rec)} ${callsLine(rec)} ${mindLine(rec, player, oppName)} ${closingLine(rec)} ${typeof h2hStory === 'function' ? h2hStory(rec) : ''}`.trim(),
   ];
 }
 

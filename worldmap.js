@@ -81,6 +81,12 @@ function mapHtml(opts) {
     const pts = opts.path.map(n => NATION_LL[n]).filter(Boolean);
     for (let i = 1; i < pts.length; i++) marks += `<path d="${arcPath(pts[i - 1], pts[i])}" class="mpath"/>`;
     pts.forEach((p, i) => { const [x, y] = proj(p); marks += `<circle cx="${x}" cy="${y}" r="${i === pts.length - 1 ? 3.4 : 2.2}" class="${i === pts.length - 1 ? 'mhere' : 'mstop'}"/>`; });
+    // Name the dot you're on, so it stands out from the rest.
+    if (opts.hereLabel && pts.length) {
+      const [x, y] = proj(pts[pts.length - 1]), tx = Math.max(30, Math.min(MAP_W - 30, x)), w = opts.hereLabel.length * 4.4 + 10;
+      marks += `<g class="mtag"><rect x="${(tx - w / 2).toFixed(1)}" y="${(y - 19).toFixed(1)}" width="${w.toFixed(1)}" height="11" rx="3"/>` +
+        `<text x="${tx.toFixed(1)}" y="${(y - 11).toFixed(1)}">${esc(opts.hereLabel)}</text></g>`;
+    }
   }
   setTimeout(async () => {
     try { const d = await worldPath(); const el = document.getElementById(id); if (el) el.querySelector('.mland').setAttribute('d', d); } catch {}
@@ -108,6 +114,6 @@ function itineraryHtml(c, p) {
   const km = path.slice(1).reduce((t, n, i) => t + (NATION_LL[n] && NATION_LL[path[i]] ? kmBetween(NATION_LL[path[i]], NATION_LL[n]) : 0), 0);
   const last = stops.slice(-5).map(s => esc(s.city)).join(' → ');
   return `<div class="itin"><div class="gbhead"><b>Season ${season} itinerary</b><span>${stops.length} event${stops.length === 1 ? '' : 's'} · ${km.toLocaleString('en-US')} km</span></div>` +
-    mapHtml({ path }) +
+    mapHtml({ path, hereLabel: `📍 ${stops.length && stops[stops.length - 1].n === here ? stops[stops.length - 1].city : here === p.nation ? 'Home' : (nationInfo(here) || [here, '', here])[2]}` }) +
     `<p class="hint center">${stops.length ? `${stops.length > 5 ? '… → ' : '🏠 → '}${last}` : 'Your season starts here. Every event you play adds a stop.'}</p></div>`;
 }

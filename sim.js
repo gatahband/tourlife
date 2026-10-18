@@ -324,7 +324,8 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + SURFACE_SERVE[ev.surface] + comfort(A, ev) - comfort(B, ev)
     + m.form[s] - m.form[r] + m.mood[s] - m.mood[r]
     - (fatigue(m, A) - fatigue(m, B)) * (typeof wxOf === 'function' ? wxOf(ev).heat : 1) - tiredness(A) + tiredness(B)
-    - (A.focusPen || 0) + (B.focusPen || 0); // autopilot: simming without watching (see tournaments.js)
+    - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
+    + (A.moraleEdge || 0) - (B.moraleEdge || 0); // morale (see morale.js)
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;

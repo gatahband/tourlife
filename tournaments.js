@@ -413,6 +413,7 @@ function entryButton(ev, rank) {
 // mode: 'main' (straight into the draw) or 'qual' (play qualifying first).
 function enterEvent(ev, acclimated = false, mode = 'main') {
   ev = { ...ev, weather: weatherFor(ev) }; // this week's conditions
+  const fromNation = current.career.location || current.player.nation; // for jet lag
   // Travel and a week's hotel (already paid if you travelled early).
   if (!acclimated) {
     const c0 = current.career, from = c0.location || current.player.nation;
@@ -440,6 +441,7 @@ function enterEvent(ev, acclimated = false, mode = 'main') {
     current.entry.entrants.push(...opps);
     current.entry.qual = { round: 0, need: t.qRounds, opps: opps.map((_, i) => 32 + i), slot: null, done: false };
   }
+  current.entry.fromNation = fromNation;
   writeJSON(ENTRY_KEY, current.entry);
   openDraw();
 }
@@ -528,7 +530,7 @@ function vsHeader(entry, oi) {
 // Before your next match, on the draw screen: scouting report, head-to-head, coach's report and your plan.
 function prematchHtml(entry, oi) {
   const opp = entry.entrants[oi], ev = eventOf(entry);
-  return `<div class="card scard"><h2>Scouting report: ${esc(opp.name)}${opp.atpRank ? ` · ATP #${opp.atpRank}` : ''}</h2>${h2hLine(current.career, opp)}${weatherHtml(ev, entry.entrants[0], opp)}${matchupHtml(entry.entrants[0], opp)}${scoutHtml(opp)}${coachHtml(opp, ev, entry.entrants[0])}` +
+  return `<div class="card scard"><h2>Scouting report: ${esc(opp.name)}${opp.atpRank ? ` · ATP #${opp.atpRank}` : ''}</h2>${h2hLine(current.career, opp)}${moraleHtml(moraleFor(current.career, current.player, ev, opp, entry))}${weatherHtml(ev, entry.entrants[0], opp)}${matchupHtml(entry.entrants[0], opp)}${scoutHtml(opp)}${coachHtml(opp, ev, entry.entrants[0])}` +
     `<div class="planline"><span><b>Your plan:</b> ${planSummary(eventPlan(entry))}</span>` +
     `<button type="button" class="btn ghost small" id="dPlanBtn">Change</button></div></div>`;
 }
@@ -759,7 +761,7 @@ const anim = { running: false, watching: false, paused: false, finishAfter: fals
 function shortName(p) {
   if (p.isPlayer) return 'You';
   if (FAMILY_FIRST.has(p.nation)) return p.name.split(' ')[0];
-  const last = NAMES[p.nation][1].find(l => p.name.endsWith(' ' + l));
+  const last = NAMES[p.nation] && NAMES[p.nation][1].find(l => p.name.endsWith(' ' + l));
   return last || p.name.split(' ').pop();
 }
 
@@ -851,6 +853,9 @@ async function playOneSet(animate = true) {
   const momentsBefore = m.moments.length;
   // Autopilot: a small cost for simming, a bigger one for losing a set and changing nothing.
   ps[me].focusPen = autopilotPenalty(entry, animate);
+  // Morale: the person behind the player (crowd, travel, pressure, memories, life on the road).
+  ps[me].moraleEdge = moraleFor(current.career, current.player, ev, ps[op], entry).edge;
+  ps[op].moraleEdge = oppMorale(ev, ps[op], current.player);
   let set, shown = 0;
   if (animate) {
     // Live: the set is played point by point as you watch, and big points stop for your call.
@@ -1083,7 +1088,11 @@ function concludeMatch() {
     const after = rec.sets.slice(a.after, until);
     return { ...a, won: after.filter(st => st.games[0] > st.games[1]).length, lost: after.filter(st => st.games[0] < st.games[1]).length };
   });
+  const mo = moraleFor(current.career, current.player, eventOf(entry), opp, entry);
+  rec.moraleTags = mo.tags.slice().sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2).map(t => ({ text: t.text, v: t.v }));
+  const wasBogey = opp.id && current.career.h2h && current.career.h2h[opp.id] && current.career.h2h[opp.id].l >= 3 && current.career.h2h[opp.id].l >= current.career.h2h[opp.id].w + 2;
   const hh = h2hRecord(current.career, opp, rec, eventOf(entry));
+  if (wasBogey && rec.won) current.career.exorcised = current.career.week;
   if (hh) { rec.h2h = { w: hh.h.w, l: hh.h.l }; rec.newRival = hh.newRival; rec.opponent.id = opp.id; writeJSON(CAREER_KEY, current.career); }
   entry.live.done = true;
 }

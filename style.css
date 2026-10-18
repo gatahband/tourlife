@@ -820,3 +820,16 @@ h2.ctr { text-align: center; }
 .stylebox .chev { position: static; display: inline-block; margin-top: 6px; }
 .routebox .wmap { max-width: 440px; margin: 0 auto; }
 .itin .wmap { max-width: 520px; margin: 0 auto; }
+
+/* Morale */
+.morale { background: var(--field); border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
+.mohead { display: flex; align-items: baseline; gap: 8px; }
+.mohead span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.mohead b { font-size: 16px; } .mohead b.up { color: var(--good); } .mohead b.down { color: var(--bad); }
+.mohead small { margin-left: auto; color: var(--muted); font-size: 12px; }
+.mobar { position: relative; height: 6px; border-radius: 3px; margin: 8px 0 6px; background: linear-gradient(90deg, #ff453a, #8e8e93 50%, #30d158); }
+.mobar i { position: absolute; top: -4px; width: 4px; height: 14px; border-radius: 2px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 6px rgba(0,0,0,.6); }
+.motags { list-style: none; padding: 0; margin: 4px 0 0; font-size: 13px; line-height: 1.6; }
+.motags .up { color: #9fe3b4; } .motags .down { color: #ffb3ad; }
+.mtag rect { fill: rgba(10, 132, 255, .92); }
+.mtag text { fill: #fff; font: 700 7px -apple-system, BlinkMacSystemFont, sans-serif; text-anchor: middle; }

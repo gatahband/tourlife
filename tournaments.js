@@ -112,6 +112,7 @@ function loadEntry() {
 let current = { player: null, career: null, entry: null, tab: 0 };
 
 function showScreen(name) {
+  if (name !== 'match') leaveFullscreen();
   for (const id of ['creator', 'home', 'draw', 'match', 'review', 'train', 'admin']) $(id).hidden = id !== name;
   window.scrollTo(0, 0);
   if (typeof screenTips === 'function' && name !== 'admin') screenTips(name);
@@ -957,6 +958,7 @@ async function playOneSet(animate = true) {
   if (animate) {
     anim.running = false;
     Court.skip = false;
+    leaveFullscreen(); // the set break (or the result) needs you
   }
   renderMatch();
 }

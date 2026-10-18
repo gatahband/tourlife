@@ -4,7 +4,14 @@
 
 let modalClose = null;
 
+// Full screen hides everything but the court, so step out of it whenever something needs a click.
+function leaveFullscreen() {
+  const fs = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+}
+
 function openModal(html, { onClose, wide } = {}) {
+  leaveFullscreen();
   $('sheet').innerHTML = html;
   $('sheet').className = `sheet${wide ? ' wide' : ''}`;
   $('modal').hidden = false;

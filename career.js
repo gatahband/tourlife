@@ -395,10 +395,12 @@ function renderCareerBits(c, p) {
   const last = (c.ledger || []).slice(-4).reverse();
   $('hTeam').innerHTML = `<div class="moneyline"><b>${money(c.money)}</b><span>in the bank</span></div>` +
     `<div class="team">${Object.entries(TEAM).map(([k, t]) => {
-      const lv = teamLevel(c, k), cur = t.levels[lv];
-      return `<div class="teamrow"><span class="ticon">${t.icon}</span><div class="teammain"><b>${t.name}: ${cur.name}${cur.cost ? ` · ${money(cur.cost)}/week` : ''}</b><small>${cur.desc}</small>` +
+      const lv = teamLevel(c, k), cur = t.levels[lv], pk = c.perks && c.perks[k];
+      const free = pk && pk.weeks > 0 && pk.level > ownLevel(c, k) ? pk : null;
+      return `<div class="teamrow"><span class="ticon">${t.icon}</span><div class="teammain"><b>${t.name}: ${cur.name}${free ? ` · free for ${free.weeks} more week${free.weeks === 1 ? '' : 's'} 🎁` : cur.cost ? ` · ${money(cur.cost)}/week` : ''}</b><small>${cur.desc}</small>` +
         `<div class="seg" style="grid-template-columns:repeat(${t.levels.length},1fr)" data-team="${k}">${t.levels.map((l, i) =>
-          `<button type="button" data-lv="${i}" class="${i === lv ? 'on' : ''}">${l.name.replace(/ (coach|team)$/, '')}${l.cost ? `<small>${money(l.cost)}</small>` : ''}</button>`).join('')}</div></div></div>`;
+          `<button type="button" data-lv="${i}" class="${i === lv ? 'on' : ''}">${l.name.replace(/ (coach|team)$/, '')}${free && i === free.level ? '<small>Free 🎁</small>' : l.cost ? `<small>${money(l.cost)}</small>` : ''}</button>`).join('')}</div>` +
+        (free ? `<small class="hint">A season-goal reward. Tap another option to give it up and pick your own.</small>` : '') + `</div></div>`;
     }).join('')}` +
     `<label class="teamrow bizrow"><input type="checkbox" id="hBiz" ${c.business ? 'checked' : ''}><span class="ticon">✈️</span><div class="teammain"><b>Fly business class</b>` +
     `<small>Flights cost 3× as much, but long trips tire you half as much.</small></div></label>` +
@@ -409,7 +411,14 @@ function renderCareerBits(c, p) {
   $('hTeam').onclick = e => {
     const b = e.target.closest('[data-lv]');
     if (!b) return;
-    c.team[b.parentElement.dataset.team] = +b.dataset.lv;
+    const k = b.parentElement.dataset.team, lv = +b.dataset.lv, pk = c.perks && c.perks[k];
+    // A free reward is covering this role: picking something else means giving it up.
+    if (pk && pk.weeks > 0 && pk.level > ownLevel(c, k)) {
+      if (lv === pk.level) return;
+      if (!confirm(`Give up your free ${TEAM[k].levels[pk.level].name} (${pk.weeks} week${pk.weeks === 1 ? '' : 's'} left) and switch to ${TEAM[k].levels[lv].name}?`)) return;
+      delete c.perks[k];
+    }
+    c.team[k] = lv;
     writeJSON(CAREER_KEY, c);
     renderCareerBits(c, p);
   };

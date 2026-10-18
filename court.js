@@ -111,12 +111,12 @@ function createCourt() {
     if (focusPt) {
       const hd = Math.hypot(focusPt.x - e.x, focusPt.y - e.y);
       // A natural glance, not a full head turn: limited turn and tilt so the court stays readable.
-      if (hd > 0.5) rel = clamp(wrap(Math.atan2(focusPt.x - e.x, focusPt.y - e.y) - base), -0.4, 0.4);
+      if (hd > 0.5) rel = clamp(wrap(Math.atan2(focusPt.x - e.x, focusPt.y - e.y) - base) * 0.6, -0.3, 0.3);
       // Capped both ways so the court stays in view. On the serve (toss and contact) only a slight lift:
       // the ball goes high but the court across the net stays on screen.
       const serving = tossing || (holding && label.racket === 'serve');
-      pitch = clamp(Math.atan2(EYE_Z - focusPt.z, Math.max(1.2, hd)), serving ? -0.1 : -0.3, 0.42);
-      rate = 0.16;
+      pitch = clamp(Math.atan2(EYE_Z - focusPt.z, Math.max(1.2, hd)) * 0.6, serving ? -0.1 : -0.2, 0.22);
+      rate = 0.09;
     } else {
       // Otherwise track the ball coming at you; while your own shot heads away, ease towards your
       // opponent to read their reply. Look ahead when the ball has gone behind you.
@@ -1274,7 +1274,7 @@ function createCourt() {
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
-        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx,
+        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final,
       });
       // Where everyone ends up after this shot.
       cur[recv] = { x: lerp(r0.x, body.x, reach), y: lerp(r0.y, body.y, reach) };
@@ -1338,6 +1338,24 @@ function createCourt() {
     const slow = o.slow || 1;
     const T = s => (o.real ? (s.real ?? s.base) : s.base / o.speed) * slow;
     const lifeMs = o.real ? 1300 * slow : Math.max(500, 1000 / o.speed);
+    // After the point ends, the ball keeps going: real gravity, smaller and smaller bounces, then it rolls
+    // to a stop (or off the boards). v: metres per second (vz up).
+    const settle = (vx, vy, vz, physMs = 1300) => {
+      let last = 0, x = ball.x, y = ball.y, h = ball.h;
+      const lx = ARENA_X - 0.15, ly = ARENA_Y - 0.15;
+      return tween(physMs * (o.real ? 1 : 1 / o.speed) * slow, t => {
+        const dt = (t - last) * physMs / 1000 / 4; last = t;
+        for (let n = 0; n < 4; n++) {
+          if (h > 0 || vz > 0) { vz -= 9.8 * dt; h += vz * dt; }
+          x += vx * dt; y += vy * dt;
+          if (h < 0) { h = 0; vz = -vz * 0.55; vx *= 0.8; vy *= 0.8; if (vz < 0.5) vz = 0; }
+          if (h === 0 && vz === 0) { const f = Math.max(0, 1 - 1.8 * dt); vx *= f; vy *= f; }
+          if (Math.abs(x) > lx) { x = Math.sign(x) * lx; vx *= -0.3; }
+          if (Math.abs(y) > ly) { y = Math.sign(y) * ly; vy *= -0.3; }
+        }
+        setBall({ x, y }, h);
+      });
+    };
     // Movement runs on the ball's real clock (t = share of the flight), at real running speeds.
     const moveRecv = (s, t, goal, reach = 1) => {
       const end = { x: lerp(s.r0.x, goal.x, reach), y: lerp(s.r0.y, goal.y, reach) }, D = dist(s.r0, end);
@@ -1445,7 +1463,11 @@ function createCourt() {
           if (zoomCord) followFocus(s);
         });
         marks.push({ ...s.spot, out: false });
-        await wait(o.cinematic ? 700 : 200);
+        {
+          // Dribbles on in the direction it was going, with a couple of little hops.
+          const dx = s.spot.x - s.at.x, dy = s.spot.y, L = Math.hypot(dx, dy) || 1;
+          await settle(dx / L * 1.6, dy / L * 1.6, 1.4, o.cinematic ? 1100 : 600);
+        }
         if (zoomCord) await unfocus();
       } else if (s.t === 'shot') {
         // Start from where both players really are, so nobody jumps between shots.
@@ -1503,8 +1525,15 @@ function createCourt() {
           }
           if (big) followFocus(s);
         });
+        // Point over: the ball carries on from where it was (it never freezes mid-air).
+        if (s.final && ball.on && s.bounce) {
+          const post = Math.max(0.05, (s.realMs || 600) * (1 - s.tb) / 1000);
+          const vx = (s.postTo.x - s.bounce.x) / post, vy = (s.postTo.y - s.bounce.y) / post;
+          const vz = s.goodDrop ? 0 : s.bounceH * 0.7 * Math.PI * Math.cos(0.7 * Math.PI) / post;
+          await settle(vx, vy, vz, big ? 700 : 1100);
+        }
         // Hold the moment on a point-ending shot; mid-rally, ease straight back out.
-        if (big) { if (s.final) await wait(600); await unfocus(); }
+        if (big) { await unfocus(); }
         if (s.review) {
           review = { ...s.review, t: 0 };
           await tween(2800 * slow, t => { review.t = t; });

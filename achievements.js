@@ -59,5 +59,6 @@ function renderBadges(c) {
   const got = c.badges || {};
   const n = BADGES.filter(b => got[b.id]).length;
   $('hBadgesTitle').textContent = `Achievements · ${n} of ${BADGES.length}`;
-  $('hBadges').innerHTML = BADGES.map(b => `<div class="badge${got[b.id] ? ' on' : ''}" title="${esc(b.desc)}"><span>${b.icon}</span><b>${b.name}</b><small>${got[b.id] ? `Week ${weekInSeason(got[b.id])}, season ${seasonOfWeek(got[b.id])}` : b.desc}</small></div>`).join('');
+  $('hBadges').innerHTML = `<button type="button" class="btn small ghost hlbtn" id="bdHl">🎬 Big-match highlights (${(c.highlights || []).length})</button>` + BADGES.map(b => `<div class="badge${got[b.id] ? ' on' : ''}" title="${esc(b.desc)}"><span>${b.icon}</span><b>${b.name}</b><small>${got[b.id] ? `Week ${weekInSeason(got[b.id])}, season ${seasonOfWeek(got[b.id])}` : b.desc}</small></div>`).join('');
+  $('bdHl').onclick = () => openHighlights();
 }

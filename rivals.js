@@ -118,10 +118,13 @@ function renderRivals(c) {
       `<div class="rvbody"><div class="rvlead ${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h2hText(h, esc(shortName(p)))}</div>` +
       (h.last ? `<p class="hint">Last time: ${h.last.won ? 'you won' : 'you lost'} ${h.last.score} · ${esc(h.last.city)} ${h.last.round}</p>` : '') +
       `<p class="hint">Age ${p.age} · ${p.hand === 'left' ? 'left-handed' : 'right-handed'}${TEMPERAMENTS[p.temperament] ? ` · ${TEMPERAMENTS[p.temperament].emoji} ${TEMPERAMENTS[p.temperament].name}` : ''}</p>` +
+      (highlightsOf(c).some(h => h.oppId === id) ? `<button type="button" class="btn small ghost" data-rvhl="${id}">🎬 Watch highlights (${highlightsOf(c).filter(h => h.oppId === id).length})</button>` : '') +
       `<div class="hlist">${items.map((it, i) => `<button type="button" class="hrow" data-rvm="${id}" data-i="${i}"><span class="wl ${it.rec.won ? 'w' : 'l'}">${it.rec.won ? 'W' : 'L'}</span>` +
         `<span class="hmain"><b>${esc(it.ev.city)} · ${it.rec.round}</b><small>Week ${weekInSeason(it.week)}, season ${seasonOfWeek(it.week)}</small></span><span class="hscore">${it.rec.score}</span></button>`).join('')}</div></div></details>`;
   }).join('');
   $('hRivals').onclick = e => {
+    const hb = e.target.closest('[data-rvhl]');
+    if (hb) { openHighlights(hb.dataset.rvhl); return; }
     const b = e.target.closest('[data-rvm]');
     if (!b) return;
     const p = pool[b.dataset.rvm];
@@ -142,4 +145,70 @@ function openRival(id) {
       `<span class="hmain"><b>${esc(it.ev.city)} · ${it.rec.round}</b><small>Week ${weekInSeason(it.week)}, season ${seasonOfWeek(it.week)}</small></span><span class="hscore">${it.rec.score}</span></button>`).join('') || '<p class="hint">No match records found.</p>'}</div>`);
   $('mx').onclick = closeModal;
   $('sheet').querySelector('.hlist').onclick = e => { const b = e.target.closest('[data-i]'); if (b) { closeModal(); openMatchStats(items[+b.dataset.i]); } };
+}
+
+
+// --- Highlights ---------------------------------------------------------------------------
+// Big matches (against a rival, against a top-20 player, or a final at Challenger level and up) keep
+// their pivotal points: match and set points, break points, line reviews, aces and long rallies when
+// it mattered. Only points you watched can be kept.
+const HL_MAX = 12;
+const highlightsOf = c => (c.highlights = c.highlights || []);
+
+function pivotScore(r) {
+  let s = 0;
+  if (r.press && r.press.match) s += r.mine === r.press.you ? 100 : 70;
+  else if (r.press) s += 60;
+  if (r.bp) s += r.mine === (r.bp === 'you') ? 50 : 35;
+  if (r.review) s += 25;
+  if (r.end === 'ace' && (r.bp || r.press)) s += 20;
+  if (r.len >= 9) s += 12 + Math.min(10, r.len - 9);
+  if (r.end === 'ace') s += 6;
+  return s;
+}
+
+function clipDesc(r) {
+  const stake = r.press ? `${r.press.match ? 'Match' : 'Set'} point for ${r.press.you ? 'you' : 'them'}`
+    : r.bp ? `Break point for ${r.bp === 'you' ? 'you' : 'them'}` : r.review ? 'A line call that went to review' : r.len >= 9 ? `A ${r.len}-shot rally` : 'A big moment';
+  return `${stake} (${r.label}): ${r.text || ''}`;
+}
+
+function saveHighlights(c, entry, rec) {
+  const opp = rec.opponent || {};
+  const why = [];
+  if (opp.id && isRival(c, opp.id)) why.push('rival');
+  if (opp.atpRank && opp.atpRank <= 20) why.push('top20');
+  const ev = eventOf(entry);
+  if (rec.round === 'F' && TITLE_LADDER.indexOf(ev.tier) >= 2) why.push('final');
+  const pts = (anim.replays || []).filter(r => r.script);
+  if (!why.length || !pts.length) return;
+  const best = pts.map((r, i) => ({ r, i, s: pivotScore(r) })).filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s).slice(0, 4).sort((a, b) => a.i - b.i);
+  if (!best.length) return;
+  highlightsOf(c).push({ id: Date.now(), week: c.week, oppId: opp.id || null, opp: { name: opp.name, nation: opp.nation, atpRank: opp.atpRank || null },
+    city: ev.city, tier: ev.tier, round: rec.round, score: rec.score, won: rec.won, why, scene: Court.sceneArgs(),
+    clips: best.map(({ r }) => ({ script: r.script, desc: clipDesc(r), set: r.set, game: r.game })) });
+  if (c.highlights.length > HL_MAX) c.highlights = c.highlights.slice(-HL_MAX);
+  writeJSON(CAREER_KEY, c);
+  setTimeout(() => toast('🎬 Highlights saved', `The big moments vs ${opp.name} are in your highlights.`), 1200);
+}
+
+const HL_TAG = { rival: '⚔️ Rival', top20: '⭐ Top-20', final: '🏆 Final' };
+
+function openHighlights(filterOpp) {
+  const c = current.career;
+  const list = highlightsOf(c).filter(h => !filterOpp || h.oppId === filterOpp).slice().reverse();
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🎬 Highlights</h2>` +
+    (list.length ? `<div class="hlist">${list.map(h => `<button type="button" class="hrow" data-hl="${h.id}"><span class="wl ${h.won ? 'w' : 'l'}">${h.won ? 'W' : 'L'}</span>` +
+      `<span class="hmain"><b>vs ${flagOf(h.opp.nation)} ${esc(h.opp.name)}${h.opp.atpRank ? ` <span class="atptag">ATP #${h.opp.atpRank}</span>` : ''}</b>` +
+      `<small>${h.why.map(w => HL_TAG[w]).join(' · ')} · ${esc(h.city)} ${h.round} · ${h.clips.length} moment${h.clips.length === 1 ? '' : 's'}</small></span><span class="hscore">${h.score}</span></button>`).join('')}</div>`
+      : `<p class="big center">No highlights yet.</p><p class="hint center">Watch your big matches (rivals, top-20 players, finals) and the moments that decided them are saved here.</p>`));
+  $('mx').onclick = closeModal;
+  const box = $('sheet').querySelector('.hlist');
+  if (box) box.onclick = e => {
+    const b = e.target.closest('[data-hl]');
+    if (!b) return;
+    const h = c.highlights.find(x => x.id === +b.dataset.hl);
+    playClips(h.clips, 0, h.scene, `vs ${h.opp.name} · ${h.score}`);
+  };
 }

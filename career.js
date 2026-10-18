@@ -207,6 +207,19 @@ function goalDone(c, g, season = seasonOfWeek(c.week)) {
   return false;
 }
 
+// How far along a goal is, in a few characters ("9/15", "#240", "$4k/$12k").
+function goalProgress(c, g) {
+  const season = seasonOfWeek(c.week), st = seasonStats(c, season);
+  const hs = c.history.filter(h => seasonOfWeek(h.week) === season && !h.exhibition);
+  const k = n => n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`;
+  if (g.type === 'wins') return `${st.wins}/${g.target}`;
+  if (g.type === 'rank') { const r = currentRank(c); return r ? `#${r}` : 'Unranked'; }
+  if (g.type === 'prize') return `${k(st.prize)}/${k(g.target)}`;
+  if (g.type === 'surfaces') return `${['hard', 'clay', 'grass'].filter(sf => hs.some(h => h.surface === sf && h.matches.some(m => m.won))).length}/3`;
+  if (g.type === 'physio') return `${hs.length}/15`;
+  return '';
+}
+
 // Hand out rewards for goals just reached.
 function claimGoals(c, p) {
   if (!c.goals) return;
@@ -369,9 +382,15 @@ function renderCareerBits(c, p) {
   $('cMeta').textContent = $('cMeta').textContent.replace(/ · Age \d+$/, '') + ` · Age ${p.age}`;
   claimGoals(c, p);
   const perks = perkLines(c);
-  $('hGoals').innerHTML = `<h3 class="ssec">Season ${c.goalSeason} goals</h3><ul class="goals">` +
-    c.goals.map(g => `<li class="${g.claimed ? 'gdone' : ''}">${g.claimed ? '✅' : '⬜'} ${g.text}<small class="grew">🎁 ${g.claimed ? 'Earned: ' : ''}${g.rtext}</small></li>`).join('') + `</ul>` +
-    (perks.length ? `<div class="perks"><h3 class="ssec">Your rewards</h3>${perks.map(x => `<div>${x}</div>`).join('')}</div>` : '');
+  const nBadges = Object.keys(c.badges || {}).length, nHl = (c.highlights || []).length;
+  $('hGoals').innerHTML = `<div class="goalbox"><div class="gbhead"><b>Season ${c.goalSeason} goals</b><span>${c.goals.filter(g => g.claimed).length} of ${c.goals.length} done</span></div>` +
+    c.goals.map(g => `<div class="grow2 ${g.claimed ? 'gdone' : ''}"><span class="gicon">${g.claimed ? '✅' : '🎯'}</span>` +
+      `<div class="gtext"><b>${g.text}</b><small>🎁 ${g.claimed ? 'Earned: ' : ''}${g.rtext}</small></div><span class="gprog">${g.claimed ? 'Done' : goalProgress(c, g)}</span></div>`).join('') +
+    (perks.length ? `<div class="perks"><b>Your rewards</b>${perks.map(x => `<div>${x}</div>`).join('')}</div>` : '') +
+    `<div class="gbbtns"><button type="button" class="btn small ghost" id="gbBadges">🏅 Achievements (${nBadges})</button>` +
+    `<button type="button" class="btn small ghost" id="gbHl">🎬 Highlights (${nHl})</button></div></div>`;
+  $('gbHl').onclick = () => openHighlights();
+  $('gbBadges').onclick = () => { const d = document.querySelector('.badgebox'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const last = (c.ledger || []).slice(-4).reverse();
   $('hTeam').innerHTML = `<div class="moneyline"><b>${money(c.money)}</b><span>in the bank</span></div>` +
     `<div class="team">${Object.entries(TEAM).map(([k, t]) => {

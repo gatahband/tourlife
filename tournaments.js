@@ -674,6 +674,7 @@ function wrapUpMatch(entry) {
   }
   entry.review = entry.matches.length - 1;
   if (rec) checkBadges(current.career, { rec });
+  if (rec) saveHighlights(current.career, entry, rec);
   writeJSON(ENTRY_KEY, entry);
   openReview();
 }
@@ -1014,7 +1015,11 @@ function makeAnimator(prior, setNo) {
     const lab = pt.end ? `${pt.games[me]}-${pt.games[op]}` : `${labels[0] || '40'}-${labels[1] || '40'}`;
     const gameNo = pt.games[0] + pt.games[1] - (pt.end ? 1 : 0) + 1;
     anim.replays.push({ script: rally.script, set: setNo, label: lab, game: `${games[me]}-${games[op]}`, end: rally.end, highlight: rally.highlight,
-      call: pt.end ? '' : text, gameNo, tb: pt.tb, server: name(pt.s), gameEnd: pt.end, broke: pt.end && !pt.tb && pt.w !== pt.s, winner: name(pt.w) });
+      call: pt.end ? '' : text, text, gameNo, tb: pt.tb, server: name(pt.s), gameEnd: pt.end, broke: pt.end && !pt.tb && pt.w !== pt.s, winner: name(pt.w),
+      // For saved highlights: what was at stake and who won it.
+      mine: pt.w === me, bp: pt.bp === null ? null : pt.bp === me ? 'you' : 'them',
+      press: pt.press ? { match: pt.press.match, you: pt.press.who === me } : null, len: rally.length || 1,
+      review: rally.script.segs.some(sg => sg.review) });
     renderPoints();
     const gv = Court.view === 'gatah';
     const sp = gv ? 1 : anim.speed;
@@ -1342,13 +1347,16 @@ function renderPoints() {
   box.onclick = e => { const b = e.target.closest('[data-i]'); if (b) openReplay(+b.dataset.i); };
 }
 
-function openReplay(i) {
-  const list = anim.replays, r = list[i];
+function openReplay(i) { playClips(anim.replays, i, Court.sceneArgs()); }
+
+// Plays a list of points (live replays or saved highlights) with angle and speed controls.
+function playClips(list, i, scene, heading) {
+  const r = list[i];
   if (!r) return;
   let ang = readJSON('tourlife.replayAngle') || 'broadcast', slow = 1;
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
-    `<h2 class="itop">Replay · Set ${r.set} · ${r.game}</h2>` +
-    `<p class="hint center">${esc(r.call || '')}</p>` +
+    `<h2 class="itop">${heading ? esc(heading) : `Replay · Set ${r.set} · ${r.game}`}</h2>` +
+    `<p class="hint center">${list.length > 1 ? `${i + 1} of ${list.length} · ` : ''}${esc(r.desc || r.call || '')}</p>` +
     `<div class="rpbar"><div class="seg four" id="rpAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="seg two" id="rpSpeed"><button type="button" data-s="1" class="on">Real time</button><button type="button" data-s="2.5">Slow-mo</button></div></div>` +
@@ -1360,7 +1368,7 @@ function openReplay(i) {
   ReplayCourt.mount($('rpCourt'));
   ReplayCourt.setOptions({ showType: true, showWing: true, ...readJSON(LABELS_KEY) });
   ReplayCourt.setAngle(ang);
-  const [surf, indoor, names, prof] = Court.sceneArgs();
+  const [surf, indoor, names, prof] = scene;
   ReplayCourt.scene(surf, indoor, names, prof);
   let playing = false;
   const run = async () => {
@@ -1383,8 +1391,8 @@ function openReplay(i) {
     run();
   };
   $('rpPlay').onclick = run;
-  $('rpPrev').onclick = () => { ReplayCourt.skip = true; if (i > 0) openReplay(i - 1); };
-  $('rpNext').onclick = () => { ReplayCourt.skip = true; if (i < list.length - 1) openReplay(i + 1); };
+  $('rpPrev').onclick = () => { ReplayCourt.skip = true; if (i > 0) playClips(list, i - 1, scene, heading); };
+  $('rpNext').onclick = () => { ReplayCourt.skip = true; if (i < list.length - 1) playClips(list, i + 1, scene, heading); };
   $('mx').onclick = closeModal;
   run();
 }

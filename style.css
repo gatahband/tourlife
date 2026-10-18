@@ -783,3 +783,19 @@ h2.ctr { text-align: center; }
 .tour-nav { display: flex; justify-content: space-between; align-items: center; }
 .tour-nav .btn.small { margin: 0; }
 .welcome .btn.huge { margin-top: 6px; }
+
+/* Goals box */
+.goalbox { background: var(--field); border-radius: 14px; padding: 12px 14px; margin: 14px 0 10px; text-align: left; }
+.gbhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.gbhead b { font-size: 15px; } .gbhead span { font-size: 12px; color: var(--muted); }
+.grow2 { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line); }
+.gicon { font-size: 16px; line-height: 1.3; }
+.gtext b { display: block; font-size: 14px; font-weight: 600; }
+.gtext small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.35; }
+.gprog { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 1px; }
+.grow2.gdone .gtext b { color: var(--good); } .grow2.gdone .gprog { color: var(--good); }
+.goalbox .perks { margin: 8px 0 0; background: var(--card); }
+.goalbox .perks b { display: block; font-size: 13px; margin-bottom: 2px; }
+.gbbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.gbbtns .btn { margin: 0; width: 100%; }
+.hlbtn { grid-column: 1 / -1; margin: 0 0 4px; }

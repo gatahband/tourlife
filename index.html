@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tour Life</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="wrap" id="creator">
+    <header>
+      <h1>Create Your Player</h1>
+      <p class="sub">Build your identity. Your attributes define your game.</p>
+      <button type="button" id="cImport" class="link">Played before? Open your saved career</button>
+    </header>
+
+    <section class="card" id="cSaves" hidden>
+      <h2>Saved Careers</h2>
+      <div id="cSlotList" class="slots"></div>
+    </section>
+
+    <section class="card">
+      <h2>Identity</h2>
+      <div class="row">
+        <label>Name<input id="name" type="text" maxlength="32" placeholder="Full name"></label>
+        <label>Nationality<select id="nation"></select></label>
+      </div>
+      <div class="surf hand-row"><span>Plays</span><div id="hand" class="seg two"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>Temperament</h2>
+      <div id="temper" class="temper"></div>
+    </section>
+
+    <section class="card">
+      <div class="head">
+        <h2>Attributes</h2>
+        <span><span id="cOvr" class="pill ovrpill"></span> <span id="pool" class="pill"></span></span>
+      </div>
+      <div id="attrs"></div>
+    </section>
+
+    <section class="card">
+      <h2>Playstyle</h2>
+      <div class="hero">
+        <div id="topStyle" class="top"></div>
+        <div class="meter"><div id="topFill" class="fill"></div></div>
+        <p id="topDesc" class="hint"></p>
+      </div>
+      <ol id="styles" class="styles"></ol>
+    </section>
+
+    <section class="card">
+      <h2>Surfaces</h2>
+      <div class="surf"><span>Favorite</span><div id="fav" class="seg"></div></div>
+      <div class="surf"><span>Worst</span><div id="worst" class="seg"></div></div>
+      <p id="indoor" class="hint"></p>
+    </section>
+
+    <section class="card">
+      <h2>Game Plan</h2>
+      <p class="hint">How you want to play. You can change it any time, even right before a match.</p>
+      <div id="cPlan" class="plan"></div>
+    </section>
+
+
+    <button id="save" class="btn">Start Career</button>
+    <p id="status" class="hint center"></p>
+  </main>
+
+  <main class="wrap" id="home" hidden>
+    <header>
+      <h1 id="cName"></h1>
+      <p id="cMeta" class="sub"></p>
+    </header>
+    <p id="hNotice" class="notice" hidden></p>
+    <section class="card" id="hOvr"></section>
+    <section class="card">
+      <h2 id="eventsTitle"></h2>
+      <div id="events"></div>
+    </section>
+    <section class="card">
+      <div id="hStats" class="stats"></div>
+      <p id="hRank" class="hrank"></p>
+      <div id="hGoals"></div>
+      <button type="button" id="hStatsBtn" class="btn ghost small statsbtn">View season stats</button>
+    </section>
+    <section class="card">
+      <h2>Money &amp; Team</h2>
+      <div id="hTeam"></div>
+    </section>
+    <section class="card">
+      <details class="badgebox">
+        <summary><h2 id="hBadgesTitle">Achievements</h2><span class="chev">Show</span></summary>
+        <div id="hBadges" class="badges"></div>
+      </details>
+    </section>
+    <section class="card" id="hRivalsCard" hidden>
+      <h2>Rivals &amp; head-to-head</h2>
+      <div id="hRivals"></div>
+    </section>
+    <section class="card">
+      <details id="hStyleBox" class="stylebox">
+        <summary>
+          <h2>Playstyle</h2>
+          <div id="cStyle" class="top"></div>
+          <p id="cSurf" class="hint"></p>
+          <span class="chev">Show my build</span>
+        </summary>
+        <div class="hero">
+          <div class="meter"><div id="hTopFill" class="fill"></div></div>
+          <p id="hTopDesc" class="hint"></p>
+        </div>
+        <h3 class="ssec">Attributes</h3>
+        <div id="hAttrs"></div>
+        <h3 class="ssec">How your build fits each style</h3>
+        <ol id="hStyles" class="styles"></ol>
+      </details>
+    </section>
+    <section class="card">
+      <h2>Default Game Plan</h2>
+      <p class="hint">How you play by default. Each tournament starts with this plan, and you can tweak it for that week from the draw screen or before a match.</p>
+      <div id="hPlan" class="plan"></div>
+    </section>
+    <section class="card">
+      <h2>Match History</h2>
+      <div id="hHistory" class="hlist"></div>
+    </section>
+    <button id="edit" class="btn ghost">Edit Player</button>
+    <button id="share" class="btn">🎾 Join real tournaments</button>
+    <button id="backup" class="link">📱 Play on another device / back up</button>
+    <button id="helpBtn" class="link">❓ How to play</button>
+    <a href="#admin" class="link adminlink">Admin</a>
+    <button id="reset" class="link">Switch or start a new career</button>
+    <div class="settings"><span>Serve speed in</span><div id="units" class="seg two"></div></div>
+  </main>
+
+  <main class="wrap" id="draw" hidden>
+    <button id="dHome" class="link back">‹ Home</button>
+    <header>
+      <h1 id="dTitle"></h1>
+      <p id="dMeta" class="sub"></p>
+    </header>
+    <section class="card" id="dAction"></section>
+    <section class="card">
+      <h2 id="dPlanTitle">Game plan for this week</h2>
+      <p class="hint">Just for this tournament. Your default plan on Home stays as it is.</p>
+      <div id="dPlan" class="plan"></div>
+      <h3 class="ssec left">Your stats at this event</h3>
+      <div id="dReport" class="report"></div>
+    </section>
+    <section class="card">
+      <div id="dTabs" class="seg tabs"></div>
+      <div id="dList" class="dlist"></div>
+    </section>
+  </main>
+
+  <main class="wrap" id="match" hidden>
+    <button id="mBack" class="link back">‹ Draw</button>
+    <header>
+      <h1 id="mTitle"></h1>
+      <p id="mMeta" class="sub"></p>
+    </header>
+    <div id="mStage" class="stage">
+    <section class="card court-card">
+      <table id="mBoard" class="board"></table>
+      <!-- The court with its controls on top, like a video player. -->
+      <div id="mCourtWrap" class="cwrap">
+        <canvas id="court" class="court"></canvas>
+        <!-- Views down the left; pace and label toggles down the right, so the court itself stays clear. -->
+        <div class="ov ovleft">
+          <div id="mView" class="seg vert"></div>
+          <div id="mGvBar" class="seg vert" hidden></div>
+        </div>
+        <div class="ov ovright">
+          <button type="button" id="mFull" class="fsbtn" title="Full screen">⛶</button>
+          <div id="mGvSpeed" class="seg vert" hidden></div>
+          <div id="mLabels" class="labels vert"></div>
+        </div>
+        <div id="mCtl" class="ov ovbot"></div>
+        <div id="mCallBox" class="callbox" hidden></div>
+      </div>
+      <div id="mPoints" class="points" hidden></div>
+      <div id="mCall" class="call"></div>
+      <div id="mMood" class="mood"></div>
+      <p id="mOpp" class="hint"></p>
+    </section>
+    <div id="mActions" class="actions"></div>
+    </div>
+    <section class="card">
+      <h2>Match Log</h2>
+      <ol id="mLog" class="mlog"></ol>
+    </section>
+  </main>
+
+  <main class="wrap" id="review" hidden>
+    <header>
+      <h1 id="rTitle"></h1>
+      <p id="rMeta" class="sub"></p>
+    </header>
+    <section class="card">
+      <h2 class="ctr">Match Story</h2>
+      <div id="rStoryBox" class="storybox clip">
+        <div id="rStory" class="story"></div>
+      </div>
+      <button type="button" class="link morebtn" id="rMore">Read the full story ▾</button>
+    </section>
+    <section class="card">
+      <details class="statsbox">
+        <summary><h2 class="ctr">Match Stats</h2><span class="chev">Show ▾</span></summary>
+        <div id="rFullStats"></div>
+      </details>
+    </section>
+    <button id="rSave" class="btn huge"></button>
+    <button id="rFull" class="link">Open stats in a window</button>
+  </main>
+
+  <main class="wrap" id="train" hidden>
+    <button id="tHome" class="link back">‹ Home</button>
+    <header>
+      <h1 id="tTitle"></h1>
+      <p id="tMeta" class="sub"></p>
+    </header>
+    <section class="card" id="tStatus"></section>
+    <section class="card" id="tBody"></section>
+  </main>
+
+  <main class="wrap" id="admin" hidden></main>
+
+  <div id="modal" class="modal" hidden><div id="sheet" class="sheet"></div></div>
+
+  <script src="names.js"></script>
+  <script src="sim.js"></script>
+  <script src="court.js"></script>
+  <script src="story.js"></script>
+  <script src="stats.js"></script>
+  <script src="calendar.js"></script>
+  <!-- Netlify picks this form up at deploy time; share.js submits it with fetch. -->
+  <form name="send-player" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input name="bot-field"><input name="player"><input name="nation"><input name="ovr"><input name="rank">
+    <input name="record"><input name="contact"><textarea name="note"></textarea><textarea name="code"></textarea>
+  </form>
+  <script src="ranking.js"></script>
+  <script src="weather.js"></script>
+  <script src="realplayers.js"></script>
+  <script src="fairplay.js"></script>
+  <script src="rivals.js"></script>
+  <script src="tournaments.js"></script>
+  <script src="training.js"></script>
+  <script src="sponsors.js"></script>
+  <script src="career.js"></script>
+  <script src="achievements.js"></script>
+  <script src="share.js"></script>
+  <script src="help.js"></script>
+  <script src="player.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

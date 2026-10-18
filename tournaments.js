@@ -114,6 +114,7 @@ let current = { player: null, career: null, entry: null, tab: 0 };
 function showScreen(name) {
   for (const id of ['creator', 'home', 'draw', 'match', 'review', 'train', 'admin']) $(id).hidden = id !== name;
   window.scrollTo(0, 0);
+  if (typeof screenTips === 'function' && name !== 'admin') screenTips(name);
 }
 
 // --- Saved careers -----------------------------------------------------------
@@ -1153,7 +1154,7 @@ function renderMatch() {
          ['sets', '⏭️', 'Set by Set', 'Sim one set at a time'],
          ['full', '⚡', 'Full Match', 'Straight to the result']].map(([k, icon, t, d]) =>
           `<button type="button" class="mode" data-mode="${k}"><span>${icon}</span><b>${t}</b><small>${d}</small></button>`).join('') +
-        `</div>` + autopilotNote() +
+        `</div>` +
         `<div class="planline"><span><b>Your plan for this match:</b> ${planSummary(eventPlan(entry))}</span>` +
         `<button type="button" class="btn ghost small" id="mPlan">Change</button></div>` +
         `<div class="card scard"><h2>Scouting report: ${esc(opp.name)}${opp.atpRank ? ` · ATP #${opp.atpRank}` : ''}</h2>${h2hLine(current.career, opp)}${weatherHtml(ev, ps[me], opp)}${matchupHtml(ps[me], opp)}${scoutHtml(opp)}${coachHtml(opp, ev, ps[me])}</div>`;

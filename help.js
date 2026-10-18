@@ -13,7 +13,7 @@ const HELP = [
   ['🔎', 'Before Each Match: Make a Plan',
     'The draw screen shows a scouting report on your next opponent and your game plan. Change the plan to suit them: serve, return position, rally style, spin, net, drop shots. A coach adds their plan, a counter-plan and a read on their ratings.'],
   ['📺', 'Play the Match',
-    'Watch Live, go Set by Set, or jump to the result. While you watch, big points stop for your call: go big, play safe, attack the net. The call that suits your build helps most. Watch 3 full games for +2% extra growth; watch the whole match and the growth from it is tripled. At each set break you can change your plan; lose a set and change nothing, and you play the next one flat.'],
+    'Watch Live, go Set by Set, or jump to the result. While you watch, big points stop for your call: go big, play safe, attack the net. The call that suits your build helps most. Watch 3 full games for +2% extra growth; watch the whole match and the growth from it is tripled. At each set break you can change your plan.'],
   ['📈', 'After Each Match: Improve',
     'Pick one adjustment card. Its stats go up for good. The card tells you which playstyle it pushes you toward, and the build preview shows exactly what changes.'],
   ['🏋️', 'Between Events: Train, Travel, Rest',

@@ -267,7 +267,6 @@ function save() {
   }
   $('status').textContent = '';
   showPlayer(player);
-  maybeShowHelp();
 }
 
 function showPlayer(player) {
@@ -315,3 +314,4 @@ const renderSlots = () => {
 };
 renderSlots();
 if (saved) showPlayer(saved);
+else startOnboarding();

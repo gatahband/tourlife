@@ -134,6 +134,23 @@ function createCourt() {
     const target = base + rel + head.off;
     head.psi = head.psi === null ? target : head.psi + (target - head.psi) * rate;
     head.pitch += (pitch - head.pitch) * rate;
+    // Never lose the ball: if it drifts towards the edge of the view (a wide ball, or a winner flying past
+    // you), the head turns with it, so you see every ball you hit and every ball that beats you.
+    if (ball.on && !head.drag) {
+      const vx = ball.x - e.x, vy = ball.y - e.y, hd = Math.hypot(vx, vy);
+      if (hd > 0.5) {
+        const ba = wrap(Math.atan2(vx, vy) - head.psi), lim = 0.4;
+        if (Math.abs(ba) < 2.2) {
+          if (ba > lim) head.psi += ba - lim; else if (ba < -lim) head.psi += ba + lim;
+          // Look down far enough to see a low ball near your feet (and a little up for a lob). Not on your
+          // own serve: the toss goes up out of view and the court stays on screen.
+          const myServe = label && label.side === side && (label.racket === 'trophy' || label.racket === 'serve' || label.racket === 'underarmPrep' || label.racket === 'underarm');
+          const bp = Math.atan2(EYE_Z - ball.h, hd), vlim = 0.28;
+          if (bp - head.pitch > vlim) head.pitch = Math.min(0.75, bp - vlim);
+          else if (!myServe && head.pitch - bp > vlim) head.pitch = Math.max(-0.25, bp + vlim);
+        }
+      }
+    }
     if (!head.drag) head.off *= 0.97;
   }
 
@@ -490,12 +507,20 @@ function createCourt() {
       head = { x: lerp(label.povStart.x, W / 2 - hand * W * 0.34, sw), y: lerp(label.povStart.y, H * 1.15, sw) };
       tilt = lerp(0, -hand * 1.1, sw);
     } else {
-      // Groundstrokes and volleys: across the lower part of the view, forehand side to finish.
+      // Groundstrokes and volleys: the racket meets the ball where it really is on screen, then follows
+      // through across the body (a short punch on volleys).
       const wing = label.racket === 'bh' ? -hand : hand;
       const short = label.flight === 'volley';
-      const sw2 = ease(clamp((age - 0.12) / 0.35, 0, 1));
-      head = { x: lerp(W / 2 + wing * W * 0.33, W / 2 + wing * W * (short ? 0.2 : 0.08), sw2),
-               y: lerp(H * 0.86, H * (short ? 0.78 : 0.68), sw2) };
+      if (!label.povStart) {
+        const c = label.cpt || (ball.on ? { x: ball.x, y: ball.y, z: ball.h } : null);
+        const cs = c && camSpace(c.x, c.y, c.z);
+        const bs = cs && cs.d > NEAR ? projCS(cs) : null;
+        label.povStart = bs ? { x: clamp(bs[0], W * 0.06, W * 0.94), y: clamp(bs[1], H * 0.3, H * 0.95) }
+          : { x: W / 2 + wing * W * 0.33, y: H * 0.86 };
+      }
+      const sw2 = ease(clamp((age - 0.08) / 0.35, 0, 1));
+      const finish = { x: W / 2 - wing * W * (short ? 0.02 : 0.3), y: H * (short ? 0.72 : 0.5) };
+      head = { x: lerp(label.povStart.x, finish.x, sw2 * (short ? 0.4 : 1)), y: lerp(label.povStart.y, finish.y, sw2 * (short ? 0.4 : 1)) };
       tilt = wing * lerp(0.9, 0.3, sw);
     }
     // Handle points from the head down towards your hand; the grip is just off the head.

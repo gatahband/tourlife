@@ -237,7 +237,9 @@ function renderTournaments(player) {
   // Playstyle card: tap to open the full build (same meters as the creator).
   const ranked = detectStyles(player.attrs, player.fav);
   $('cStyle').textContent = ranked[0].name;
-  $('hTopFill').style.width = `${Math.round(ranked[0].score * 100)}%`;
+  // The first bar in your build: your overall rating (out of the 99 maximum).
+  $('hOvrVal').textContent = `${overall(player).toFixed(1)} OVR`;
+  $('hTopFill').style.width = `${clamp(overall(player) / 99 * 100, 2, 100).toFixed(1)}%`;
   $('hTopDesc').textContent = ranked[0].desc;
   $('hAttrs').innerHTML = ATTRS.map(([k, label]) => {
     const v = player.attrs[k] ?? 50;

@@ -984,3 +984,5 @@ h2.ctr { text-align: center; }
 .buildslot { background: var(--field); border-radius: 0 0 14px 14px; padding: 4px 14px 14px; margin-top: -6px; }
 .obstyle .obmore { display: flex; width: max-content; }
 #hBuildDetails #hTopDesc { display: none; }
+.ovrline { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 6px; font-size: 14px; color: var(--muted); }
+.ovrline b { color: var(--text); font-size: 16px; }

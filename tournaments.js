@@ -1658,9 +1658,7 @@ const HL_ICON = { zoom: '⭐', shake: '⚡' };
 // Every point watched this match, grouped by set and game (one row per game). Click a point to replay it.
 function renderPoints() {
   const box = $('mPoints');
-  const on = Court.view === 'gatah';
-  box.hidden = !on;
-  if (!on) return;
+  box.hidden = false; // the point-by-point list shows in every view
   const list = anim.replays || [];
   if (!list.length) { box.innerHTML = '<p class="hint">Points you watch appear here. Click one to replay it from another angle.</p>'; return; }
   // Group: set -> game -> points (keeping each point's index for replay).

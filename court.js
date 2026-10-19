@@ -1105,7 +1105,8 @@ function createCourt() {
     return {
       // Wide balls drag the receiver out past the alley; short angles even further.
       x: clamp(bounce.x * 1.3 + (Math.abs(bounce.x) > 3.2 && Math.abs(bounce.y) < 8 ? Math.sign(bounce.x) * rand(0.8, 2.2) : 0), -DOUBLES - 2.6, DOUBLES + 2.6),
-      y: d * clamp(Math.abs(bounce.y) + carry + early, 1.5, BASE + 6.5),
+      // Let the ball come up off the bounce (no short-hops on rally balls): at least ~1.6 m past the bounce.
+      y: d * clamp(Math.abs(bounce.y) + Math.max(1.6, carry + early), 1.5, BASE + 6.5),
     };
   }
 
@@ -1247,7 +1248,7 @@ function createCourt() {
         const base = inAir ? from : b;
         const sWant = (want.x - base.x) * hx + (want.y - base.y) * hy;
         let best = null;
-        const [s0, s1] = inAir ? [Math.max(1, L * 0.35), L - 0.2] : [goodDrop ? 0.3 : 0.5, sMax];
+        const [s0, s1] = inAir ? [Math.max(1, L * 0.35), L - 0.2] : [goodDrop ? 0.3 : final || (next && next.bounceSmash) ? 0.5 : Math.min(1.4, sMax), sMax];
         for (let sv = s0; sv <= s1; sv += 0.25) {
           const pnt = { x: base.x + hx * sv, y: base.y + hy * sv };
           if (Math.sign(pnt.y) !== dir(recv) || Math.abs(pnt.y) > BASE + 6.5 || Math.abs(pnt.x) > DOUBLES + 2.8) continue;

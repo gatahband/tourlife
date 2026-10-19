@@ -28,11 +28,19 @@ const WX_EFFECT = {
 const WX_SURFACE = { damp: { clay: { fam: { attack: -0.014, defend: 0.012, net: -0.006 }, pace: 0.86, bounce: 0.8, rally: 1.3 },
   grass: { fam: { net: 0.008, attack: 0.004, defend: -0.004 }, pace: 1.02, bounce: 0.8, rally: 0.9 } } };
 
+// Altitude (metres) of the high venues: thin air, so the ball flies further and faster.
+const ALTITUDE = { Bogota: 2640, 'Bogotá': 2640, Quito: 2850, 'Mexico City': 2240, Johannesburg: 1750, Gstaad: 1050, Kitzbuhel: 760, 'Kitzbühel': 760,
+  Bucaramanga: 960, Bengaluru: 920, Curitiba: 935, Madrid: 650, Sofia: 550, Santiago: 570 };
+const altitudeOf = ev => (ev && ALTITUDE[ev.city]) || 0;
+const highAltitude = ev => altitudeOf(ev) >= 900;
 const wxOf = ev => {
   const id = ev && ev.weather;
-  if (!id || !WX_EFFECT[id]) return WX_EFFECT.sunny;
-  const over = (WX_SURFACE[id] || {})[ev.surface];
-  return over ? { ...WX_EFFECT[id], ...over } : WX_EFFECT[id];
+  let e = !id || !WX_EFFECT[id] ? WX_EFFECT.sunny : (WX_SURFACE[id] || {})[ev.surface] ? { ...WX_EFFECT[id], ...WX_SURFACE[id][ev.surface] } : WX_EFFECT[id];
+  // High altitude: livelier ball (more aces and winners, shorter rallies), on top of the weather.
+  const a = Math.max(0, Math.min(1, (altitudeOf(ev) - 500) / 2000));
+  if (a > 0) e = { ...e, fam: { ...e.fam, attack: (e.fam.attack || 0) + 0.006 * a, defend: (e.fam.defend || 0) - 0.005 * a },
+    serve: e.serve + 0.0008 * a, pace: e.pace * (1 + 0.08 * a), bounce: e.bounce * (1 + 0.06 * a), ace: e.ace * (1 + 0.25 * a), rally: e.rally * (1 - 0.12 * a) };
+  return e;
 };
 
 // --- Climate ---------------------------------------------------------------------------
@@ -73,12 +81,15 @@ const WX_SCALE = 0.35;
 // The change to a player's chance of winning a point in these conditions.
 function wxEdge(p, style, ev) {
   const e = wxOf(ev);
-  if (e === WX_EFFECT.sunny || e === WX_EFFECT.indoor) return 0;
+  if (e === WX_EFFECT.sunny || e === WX_EFFECT.indoor) return 0; // (altitude makes a fresh object, so it counts)
   const pl = planOf(p);
   return WX_SCALE * ((e.fam[famOf(style)] || 0) + e.serve * (p.attrs.serve - 55) + e.stam * (p.attrs.stam - 55) + (e.spin[pl.spin] || 0));
 }
 
-const wxLabel = ev => { const k = ev && ev.weather; return k && WEATHER[k] ? `${WEATHER[k].icon} ${WEATHER[k].name}` : ''; };
+const wxLabel = ev => { const k = ev && ev.weather; return (k && WEATHER[k] ? `${WEATHER[k].icon} ${WEATHER[k].name}` : '') + (highAltitude(ev) ? ` · ⛰️ ${altitudeOf(ev).toLocaleString('en-US')} m altitude` : ''); };
+// How fast the court plays today: surface, weather and altitude together.
+const SURF_PACE = { clay: 0.94, hard: 1, grass: 1.06 };
+const courtSpeed = ev => { const v = (ev.indoor ? 1.04 : SURF_PACE[ev.surface] || 1) * wxOf(ev).pace; return v < 0.93 ? 'Slow' : v < 0.99 ? 'Medium-slow' : v < 1.04 ? 'Medium' : v < 1.09 ? 'Medium-fast' : 'Fast'; };
 
 // Draw screen: the conditions and who they suit.
 function weatherHtml(ev, me, opp) {

@@ -969,7 +969,7 @@ function openMatch() {
     style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   Court.scene(ev.surface, ev.indoor, ['You' + tag(ps[me]), shortName(ps[1 - me]) + tag(ps[1 - me])],
     [profile(ps[me]), profile(ps[1 - me])]);
-  Court.setWeather(wxOf(ev), ev.weather === 'damp');
+  Court.setWeather(wxOf(ev), ev.weather === 'damp', { key: ev.indoor ? 'indoor' : ev.weather, altitude: altitudeOf(ev), speed: courtSpeed(ev), surface: ev.surface, label: ev.indoor ? '🏟️ Indoors' : ev.weather && WEATHER[ev.weather] ? `${WEATHER[ev.weather].icon} ${WEATHER[ev.weather].name}` : '' });
   renderGvBar();
   // Replays live in memory for the match on screen only.
   const key = `${entry.id}:${roundIndex(entry)}:${m.a}-${m.b}`;
@@ -1656,6 +1656,8 @@ const HL_ICON = { zoom: '⭐', shake: '⚡' };
 
 // Every point watched this match, by score, newest last. Click one to replay it.
 // Every point watched this match, grouped by set and game (one row per game). Click a point to replay it.
+// "Ace — Moreno" → "Ace · Moreno": how the point was won, under the score on each point chip.
+const shortHow = t => { const [how, who] = String(t).split(' — '); return who ? `${how} · ${who}` : how; };
 function renderPoints() {
   const box = $('mPoints');
   box.hidden = false; // the point-by-point list shows in every view
@@ -1679,7 +1681,7 @@ function renderPoints() {
       ? `<span class="pres${last.broke ? ' brk' : ''}">${last.game} · ${esc(last.winner || '')} ${last.tb ? 'won the tiebreak' : last.broke ? 'broke' : 'held'}</span>` : '';
     const chips = g.pts.map(({ r, i }) =>
       `<button type="button" class="pchip${r.highlight ? ' hl' : ''}" data-i="${i}" title="${esc(r.call || (r.gameEnd ? 'Game point' : ''))}">` +
-      `${r.highlight ? HL_ICON[r.highlight] + ' ' : ''}${r.gameEnd ? (r.tb ? 'TB' : 'Game') : r.label}</button>`).join('');
+      `${r.highlight ? HL_ICON[r.highlight] + ' ' : ''}${r.gameEnd ? (r.tb ? 'TB' : 'Game') : r.label}${r.text ? `<small class="pdesc">${esc(shortHow(r.text))}</small>` : ''}</button>`).join('');
     return `<div class="pgame"><div class="plabel2"><b>${title}</b>${sub}</div><div class="pchips">${chips}</div>${result}</div>`;
   }).join('')).join('');
   box.scrollTop = box.scrollHeight;

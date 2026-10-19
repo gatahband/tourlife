@@ -55,6 +55,8 @@ function watchRealMatch(rec, opts = {}) {
   const prof = p => ({ adv: advPlan(p, ps[ps[0] === p ? 1 : 0]), real: !!p.atpRank, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
     style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   ReplayCourt.scene(rp.ev.surface, rp.ev.indoor, [name(me), name(op)], [prof(ps[me]), prof(ps[op])]);
+  ReplayCourt.setWeather(wxOf(rp.ev), rp.ev.weather === 'damp', { key: rp.ev.indoor ? 'indoor' : rp.ev.weather, altitude: altitudeOf(rp.ev), speed: courtSpeed(rp.ev),
+    label: rp.ev.indoor ? '🏟️ Indoors' : rp.ev.weather && WEATHER[rp.ev.weather] ? `${WEATHER[rp.ev.weather].icon} ${WEATHER[rp.ev.weather].name}` : '' });
 
   const board = (done, games, labels, server) => {
     const row = (i, v) => `<tr><th><span class="serve-dot${server === v ? '' : ' off'}"></span>${label(i)}</th>` +

@@ -334,6 +334,7 @@ function createCourt() {
       ctx.fillStyle = 'rgba(0,0,0,.3)';
       ctx.fillRect(-W, -H, W * 3, Math.max(0, farY) + H);
     }
+    if (!fps && c !== 'top') drawMountainsBand(c);
     poly([[-DOUBLES, -BASE], [DOUBLES, -BASE], [DOUBLES, BASE], [-DOUBLES, BASE]], look.in);
     if (look.stripe) {
       const n = 12, step = BASE * 2 / n;
@@ -383,10 +384,74 @@ function createCourt() {
     }
   }
 
+  // High altitude: a low mountain range far behind each end (minimal: the court stays the focus).
+  const PEAKS = Array.from({ length: 13 }, (_, i) => { const h = Math.imul(i + 3, 2654435761) >>> 0; return { x: -230 + i * 38 + (h % 20), h: 0.55 + ((h >>> 8) % 100) / 220 }; });
+  function drawMountains() {
+    if (!conditions.altitude || conditions.altitude < 900 || indoorFlag) return;
+    const top = clamp(14 + conditions.altitude / 90, 18, 46), snow = conditions.altitude >= 1500;
+    for (const end of [-1, 1]) {
+      const y = end * (BASE + 150);
+      const ridge = [[-260, y, 0], ...PEAKS.map(p => [p.x, y, top * p.h]), [260, y, 0]];
+      poly(ridge, indoorFlag ? '#1d2430' : 'rgba(46,62,82,.92)');
+      if (snow) for (const p of PEAKS) if (p.h > 0.85) poly([[p.x - 7, y, top * p.h * 0.82], [p.x, y, top * p.h], [p.x + 7, y, top * p.h * 0.82]], 'rgba(235,240,248,.85)');
+    }
+  }
+
+  // Behind the far end in the standard views: a low ridge inside the strip above the court.
+  function drawMountainsBand(c) {
+    if (!conditions.altitude || conditions.altitude < 900 || indoorFlag) return;
+    const [, farY] = c === 'side' ? P(DOUBLES + 7, 0) : P(0, c === 'reverse' ? BASE + 7 : -BASE - 7);
+    const base = Math.max(8, farY), tall = base * clamp(0.4 + conditions.altitude / 5000, 0.45, 0.85), snow = conditions.altitude >= 1500;
+    ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const ridge = (shade, k, off) => {
+      ctx.beginPath(); ctx.moveTo(0, base);
+      PEAKS.forEach((p, i) => ctx.lineTo((i + off) / (PEAKS.length - 1) * W, base - tall * p.h * k));
+      ctx.lineTo(W, base); ctx.closePath(); ctx.fillStyle = shade; ctx.fill();
+    };
+    ridge('rgba(70,88,112,.55)', 1, 0.5); ridge('rgba(40,54,72,.85)', 0.75, 0);
+    if (snow) PEAKS.forEach((p, i) => { if (p.h < 0.85) return; const x = (i + 0.5) / (PEAKS.length - 1) * W, y = base - tall * p.h; ctx.beginPath(); ctx.moveTo(x - 10, y + 8); ctx.lineTo(x, y); ctx.lineTo(x + 10, y + 8); ctx.closePath(); ctx.fillStyle = 'rgba(235,240,248,.8)'; ctx.fill(); });
+    ctx.restore();
+  }
+
+  // The weather you can see: heat haze, humid fog, a cold tint, wind streaks, a wet sheen after rain.
+  function drawWeather() {
+    const k = conditions.key, t = clock() / 1000;
+    if (!k || k === 'sunny' || k === 'indoor' || indoorFlag) return;
+    if (k === 'hot') {
+      ctx.fillStyle = 'rgba(255,140,40,.06)'; ctx.fillRect(0, 0, W, H);
+      const g = ctx.createLinearGradient(0, 0, 0, H * 0.45); g.addColorStop(0, 'rgba(255,170,70,.28)'); g.addColorStop(1, 'rgba(255,170,70,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.45);
+      // Heat shimmer just above the far end.
+      ctx.strokeStyle = 'rgba(255,230,190,.10)'; ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) { const y = H * (0.16 + i * 0.035); ctx.beginPath(); for (let x = 0; x <= W; x += 12) { const yy = y + Math.sin(x / 38 + t * 2.4 + i) * 2.2; x ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); } ctx.stroke(); }
+    } else if (k === 'humid') {
+      const g = ctx.createLinearGradient(0, 0, 0, H * 0.42); g.addColorStop(0, 'rgba(225,232,238,.38)'); g.addColorStop(1, 'rgba(225,232,238,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H * 0.42);
+    } else if (k === 'cold') {
+      ctx.fillStyle = 'rgba(110,160,255,.08)'; ctx.fillRect(0, 0, W, H);
+    } else if (k === 'windy') {
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 12; i++) { const y = ((i * 97) % 100) / 100 * H * 0.9 + 10, len = 30 + (i * 37) % 50, x = ((i * 211 + t * 260) % (W + 120)) - 60; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y - 3); ctx.stroke(); }
+    } else if (k === 'damp') {
+      ctx.fillStyle = 'rgba(20,40,70,.12)'; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  // Bottom-left badge: today's conditions at a glance (weather, court speed, altitude).
+  function drawConditions() {
+    if (!conditions.speed || camera() === 'fps' || camera() === 'fps2') return;
+    const txt = `${conditions.label || ''}${conditions.label ? ' · ' : ''}${conditions.speed} court${conditions.altitude >= 900 ? ` · ⛰️ ${conditions.altitude.toLocaleString('en-US')} m` : ''}`;
+    ctx.font = `600 12px ${FONT}`;
+    const w = ctx.measureText(txt).width + 18, x = 10, y = H - 32;
+    ctx.fillStyle = 'rgba(14,17,22,.72)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, 22, 11) : ctx.rect(x, y, w, 22); ctx.fill();
+    ctx.fillStyle = 'rgba(245,245,247,.92)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 9, y + 11);
+  }
+
   function drawOverlays() {
-    if (!banner && !review && !rain) return;
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawWeather();
+    drawConditions();
+    if (!banner && !review && !rain) { ctx.restore(); return; }
     if (rain) drawRain();
     if (banner) {
       const age = clock() - banner.t0, life = banner.big ? 1400 : 1600;
@@ -590,6 +655,7 @@ function createCourt() {
     if (indoorFlag) { sky.addColorStop(0, '#07090d'); sky.addColorStop(1, '#1b2029'); }
     else { sky.addColorStop(0, '#2c64a8'); sky.addColorStop(0.75, '#8fb8e0'); sky.addColorStop(1, '#c9dcef'); }
     ctx.fillStyle = sky; ctx.fillRect(-W, -H, W * 3, H * 3);
+    drawMountains();
     const Y = ARENA_Y, X = ARENA_X;
     // Each side: inner edge a→b (at the boards), and which way is outwards.
     const sides = [
@@ -922,6 +988,8 @@ function createCourt() {
   };
   // Weather on top of the surface: heavy humid air or a damp court slows the ball; heat speeds it up.
   let wx = { pace: 1, bounce: 1 };
+  // Today's conditions, for the scenery and the badge on court: weather key, altitude (m), court speed.
+  let conditions = { key: null, altitude: 0, speed: null };
   const surf = () => { const b = SURF[indoorFlag ? 'indoor' : surface] || SURF.hard; return { ...b, pace: b.pace * wx.pace, bounce: b.bounce * wx.bounce, keep: b.keep * (wx.pace < 1 ? 0.95 : 1) }; };
   const flightMs = (pre, post, v) => clamp((pre / v + post / (v * surf().keep)) * 1000, 200, 3800);
 
@@ -1649,8 +1717,9 @@ function createCourt() {
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = { text, t0: clock() }; draw(); },
-    setWeather(w, rainy = false) {
+    setWeather(w, rainy = false, cond = {}) {
       wx = w ? { pace: w.pace || 1, bounce: w.bounce || 1 } : { pace: 1, bounce: 1 };
+      conditions = { key: cond.key || null, altitude: cond.altitude || 0, speed: cond.speed || null, label: cond.label || '' };
       rain = rainy;
       // Keep the drizzle moving between points too (about 30 frames a second).
       if (rain && !rainLoop) { let last = 0; const tick = now => { if (!rain) { rainLoop = null; return; } if (now - last > 33 && cv && cv.offsetParent) { last = now; draw(); } rainLoop = requestAnimationFrame(tick); }; rainLoop = requestAnimationFrame(tick); }

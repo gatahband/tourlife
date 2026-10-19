@@ -552,6 +552,22 @@ function adaptNotice(m, ps, me) {
   return lv > 0 ? `🧑‍🏫 Your coach: "Something changed. ${esc(shortName(ps[1 - me]))} has adjusted to your plan, and it isn't working like before."` : '';
 }
 
+// One-line summaries on Home's fold-out sections.
+function homeSums(c, p) {
+  const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  const goals = c.goals && c.goals.list ? c.goals.list : (c.goals || []);
+  const done = Array.isArray(goals) ? goals.filter(g => g.done || g.claimed).length : 0, rank = currentRank(c);
+  set('sumSeason', `Season ${seasonOfWeek(c.week)} · ${rank ? `#${rank}` : 'Unranked'}${Array.isArray(goals) && goals.length ? ` · ${done} of ${goals.length} goals done` : ''}`);
+  const bill = typeof weeklyBill === 'function' ? weeklyBill(c) : 0;
+  set('sumTeam', `${money(c.money)} in the bank${bill ? ` · wages ${money(bill)}/week` : ''}${activeDeals(c).length ? ` · ${activeDeals(c).length} sponsor${activeDeals(c).length === 1 ? '' : 's'}` : ''}`);
+  set('sumBadges', `${BADGES.filter(b => (c.badges || {})[b.id]).length} of ${BADGES.length} earned`);
+  const riv = Object.keys(h2hOf(c)).filter(id => isRival(c, id)).length, met = Object.keys(h2hOf(c)).length;
+  set('sumRivals', `${riv} rival${riv === 1 ? '' : 's'} · ${met} player${met === 1 ? '' : 's'} met`);
+  set('sumPlan', planSummary(planOf(p)).split(' · ').slice(0, 3).join(' · '));
+  const all = c.history.flatMap(h => h.matches || []), w = all.filter(m => m.won).length;
+  set('sumHistory', all.length ? `${w}–${all.length - w} career record` : 'No matches yet');
+}
+
 // Master coach, mid-match: reads how the match is actually going and suggests changes, with the reasons.
 // Returns { tips: [text], plan: {changes} }.
 function liveAdvice(m, ps, me, ev) {

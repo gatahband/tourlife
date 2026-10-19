@@ -4,6 +4,26 @@
 
 let modalClose = null;
 
+// --- Fold-out sections ---------------------------------------------------------------------------
+// Most panels start closed with a one-line summary, open in place with a tap, and remember how each
+// player left them (per section, on this device).
+const FOLD_KEY = 'tourlife.folds';
+const foldOpen = (id, dflt = false) => { const s = readJSON(FOLD_KEY) || {}; return id in s ? s[id] : dflt; };
+function fold(id, title, summary, body, dflt = false) {
+  return `<details class="fold" data-fold="${id}" ${foldOpen(id, dflt) ? 'open' : ''}><summary class="foldhead"><span class="foldt">${title}</span>` +
+    `<span class="foldsum">${summary || ''}</span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">${body}</div></details>`;
+}
+function restoreFolds(root = document) {
+  const s = readJSON(FOLD_KEY) || {};
+  root.querySelectorAll('details[data-fold]').forEach(d => { if (d.dataset.fold in s) d.open = s[d.dataset.fold]; });
+}
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (!d || !d.dataset || !d.dataset.fold) return;
+  const s = readJSON(FOLD_KEY) || {}; s[d.dataset.fold] = d.open; writeJSON(FOLD_KEY, s);
+}, true);
+document.addEventListener('DOMContentLoaded', () => restoreFolds());
+
 // Full screen hides everything but the court, so step out of it whenever something needs a click.
 function leaveFullscreen() {
   const fs = document.fullscreenElement || document.webkitFullscreenElement;

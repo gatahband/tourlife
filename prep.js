@@ -97,7 +97,7 @@ function prepHtml(entry, opp) {
       return `<span class="chip">${it.icon} ${it.name}${id === 'partner' && pr.partner ? ` (${PARTNERS[pr.partner].name})` : ''}</span>`; }).join('')}</div></div>` : '') + recoveryHtml(entry);
   }
   const guess = Object.keys(PARTNERS).find(k => PARTNERS[k].match(opp)) || 'server';
-  return `<div class="prepbox"><div class="prephead"><b>Prepare for the week</b><span>${used} / ${PREP_SLOTS} slots · ${money(c.money)} in the bank</span></div>` +
+  return `<div class="prepbox">` + fold('d-prep', '🧰 Prepare for the week', `${used} / ${PREP_SLOTS} slots booked · ${money(c.money)} in the bank`,
     `<p class="hint">Pick up to ${PREP_SLOTS}. They last this tournament, and you can only buy them before your first match.</p>` +
     `<div class="prepitems">${PREP.map(it => {
       const got = pr.items.includes(it.id), cost = prepCost(it, ev.tier);
@@ -106,7 +106,7 @@ function prepHtml(entry, opp) {
         (it.id === 'partner' ? `<select class="inp" id="prepPartner" ${got ? 'disabled' : ''}>${Object.entries(PARTNERS).map(([k, v]) =>
           `<option value="${k}" ${(pr.partner || guess) === k ? 'selected' : ''}>Plays like ${v.name}</option>`).join('')}</select>` : '') +
         `</div><button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(cost)}</button></div>`;
-    }).join('')}</div>` + pcHtml(entry, opp, used) + `</div>`;
+    }).join('')}</div>` + pcHtml(entry, opp, used)) + `</div>`;
 }
 
 // The Performance Center row: locked (with your progress) until you earn the Elite Program achievement.

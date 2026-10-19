@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tour Life</title>
-  <link rel="stylesheet" href="style.css?v=1792427189">
+  <link rel="stylesheet" href="style.css?v=1792427753">
 </head>
 <body>
   <main class="wrap" id="creator">
@@ -80,26 +80,14 @@
       <h2 id="eventsTitle"></h2>
       <div id="events"></div>
     </section>
-    <section class="card">
+<details class="card fold homefold" data-fold="h-season"><summary class="foldhead"><span class="foldt">🏆 Season & Goals</span><span class="foldsum" id="sumSeason"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">
       <div id="hStats" class="stats"></div>
       <p id="hRank" class="hrank"></p>
       <div id="hGoals"></div>
-      <button type="button" id="hStatsBtn" class="btn ghost small statsbtn">View season stats</button>
-    </section>
-    <section class="card">
-      <h2>Money &amp; Team</h2>
-      <div id="hTeam"></div>
-    </section>
-    <section class="card">
-      <details class="badgebox">
-        <summary><h2 id="hBadgesTitle">Achievements</h2><span class="chev">Show</span></summary>
-        <div id="hBadges" class="badges"></div>
-      </details>
-    </section>
-    <section class="card" id="hRivalsCard" hidden>
-      <h2>Rivals &amp; head-to-head</h2>
-      <div id="hRivals"></div>
-    </section>
+      <button type="button" id="hStatsBtn" class="btn ghost small statsbtn">View season stats</button></div></details>
+    <details class="card fold homefold" data-fold="h-team"><summary class="foldhead"><span class="foldt">💰 Money &amp; Team</span><span class="foldsum" id="sumTeam"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><div id="hTeam"></div></div></details>
+    <details class="card fold homefold badgebox" data-fold="h-badges"><summary class="foldhead"><span class="foldt">🏅 Achievements</span><span class="foldsum" id="sumBadges"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><h2 id="hBadgesTitle" hidden>Achievements</h2><div id="hBadges" class="badges"></div></div></details>
+    <details class="card fold homefold" data-fold="h-rivals" id="hRivalsCard" hidden><summary class="foldhead"><span class="foldt">⚔️ Rivals &amp; Head-to-Head</span><span class="foldsum" id="sumRivals"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><div id="hRivals"></div></div></details>
     <section class="card">
       <details id="hStyleBox" class="stylebox">
         <summary>
@@ -118,15 +106,10 @@
         <ol id="hStyles" class="styles"></ol>
       </details>
     </section>
-    <section class="card">
-      <h2>Default Game Plan</h2>
+<details class="card fold homefold" data-fold="h-plan"><summary class="foldhead"><span class="foldt">📋 Default Game Plan</span><span class="foldsum" id="sumPlan"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">
       <p class="hint">How you play by default. Each tournament starts with this plan, and you can tweak it for that week from the draw screen or before a match.</p>
-      <div id="hPlan" class="plan"></div>
-    </section>
-    <section class="card">
-      <h2>Match History</h2>
-      <div id="hHistory" class="hlist"></div>
-    </section>
+      <div id="hPlan" class="plan"></div></div></details>
+    <details class="card fold homefold" data-fold="h-history"><summary class="foldhead"><span class="foldt">📜 Match History</span><span class="foldsum" id="sumHistory"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><div id="hHistory" class="hlist"></div></div></details>
     <button id="edit" class="btn ghost">Edit Player</button>
     <button id="share" class="btn">🎾 Join real tournaments</button>
     <div class="savebar">
@@ -148,17 +131,16 @@
       <p id="dMeta" class="sub"></p>
     </header>
     <section class="card" id="dAction"></section>
-    <section class="card">
-      <h2 id="dPlanTitle">Game plan for this week</h2>
+    <details class="card fold homefold" data-fold="d-weekplan"><summary class="foldhead"><span class="foldt" id="dPlanTitle">📋 This week's plan</span><span class="foldsum" id="sumWeekPlan"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">
       <p class="hint">Just for this tournament. Your default plan on Home stays as it is.</p>
       <div id="dPlan" class="plan"></div>
       <h3 class="ssec left">Your stats at this event</h3>
       <div id="dReport" class="report"></div>
-    </section>
-    <section class="card">
+    </div></details>
+    <details class="card fold homefold" data-fold="d-bracket"><summary class="foldhead"><span class="foldt">🎾 The Draw</span><span class="foldsum" id="sumBracket"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">
       <div id="dTabs" class="seg tabs"></div>
       <div id="dList" class="dlist"></div>
-    </section>
+    </div></details>
   </main>
 
   <main class="wrap" id="match" hidden>
@@ -236,36 +218,36 @@
 
   <div id="modal" class="modal" hidden><div id="sheet" class="sheet"></div></div>
 
-  <script>window.TL_VERSION = "1792427189";</script>
-  <script src="names.js?v=1792427189"></script>
-  <script src="sim.js?v=1792427189"></script>
-  <script src="court.js?v=1792427189"></script>
-  <script src="story.js?v=1792427189"></script>
-  <script src="stats.js?v=1792427189"></script>
-  <script src="calendar.js?v=1792427189"></script>
+  <script>window.TL_VERSION = "1792427753";</script>
+  <script src="names.js?v=1792427753"></script>
+  <script src="sim.js?v=1792427753"></script>
+  <script src="court.js?v=1792427753"></script>
+  <script src="story.js?v=1792427753"></script>
+  <script src="stats.js?v=1792427753"></script>
+  <script src="calendar.js?v=1792427753"></script>
   <!-- Netlify picks this form up at deploy time; share.js submits it with fetch. -->
   <form name="send-player" data-netlify="true" netlify-honeypot="bot-field" hidden>
     <input name="bot-field"><input name="player"><input name="nation"><input name="ovr"><input name="rank">
     <input name="record"><input name="contact"><textarea name="note"></textarea><textarea name="code"></textarea>
   </form>
-  <script src="ranking.js?v=1792427189"></script>
-  <script src="worldmap.js?v=1792427189"></script>
-  <script src="weather.js?v=1792427189"></script>
-  <script src="morale.js?v=1792427189"></script>
-  <script src="realplayers.js?v=1792427189"></script>
-  <script src="fairplay.js?v=1792427189"></script>
-  <script src="rivals.js?v=1792427189"></script>
-  <script src="tournaments.js?v=1792427189"></script>
-  <script src="realwatch.js?v=1792427189"></script>
-  <script src="prep.js?v=1792427189"></script>
-  <script src="training.js?v=1792427189"></script>
-  <script src="sponsors.js?v=1792427189"></script>
-  <script src="career.js?v=1792427189"></script>
-  <script src="achievements.js?v=1792427189"></script>
-  <script src="share.js?v=1792427189"></script>
-  <script src="help.js?v=1792427189"></script>
-  <script src="tips.js?v=1792427189"></script>
-  <script src="player.js?v=1792427189"></script>
-  <script src="admin.js?v=1792427189"></script>
+  <script src="ranking.js?v=1792427753"></script>
+  <script src="worldmap.js?v=1792427753"></script>
+  <script src="weather.js?v=1792427753"></script>
+  <script src="morale.js?v=1792427753"></script>
+  <script src="realplayers.js?v=1792427753"></script>
+  <script src="fairplay.js?v=1792427753"></script>
+  <script src="rivals.js?v=1792427753"></script>
+  <script src="tournaments.js?v=1792427753"></script>
+  <script src="realwatch.js?v=1792427753"></script>
+  <script src="prep.js?v=1792427753"></script>
+  <script src="training.js?v=1792427753"></script>
+  <script src="sponsors.js?v=1792427753"></script>
+  <script src="career.js?v=1792427753"></script>
+  <script src="achievements.js?v=1792427753"></script>
+  <script src="share.js?v=1792427753"></script>
+  <script src="help.js?v=1792427753"></script>
+  <script src="tips.js?v=1792427753"></script>
+  <script src="player.js?v=1792427753"></script>
+  <script src="admin.js?v=1792427753"></script>
 </body>
 </html>

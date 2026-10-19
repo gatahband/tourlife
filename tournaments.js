@@ -252,6 +252,7 @@ function renderTournaments(player) {
   renderOvr(player);
   renderRivals(c);
   renderBadges(c);
+  homeSums(c, player);
   if (renderCareerBits(c, player)) return;
   if (!c.seed) { c.seed = Math.floor(Math.random() * 1e6) + 1; writeJSON(CAREER_KEY, c); }
   const box = $('events');
@@ -533,12 +534,12 @@ function vsHeader(entry, oi) {
 // Before your next match, on the draw screen: scouting report, head-to-head, coach's report and your plan.
 function prematchHtml(entry, oi) {
   const opp = entry.entrants[oi], ev = eventOf(entry);
-  return scoutCard(opp, ev, entry.entrants[0], eventPlan(entry), { morale: moraleHtml(moraleFor(current.career, current.player, ev, opp, entry)), planBtn: 'dPlanBtn' });
+  return scoutCard(opp, ev, entry.entrants[0], eventPlan(entry), { moraleData: moraleFor(current.career, current.player, ev, opp, entry), planBtn: 'dPlanBtn' });
 }
 
 // The whole pre-match report, laid out to read in seconds: the conditions, who they are, how to beat
 // them, and your plan next to the coach's.
-function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}) {
+function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' } = {}) {
   const c = current.career, r = scoutReport(opp);
   const titleCase = t => t.replace(/(^|\s)\S/g, x => x.toUpperCase());
   const sec = (title, body) => `<section class="ssect"><h3>${title}</h3>${body}</section>`;
@@ -571,12 +572,26 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
   const btns = `<div class="pbtns">${diffs.length ? `<button type="button" class="btn" id="coachUse">Use the Coach's Plan</button>` : ''}` +
     `<button type="button" class="btn ghost" id="${planBtn}">Change My Plan</button></div>`;
 
+  // Always on show: the three things that matter most. Everything else folds away with a one-line summary.
+  const myStyle = detectStyles(me.attrs, me.fav)[0].name, oppStyle = detectStyles(opp.attrs, opp.fav)[0].name;
+  const short = t => t.length > 70 ? t.slice(0, 68).replace(/\s+\S*$/, '') + '…' : t;
+  const facts = `<div class="keyfacts">` +
+    `<div><span>💪</span><b>Strength</b><em>${r.strengths[0] || 'Nothing stands out'}</em></div>` +
+    `<div><span>🩹</span><b>Weakness</b><em>${r.weaknesses[0] || 'No clear hole'}</em></div>` +
+    `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : esc(short(r.counters[0] || 'Play your game.'))}</em></div></div>`;
+  const pe = prepEdges(current.entry, opp);
+  const prepTags = pe.tags.length ? `<div class="preptags">${pe.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '';
+  const mo = moraleData ? `${moraleWord(moraleData.edge, moraleData.cap)[0]} · ${moraleData.edge >= 0 ? '+' : '−'}${(Math.abs(moraleData.edge) * 100).toFixed(1)}% on points` : '';
+  const scouted = hasPrep(current.entry, 'scout'), qn = quirksOf(opp).length;
+  const wx = ev.weather && WEATHER[ev.weather] ? `${wxLabel(ev)} · ` : '';
   return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}</h2></div>` +
-    h2hLine(c, opp) + morale + videoPlanHtml(c, opp, plan) + (() => { const pe = prepEdges(current.entry, opp); return pe.tags.length ? `<div class="preptags">${pe.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : ''; })() +
-    sec('Conditions & Matchup', weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
-    sec('Know Your Opponent', know) +
-    sec('How To Beat Them', beat) +
-    sec('Your Game Plan', note + table + tbNote + btns) + `</div>`;
+    h2hLine(c, opp) + facts + prepTags +
+    (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +
+    fold('d-cond', '🌤️ Conditions & Matchup', `${wx}${myStyle} vs ${oppStyle}`, weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
+    fold('d-know', '🔍 Know Your Opponent', `${r.strengths.length} strength${r.strengths.length === 1 ? '' : 's'} · ${r.weaknesses.length} weakness${r.weaknesses.length === 1 ? '' : 'es'}${scouted ? ` · ${qn} hidden` : ''}`, know) +
+    fold('d-beat', '🎯 How To Beat Them', esc(short(r.counters[0] || 'No obvious holes')), beat) +
+    fold('d-plan', '📋 Your Game Plan', coach && diffs.length ? `Coach suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'}` : esc(short(planSummary({ ...DEFAULT_PLAN, ...plan }))),
+      videoPlanHtml(c, opp, plan) + note + table + tbNote + btns) + `</div>`;
 }
 
 function bindPrematch(entry, oi, rerender) {
@@ -745,7 +760,9 @@ function openDraw() {
 
 function renderDraw() {
   const entry = current.entry, ev = eventOf(entry);
-  $('dPlanTitle').textContent = `Game plan for ${ev.city}`;
+  $('dPlanTitle').textContent = `📋 Game Plan for ${ev.city}`;
+  $('sumWeekPlan').textContent = planSummary({ ...DEFAULT_PLAN, ...eventPlan(entry) }).split(' · ').slice(0, 3).join(' · ');
+  { const left = entry.rounds[entry.rounds.length - 1]; $('sumBracket').textContent = `${ROUND_NAMES[entry.rounds.length - 1] || ''} · ${left.length * 2} players left`; }
   planEditor($('dPlan'), eventPlan(entry), () => saveEventPlan(entry));
   renderPlanReport($('dReport'), entry.matches.filter(r => r.stats.servePts !== undefined).map(rec => ({ rec })),
     'Your stats here will build up as you play matches at this event.');

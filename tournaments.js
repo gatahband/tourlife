@@ -1304,9 +1304,25 @@ function renderMatch() {
     const setBreak = () => {
       const won = m.sets.filter(x => x.games[me] > x.games[op]).length, lost = m.sets.length - won;
       return `<div class="planline setbreak"><span><b>Set break · ${won > lost ? `You lead ${won}–${lost}` : won < lost ? `You trail ${won}–${lost}` : `${won}–${lost}`}</b>` +
-        `<small>${planSummary(planOf(ps[me]))}</small></span><button type="button" class="btn ghost small" id="mAdj">Adjust plan</button></div>`;
+        `<small>${planSummary(planOf(ps[me]))}</small></span><button type="button" class="btn ghost small" id="mAdj">Adjust plan</button></div>` + breakAdviceHtml();
     };
-    const bindBreak = () => { if ($('mAdj')) $('mAdj').onclick = () => openSetAdjust(entry); };
+    // The coach talks to you at every set break, however the set was played (watched or simmed).
+    const breakAdv = () => teamLevel(current.career, 'coach') >= 4 && m.winner === null ? liveAdvice(m, ps, me, ev) : null;
+    const breakAdviceHtml = () => {
+      const adv = breakAdv();
+      if (!adv) { const n = m.winner === null ? adaptNotice(m, ps, me) : ''; return n ? `<div class="advice">${n}</div>` : ''; }
+      return adviceHtml(adv) + `<div class="advbtns">` +
+        adv.counters.map((c, i) => `<button type="button" class="btn ghost small" data-bk="ct${i}">${i ? '🅱️' : '🅰️'} ${esc(c.label)}</button>`).join('') +
+        (Object.keys(adv.plan).length ? `<button type="button" class="btn small" data-bk="advice">💡 Take the advice</button>` : '') + `</div>`;
+    };
+    const bindBreak = () => {
+      if ($('mAdj')) $('mAdj').onclick = () => openSetAdjust(entry);
+      document.querySelectorAll('[data-bk]').forEach(b => { b.onclick = () => {
+        const adv = breakAdv(), k = b.dataset.bk;
+        commitSetPlan(entry, { ...planOf(ps[me]), ...(k === 'advice' ? adv.plan : adv.counters[+k.slice(2)].plan) });
+        renderMatch();
+      }; });
+    };
     if (!mode) {
       // Before the first ball: how do you want to play this one?
       $('mActions').innerHTML = `<h2 class="choose">How do you want to play this match?</h2><div class="modes">` +
@@ -1420,6 +1436,22 @@ function changeover(entry, ps, me, step) {
       }
     };
   });
+}
+
+// Commit a set-break plan change: remembered for the match story, and the new plan's execution is rolled fresh.
+function commitSetPlan(entry, pl) {
+  const { m } = entry.live, ps = matchPlayers(entry, m), me = m.a === 0 ? 0 : 1;
+  const old = planOf(ps[me]);
+  const changes = GAME_PLAN.filter(g => pl[g.key] !== undefined && pl[g.key] !== old[g.key]);
+  if (!changes.length) return;
+  entry.live.adjusts = [...(entry.live.adjusts || []), { after: m.sets.length,
+    changes: changes.map(g => `${g.label.toLowerCase()} to ${planLabel(g.key, pl[g.key])}`),
+    score: m.sets.map(st => `${st.games[me]}-${st.games[1 - me]}`).join(' ') }];
+  ps[me].plan = { ...pl };
+  m.exec[me] = rollExec(ps[me]);
+  entry.live.log.push(`🔄 <b>Set break:</b> you changed your plan. ${planSummary(pl)}`);
+  writeJSON(ENTRY_KEY, entry);
+  toast('🔄 Plan changed', changes.map(g => g.label).join(', '));
 }
 
 // Set-break plan change (this match only). A new plan is fresh: the opponent hasn't worked it out,

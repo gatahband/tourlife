@@ -934,3 +934,5 @@ h2.ctr { text-align: center; }
 .scoutx { background: rgba(10,132,255,.08); border: 1px solid rgba(10,132,255,.3); border-radius: 12px; padding: 10px 14px; margin-top: 12px; }
 .scoutx .sh4 { margin-top: 0; color: var(--text); } .scoutx ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .seg.vert .segsep { display: block; height: 1px; background: var(--line); margin: 3px 4px; }
+.advbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 auto 12px; max-width: 760px; }
+.advbtns .btn { width: auto; margin: 0; }

@@ -34,7 +34,7 @@ function watchRealMatch(rec, opts = {}) {
     `<button type="button" class="btn small ghost rwfs" id="rwFs">⛶ Full screen</button><div id="rwStage">` +
     (same ? '' : `<p class="hint center warnline">This match was played on an older version, so the replay may differ a little from the real result.</p>`) +
     `<table class="board" id="rwBoard"></table>` +
-    `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
+    `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="seg" id="rwSpeed" style="grid-template-columns:repeat(3,1fr)">${[1, 2, 4].map(x => `<button type="button" data-s="${x}" class="${x === speed ? 'on' : ''}">${x}×</button>`).join('')}</div></div>` +
     `<canvas id="rwCourt" class="court"></canvas><div id="rwCall" class="call"></div>` +

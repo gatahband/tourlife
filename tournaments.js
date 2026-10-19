@@ -856,7 +856,7 @@ function openMatch() {
   const tag = p => lefty(p) ? ' (L)' : '';
   const savedView = readJSON(VIEW_KEY) || 'broadcast';
   if (Court.view !== savedView) Court.setView(savedView);
-  $('mView').innerHTML = [['broadcast', 'Broadcast'], ['top', 'Top-down'], ['gatah', 'GATAH VISION']].map(([v, l]) =>
+  $('mView').innerHTML = [['broadcast', 'Broadcast'], ['top', 'Top-Down'], ['gatah', 'GATAH VISION']].map(([v, l]) =>
     `<button type="button" data-v="${v}" class="${v === savedView ? 'on' : ''}${v === 'gatah' ? ' gv' : ''}">${l}</button>`).join('');
   $('mView').onclick = e => {
     const b = e.target.closest('[data-v]');
@@ -871,7 +871,7 @@ function openMatch() {
   // Label toggles (shot type, FH/BH), remembered between matches.
   const lab = { showType: true, showWing: true, ...readJSON(LABELS_KEY) };
   Court.setOptions(lab);
-  $('mLabels').innerHTML = [['showType', 'Shot type'], ['showWing', 'FH/BH']].map(([k, l]) =>
+  $('mLabels').innerHTML = [['showType', 'Shot'], ['showWing', 'FH/BH']].map(([k, l]) =>
     `<label class="chk"><input type="checkbox" data-k="${k}" ${lab[k] ? 'checked' : ''}> ${l}</label>`).join('');
   $('mLabels').onchange = e => {
     const k = e.target.dataset.k;
@@ -1242,7 +1242,7 @@ function renderMatch() {
   $('mLog').innerHTML = shown.length ? shown.map(l => `<li>${l}</li>`).join('') : '<li class="hint">Match about to start.</li>';
 
   // GATAH VISION plays at real pace, so no speed buttons there.
-  const speeds = Court.view === 'gatah' ? '<div class="gvtag">Real time</div>' : `<div class="seg speed">${[1, 2, 4].map(x =>
+  const speeds = Court.view === 'gatah' ? '<div class="gvtag">Real Time</div>' : `<div class="seg speed">${[1, 2, 4].map(x =>
     `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}×</button>`).join('')}</div>`;
 
   const btn = (id, label, ghost) => `<button type="button" class="btn${ghost ? ' ghost' : ''}" id="${id}">${label}</button>`;
@@ -1251,7 +1251,7 @@ function renderMatch() {
   $('mCourtWrap').classList.toggle('paused', anim.paused);
   // Playback speed: a column down the right side of the court (GATAH VISION has its own real-time / slow-mo).
   $('mSpeed').hidden = Court.view === 'gatah';
-  $('mSpeed').innerHTML = [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
+  $('mSpeed').innerHTML = [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}×</button>`).join('');
   if (anim.running) {
     // While a set plays, its controls sit on the court itself.
     $('mActions').innerHTML = '';
@@ -1563,9 +1563,9 @@ function playClips(list, i, scene, heading) {
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
     `<h2 class="itop">${heading ? esc(heading) : `Replay · Set ${r.set} · ${r.game}`}</h2>` +
     `<p class="hint center">${list.length > 1 ? `${i + 1} of ${list.length} · ` : ''}${esc(r.desc || r.call || '')}</p>` +
-    `<div class="rpbar"><div class="seg four" id="rpAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
+    `<div class="rpbar"><div class="seg four" id="rpAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
-    `<div class="seg two" id="rpSpeed"><button type="button" data-s="1" class="on">Real time</button><button type="button" data-s="2.5">Slow-mo</button></div></div>` +
+    `<div class="seg two" id="rpSpeed"><button type="button" data-s="1" class="on">Real Time</button><button type="button" data-s="2.5">Slow-Mo</button></div></div>` +
     `<canvas id="rpCourt" class="court"></canvas>` +
     `<div class="btn-row three"><button type="button" class="btn ghost" id="rpPrev">‹ Previous</button>` +
     `<button type="button" class="btn" id="rpPlay">Replay</button><button type="button" class="btn ghost" id="rpNext">Next ›</button></div>`,
@@ -1615,11 +1615,11 @@ function renderGvBar() {
   Court.setAngle(cam.angle === 'broadcast' ? null : cam.angle);
   Court.setSlow(cam.slow);
   // GATAH camera angles join the view list on the left; real time / slow-mo sits on the right.
-  bar.innerHTML = [['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
+  bar.innerHTML = [['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
     .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === cam.angle ? 'on' : ''}">${l}</button>`).join('');
-  spd.innerHTML = [[1, 'Real time'], [2.5, 'Slow-mo']]
+  spd.innerHTML = [[1, 'Real Time'], [2.5, 'Slow-Mo']]
     .map(([v, l]) => `<button type="button" data-s="${v}" class="${v === cam.slow ? 'on' : ''}">${l}</button>`).join('') +
-    `<i class="segsep"></i>` + [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
+    `<i class="segsep"></i>` + [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}×</button>`).join('');
   spd.onclick = e => {
     const b = e.target.closest('[data-speed]');
     if (b) { anim.speed = +b.dataset.speed; writeJSON(SPEED_KEY, anim.speed); renderGvBar(); return; }

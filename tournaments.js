@@ -355,11 +355,12 @@ function simOdds(p, ev, mode, N = 70) {
   const tour = ['ATP250', 'ATP500', 'M1000', 'GS'].includes(ev.tier);
   const qRounds = mode === 'qual' ? (ev.tier === 'GS' ? 3 : 2) : 0;
   const shifts = Array(qRounds).fill(-3).concat(tour ? [0, 2, 5, 7, 9] : [0, 1, 2, 3, 4]);
-  const odds = shifts.map(sh => {
+  const odds = shifts.map((sh, si) => {
     let w = 0;
     for (let i = 0; i < N; i++) {
       const o = generateOpponent(pick(Math.random, Object.keys(REGION_OF)), ev.tier, Math.random, sh);
       const m = newMatch(0, 1);
+      if (ev.tier === 'GS' && si >= qRounds) m.bestOf = 5;
       playMatch(m, [me, o], ev);
       if (m.winner === 0) w++;
     }
@@ -475,6 +476,7 @@ function simRound(entry, r) {
   for (const slot of entry.rounds[r]) {
     if (slot.winner !== undefined) continue;
     const m = newMatch(slot.a, slot.b);
+    if (ev.tier === 'GS') m.bestOf = 5;
     playMatch(m, [entry.entrants[slot.a], entry.entrants[slot.b]], ev);
     record(slot, m);
   }
@@ -696,7 +698,7 @@ function wrapUpMatch(entry) {
     rec.fullWatch = !!entry.live.total && (entry.live.watched || 0) >= entry.live.total;
     rec.watchBonus = Math.round(WATCH_BONUS * Math.min(1, rec.gamesWatched / WATCH_GAMES) * 10000) / 10000;
   }
-  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec && rec.sets.length === 3 ? 5 : 0)) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4), 0, 100);
+  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4), 0, 100);
   writeJSON(SAVE_KEY, p);
   shakeRust(current.career);
   writeJSON(CAREER_KEY, current.career);
@@ -807,13 +809,14 @@ function shortName(p) {
 
 function openMatch() {
   const entry = current.entry;
-  anim.noCalls = false;
+  anim.noCalls = false; anim.noChangeovers = false;
   if (!entry.live) {
-    const pm = playerMatch(entry);
+    const pm = playerMatch(entry), ev0 = eventOf(entry);
     // You carry this week's tiredness (and any early-arrival practice) into the match.
     entry.entrants[0].fatigue = current.player.fatigue || 0;
     entry.entrants[0].acclimated = !!entry.acclimated;
     entry.live = { m: newMatch(pm.a, pm.b, Math.random, true), log: [] };
+    if (ev0.tier === 'GS' && !inQual(entry)) entry.live.m.bestOf = 5; // Slam main draws: best of five
     writeJSON(ENTRY_KEY, entry);
   }
   showScreen('match');
@@ -866,7 +869,7 @@ function openMatch() {
     writeJSON(LABELS_KEY, lab);
     Court.setOptions(lab);
   };
-  const profile = p => ({ hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
+  const profile = p => ({ real: !!p.atpRank && !p.isPlayer, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
     style: detectStyles(p.attrs, p.fav)[0].name });
   Court.scene(ev.surface, ev.indoor, ['You' + tag(ps[me]), shortName(ps[1 - me]) + tag(ps[1 - me])],
     [profile(ps[me]), profile(ps[1 - me])]);
@@ -897,6 +900,12 @@ async function playOneSet(animate = true) {
   const { m, log } = L, rng = seeded(L.seed), target = L.shownSaved || 0;
   const ps = matchPlayers(entry, m);
   const me = m.a === 0 ? 0 : 1, op = 1 - me;
+  // Racket deal: the frame's boost applies in matches only (the base stats are put back after the set).
+  if (ps[me].baseAttrs) ps[me].attrs = { ...ps[me].baseAttrs };
+  const rb = typeof racketBoost === 'function' ? racketBoost(current.career) : null;
+  if (rb) { ps[me].baseAttrs = { ...ps[me].attrs }; ps[me].attrs[rb.stat] = Math.min(99, ps[me].attrs[rb.stat] * (1 + rb.pct)); }
+  // Your plan as the set began (a changeover can change it mid-set; a replay must start from the same one).
+  if (L.planAtStart) ps[me].plan = JSON.parse(L.planAtStart); else L.planAtStart = JSON.stringify(ps[me].plan || planOf(ps[me]));
   const before = JSON.parse(JSON.stringify(m.stats));
   const momentsBefore = m.moments.length;
   // Autopilot: a small cost for simming, a bigger one for losing a set and changing nothing.
@@ -923,9 +932,17 @@ async function playOneSet(animate = true) {
       }
       shown = m.points.length;
       if (shown > (L.shownSaved || 0)) { L.shownSaved = shown; writeJSON(ENTRY_KEY, entry); }
+      // Changeover (after the first game, then every two), at the top level: a chance to adjust the plan.
+      const lastPt = fresh[fresh.length - 1];
+      if (lastPt && lastPt.end && !lastPt.tb && (lastPt.games[0] + lastPt.games[1]) % 2 === 1 && changeoversOn(entry)) {
+        if (shown < target) {
+          const pc = (L.calls || []).find(c => c.step === step && c.id === 'plan');
+          if (pc) { ps[me].plan = { ...pc.plan }; m.exec[me] = pc.exec; }
+        } else if (!Court.skip && !anim.finishAfter && !anim.noChangeovers) await changeover(entry, ps, me, step);
+      }
       if (info.bp !== null || info.press) {
         if (shown < target) {
-          const rc = (L.calls || []).find(c => c.step === step), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
+          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan'), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
           if (rc && rc.id === 'off') anim.noCalls = true;
           if (call) makeCall(m, ps, me, call);
         } else { anim.step = step; await bigPoint(info, ps, me); }
@@ -953,7 +970,8 @@ async function playOneSet(animate = true) {
   const points = m.points;
   m.points = [];
   entry.live.total = (entry.live.total || 0) + points.length;
-  L.inSet = false; L.snap = null; L.calls = []; L.shownSaved = 0;
+  L.inSet = false; L.snap = null; L.calls = []; L.shownSaved = 0; L.planAtStart = null;
+  if (ps[me].baseAttrs) { ps[me].attrs = ps[me].baseAttrs; delete ps[me].baseAttrs; }
   writeJSON(ENTRY_KEY, entry);
   if (animate) {
     anim.running = false;
@@ -989,7 +1007,7 @@ function bigPoint(info, ps, me) {
       if (id === 'off') anim.noCalls = true;
       // Remember the call, so a refresh mid-set replays the point the same way.
       const L = current.entry && current.entry.live;
-      if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step); L.calls.push({ step: anim.step, id }); }
+      if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step || c.id === 'plan'); L.calls.push({ step: anim.step, id }); }
       const call = calls.find(c => c.id === id);
       if (call) makeCall(m, ps, me, call);
       box.hidden = true; box.onclick = null;
@@ -1124,7 +1142,7 @@ function liveBoard(prior, games, labels, server) {
 function playerLabel(ps, i, me) {
   const p = ps[i];
   if (i === me) return `${flagOf(p.nation)} You`;
-  return `${p.seed ? `<span class="seed">${p.seed}</span>` : ''}${flagOf(p.nation)} ${esc(p.name)}`;
+  return `${p.seed ? `<span class="seed">${p.seed}</span>` : ''}${flagOf(p.nation)} ${p.atpRank ? `<span class="realname">${esc(p.name)}</span>` : esc(p.name)}`;
 }
 
 function concludeMatch() {
@@ -1156,6 +1174,13 @@ function concludeMatch() {
     const after = rec.sets.slice(a.after, until);
     return { ...a, won: after.filter(st => st.games[0] > st.games[1]).length, lost: after.filter(st => st.games[0] < st.games[1]).length };
   });
+  // A first match at a new level (Challenger and up), in qualifying or the main draw.
+  {
+    const ev = eventOf(entry), fam = t => t === 'CH75' || t === 'CH125' ? 'CH' : t;
+    const q = inQual(entry), firstHere = q ? (entry.qual.round || 0) === 0 : roundIndex(entry) === 0;
+    const before = current.career.history.some(h => !h.real && fam(h.tier) === fam(ev.tier) && (q || !String(h.reached).startsWith('Q')));
+    if (DEBUT_NAME[fam(ev.tier)] && firstHere && !before) rec.debut = { fam: fam(ev.tier), qual: q };
+  }
   const mo = moraleFor(current.career, current.player, eventOf(entry), opp, entry);
   rec.moraleTags = mo.tags.slice().sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2).map(t => ({ text: t.text, v: t.v }));
   const wasBogey = opp.id && current.career.h2h && current.career.h2h[opp.id] && current.career.h2h[opp.id].l >= 3 && current.career.h2h[opp.id].l >= current.career.h2h[opp.id].w + 2;
@@ -1185,15 +1210,18 @@ function renderMatch() {
 
   $('mCtl').innerHTML = '';
   $('mCourtWrap').classList.toggle('paused', anim.paused);
+  // Playback speed: a column down the right side of the court (GATAH VISION has its own real-time / slow-mo).
+  $('mSpeed').hidden = Court.view === 'gatah';
+  $('mSpeed').innerHTML = [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
   if (anim.running) {
     // While a set plays, its controls sit on the court itself.
     $('mActions').innerHTML = '';
     if (anim.watching) {
-      $('mCtl').innerHTML = `${btn('mPause', anim.paused ? '▶ Resume' : '❚❚ Pause')}${btn('mSkip', '⏭ Skip Set', true)}${btn('mAll', '⏩ Sim to End', true)}${speeds}`;
+      $('mCtl').innerHTML = `${btn('mPause', anim.paused ? '▶ Resume' : '❚❚ Pause')}${btn('mSkip', '⏭ Skip Set', true)}${btn('mAll', '⏩ Sim to End', true)}`;
       $('mPause').onclick = () => { anim.paused = !anim.paused; $('mPause').textContent = anim.paused ? '▶ Resume' : '❚❚ Pause'; $('mCourtWrap').classList.toggle('paused', anim.paused); };
       $('mAll').onclick = () => { anim.watching = false; anim.paused = false; anim.finishAfter = true; Court.skip = true; };
     } else {
-      $('mCtl').innerHTML = `${btn('mSkip', '⏭ Skip Set', true)}${speeds}`;
+      $('mCtl').innerHTML = `${btn('mSkip', '⏭ Skip Set', true)}`;
     }
     $('mSkip').onclick = () => { anim.paused = false; Court.skip = true; };
   } else {
@@ -1288,6 +1316,53 @@ function renderMatch() {
   });
 }
 
+// Changeovers: from ATP 250 main draws up, once you're a 75+ player.
+const changeoversOn = entry => ['ATP250', 'ATP500', 'M1000', 'GS'].includes(eventOf(entry).tier) && !inQual(entry) && overall(current.player) >= 75;
+
+// At a changeover the match pauses on court: keep going, take the coach's plan, or adjust your own.
+function changeover(entry, ps, me, step) {
+  const L = entry.live, m = L.m, opp = ps[1 - me], ev = eventOf(entry);
+  const pl = { ...planOf(ps[me]) }, before = JSON.stringify(pl);
+  const coach = hasTeam(current.career, 'coach') ? coachPlan(opp, ev, ps[me]) : null;
+  const diffs = coach ? GAME_PLAN.filter(g => coach[g.key] !== pl[g.key]).length : 0;
+  const box = $('mCallBox');
+  box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div><div class="cbsub">Towel, water, and a look at the plan.</div>` +
+    `<div class="cbopts"><button type="button" data-co="go"><span>▶️</span><b>Keep playing</b><small>Same plan</small></button>` +
+    (diffs ? `<button type="button" data-co="coach"><span>🧑‍🏫</span><b>Use the coach's plan</b><small>${diffs} change${diffs === 1 ? '' : 's'}</small></button>` : '') +
+    `<button type="button" data-co="edit"><span>📝</span><b>Adjust my plan</b><small>Change settings</small></button></div>` +
+    `<div id="coPlan" class="plan coplan" hidden></div>` +
+    `<div class="cbfoot"><button type="button" class="link" data-co="off">Don't stop at changeovers this match</button></div>`;
+  box.hidden = false;
+  return new Promise(done => {
+    const iv = setInterval(() => { if (Court.skip) finish(); }, 200);
+    function finish() {
+      clearInterval(iv);
+      box.hidden = true; box.onclick = null;
+      if (JSON.stringify(pl) !== before) {
+        ps[me].plan = { ...pl };
+        m.exec[me] = rollExec(ps[me]);
+        L.calls = (L.calls || []).filter(c => !(c.step === step && c.id === 'plan'));
+        L.calls.push({ step, id: 'plan', plan: { ...pl }, exec: m.exec[me] });
+        writeJSON(ENTRY_KEY, entry);
+      }
+      done();
+    }
+    box.onclick = e => {
+      const b = e.target.closest('[data-co]');
+      if (!b) return;
+      const k = b.dataset.co;
+      if (k === 'go') finish();
+      else if (k === 'off') { anim.noChangeovers = true; finish(); }
+      else if (k === 'coach') { Object.assign(pl, coach); finish(); }
+      else if (k === 'edit') {
+        const el = $('coPlan'); el.hidden = false;
+        planEditor(el, pl, () => {});
+        b.outerHTML = `<button type="button" data-co="go"><span>✅</span><b>Done</b><small>Play on with the new plan</small></button>`;
+      }
+    };
+  });
+}
+
 // Set-break plan change (this match only). A new plan is fresh: the opponent hasn't worked it out,
 // but how well it comes off is rolled again, so changing a plan that's clicking is a gamble.
 function openSetAdjust(entry) {
@@ -1297,7 +1372,8 @@ function openSetAdjust(entry) {
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
     `<h2 class="itop">Set break: adjust your plan</h2>` +
     `<p class="hint center">Applies for the rest of this match. A new plan resets what ${esc(shortName(opp))} has figured out, but it might click or flop.</p>` +
-    scoutHtml(opp) + `<div id="saPlan" class="plan"></div><button type="button" class="btn" id="saDone">Back to the match</button>`,
+    scoutHtml(opp) + (hasTeam(current.career, 'coach') ? `<button type="button" class="btn ghost" id="saCoach">🧑‍🏫 Use the Coach's Plan</button>` : '') +
+    `<div id="saPlan" class="plan"></div><button type="button" class="btn" id="saDone">Back to the match</button>`,
     { wide: true, onClose: () => {
       if (JSON.stringify(pl) !== before) {
         // Remember the change so the match story can say whether it worked.
@@ -1313,6 +1389,7 @@ function openSetAdjust(entry) {
       renderMatch();
     } });
   planEditor($('saPlan'), pl, () => {});
+  if ($('saCoach')) $('saCoach').onclick = () => { Object.assign(pl, coachPlan(opp, eventOf(entry), ps[me])); planEditor($('saPlan'), pl, () => {}); };
   $('saDone').onclick = closeModal;
   $('mx').onclick = closeModal;
 }
@@ -1479,6 +1556,7 @@ function renderGvBar() {
   const bar = $('mGvBar'), spd = $('mGvSpeed');
   const on = Court.view === 'gatah';
   bar.hidden = spd.hidden = !on;
+  if ($('mSpeed')) $('mSpeed').hidden = on;
   const cam = { angle: 'broadcast', slow: 1, ...readJSON(GV_KEY) };
   if (!on) return;
   Court.setAngle(cam.angle === 'broadcast' ? null : cam.angle);

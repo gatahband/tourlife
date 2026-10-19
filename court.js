@@ -426,22 +426,31 @@ function createCourt() {
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, pw, ph); ctx.clip();
     const sc = pw / 0.5; // the panel shows half a metre across
     const cx = x0 + pw / 2, cy = y0 + ph / 2;
+    // Lay the close-up out the way the camera sees that line: "out" points the same way on screen as it
+    // does on the court (past the far baseline is up, the right sideline is to the right, and so on).
+    let horiz = r.axis === 'x', o = 1;
+    if (r.pt) {
+      const nx = r.axis === 'x' ? Math.sign(r.line) : 0, ny = r.axis === 'y' ? Math.sign(r.line) : 0;
+      const [ax, ay] = P(r.pt.x, r.pt.y), [bx2, by2] = P(r.pt.x + nx * 0.5, r.pt.y + ny * 0.5);
+      const dx = bx2 - ax, dy = by2 - ay;
+      horiz = Math.abs(dx) > Math.abs(dy); o = Math.sign(horiz ? dx : dy) || 1;
+    }
     // Inside the court is the court colour, outside the surround colour.
     ctx.fillStyle = look.in;
-    if (r.axis === 'y') ctx.fillRect(x0, y0, pw, ph / 2); else ctx.fillRect(x0, y0, pw / 2, ph);
+    if (horiz) ctx.fillRect(o > 0 ? x0 : cx, y0, pw / 2, ph); else ctx.fillRect(x0, o > 0 ? y0 : cy, pw, ph / 2);
     ctx.fillStyle = look.out;
-    if (r.axis === 'y') ctx.fillRect(x0, cy, pw, ph / 2); else ctx.fillRect(cx, y0, pw / 2, ph);
+    if (horiz) ctx.fillRect(o > 0 ? cx : x0, y0, pw / 2, ph); else ctx.fillRect(x0, o > 0 ? cy : y0, pw, ph / 2);
     const d = (Math.abs(r.coord) - Math.abs(r.line)) * sc; // + = towards out
     // The line's outer edge sits on the boundary; the line itself is inside the court.
     ctx.fillStyle = look.line;
-    if (r.axis === 'y') ctx.fillRect(x0, cy - 0.05 * sc, pw, 0.05 * sc);
-    else ctx.fillRect(cx - 0.05 * sc, y0, 0.05 * sc, ph);
-    const bx = r.axis === 'y' ? cx + r.along * sc : cx + d, by = r.axis === 'y' ? cy + d : cy + r.along * sc;
+    if (horiz) ctx.fillRect(o > 0 ? cx - 0.05 * sc : cx, y0, 0.05 * sc, ph);
+    else ctx.fillRect(x0, o > 0 ? cy - 0.05 * sc : cy, pw, 0.05 * sc);
+    const bx = horiz ? cx + o * d : cx + r.along * sc, by = horiz ? cy + r.along * sc : cy + o * d;
     const rad = 0.033 * sc;
     if (t > 0.18) {
       // The ball drops in from above and leaves an oval skid mark.
       const k = clamp((t - 0.18) / 0.32, 0, 1);
-      if (k >= 1) { ctx.fillStyle = 'rgba(40,30,20,.55)'; ctx.beginPath(); ctx.ellipse(bx, by, rad * (r.axis === 'y' ? 1.7 : 1), rad * (r.axis === 'y' ? 1 : 1.7), 0, 0, Math.PI * 2); ctx.fill(); }
+      if (k >= 1) { ctx.fillStyle = 'rgba(40,30,20,.55)'; ctx.beginPath(); ctx.ellipse(bx, by, rad * (horiz ? 1 : 1.7), rad * (horiz ? 1.7 : 1), 0, 0, Math.PI * 2); ctx.fill(); }
       const h = (1 - k) * 90;
       ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(bx, by, rad, rad * 0.6, 0, 0, Math.PI * 2); ctx.fill();
       // Once it has landed the ball lifts away, leaving just the mark to judge.
@@ -534,17 +543,19 @@ function createCourt() {
       const arms = [hand];
       if (twoHanded(side, label)) arms.push(-hand);
       ctx.lineCap = 'round';
-      // Both forearms come up from the racket's side of the screen (the second one closer to centre).
-      const rside = Math.sign(head.x - W / 2) || hand;
+      // Your racket arm always comes from your racket hand's side (a lefty's forehand comes in from the
+      // left and finishes across to the right); the second hand on a two-hander comes from nearer the middle.
       for (const a of arms) {
-        const end = { x: W / 2 + rside * W * (a === hand ? 0.26 : 0.08), y: H + r };
+        const end = { x: W / 2 + hand * W * (a === hand ? 0.24 : -0.04), y: H + r };
         ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = r * 0.62;
         ctx.beginPath(); ctx.moveTo(grip.x, grip.y); ctx.lineTo(end.x, end.y); ctx.stroke();
         ctx.strokeStyle = ARM; ctx.lineWidth = r * 0.5;
         ctx.beginPath(); ctx.moveTo(grip.x, grip.y); ctx.lineTo(end.x, end.y); ctx.stroke();
       }
-      ctx.fillStyle = ARM;
-      ctx.beginPath(); ctx.arc(grip.x, grip.y, r * 0.3, 0, Math.PI * 2); ctx.fill();
+      // A fist wrapped round the grip (a second one just above it on two-handers).
+      ctx.fillStyle = ARM; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1.5;
+      const fists = arms.length > 1 ? [grip, { x: grip.x - ux * r * 0.55, y: grip.y - uy * r * 0.55 }] : [grip];
+      for (const f of fists) { ctx.beginPath(); ctx.ellipse(f.x, f.y, r * 0.5, r * 0.4, Math.atan2(uy, ux), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
       ctx.lineCap = 'butt';
     }
     ctx.strokeStyle = '#1c1c1e'; ctx.lineWidth = r * 0.17;
@@ -673,7 +684,8 @@ function createCourt() {
 
   function drawPlayer(side) {
     const p = pos[side];
-    const color = side === 0 ? COLORS.me : COLORS.opp;
+    const gold = prof[side] && prof[side].real; // real ATP players are drawn in gold
+    const color = gold ? '#ffd60a' : side === 0 ? COLORS.me : COLORS.opp;
     const [fx, fy, k] = P(p.x, p.y, 0);
     let top, below;
     if (camera() === 'top') {
@@ -691,12 +703,12 @@ function createCourt() {
       ctx.fillStyle = 'rgba(0,0,0,.3)';
       ctx.beginPath(); ctx.ellipse(fx, fy, bw * 0.9, bw * 0.3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = color;
-      ctx.beginPath(); ctx.roundRect(fx - bw / 2, hy, bw, fy - hy, bw / 2.2); ctx.fill();
-      ctx.beginPath(); ctx.arc(fx, headY, hr, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(fx - bw / 2, hy, bw, fy - hy, bw / 2.2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx, headY, hr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       top = headY - hr; below = P(p.x, p.y, 0.8)[1];
     }
-    ctx.fillStyle = 'rgba(255,255,255,.95)';
+    ctx.fillStyle = gold ? '#ffd60a' : 'rgba(255,255,255,.95)';
     ctx.font = `600 ${camera() === 'top' ? clamp(S * 0.62, 10, 14) : 13}px ${FONT}`;
     ctx.textAlign = 'center';
     ctx.fillText(names[side], fx, top - 5);
@@ -925,7 +937,7 @@ function createCourt() {
     const n = pt.len;
     const hitter = k => k % 2 === 0 ? server : returner;
     const base = () => Array.from({ length: n }, (_, k) => ({ by: hitter(k), kind: k === 0 ? 'serve' : 'rally' }));
-    if (pt.netcord && pt.netcord.result !== 'continue') {
+    if (pt.netcord && pt.netcord.result !== 'continue' && n >= 2) { // a serve off the tape is a let, never a net-cord winner
       const shots = base();
       shots[n - 1].kind = pt.netcord.result === 'over' ? 'cordOver' : 'cordBack';
       return { shots: [...pre, ...shots], end: pt.netcord.result === 'over' ? 'netcord' : 'netcordback', length: n };
@@ -1244,12 +1256,12 @@ function createCourt() {
           const line = sgn(bounce.x) * SINGLES;
           bounce.x = line + sgn(bounce.x) * (out ? rand(0.07, 0.13) : rand(-0.02, 0.025));
           bounce.y = clamp(bounce.y, -BASE + 0.5, BASE - 0.5);
-          reviewInfo = { axis: 'x', line, coord: bounce.x, along: rand(-0.08, 0.08), out };
+          reviewInfo = { axis: 'x', line, coord: bounce.x, along: rand(-0.08, 0.08), out, pt: { x: bounce.x, y: bounce.y } };
         } else {
           const line = sgn(bounce.y) * BASE;
           bounce.y = line + sgn(bounce.y) * (out ? rand(0.07, 0.13) : rand(-0.02, 0.025));
           bounce.x = clamp(bounce.x, -SINGLES + 0.3, SINGLES - 0.3);
-          reviewInfo = { axis: 'y', line, coord: bounce.y, along: rand(-0.08, 0.08), out };
+          reviewInfo = { axis: 'y', line, coord: bounce.y, along: rand(-0.08, 0.08), out, pt: { x: bounce.x, y: bounce.y } };
         }
       }
       // Still can't get there? Give the ball just enough extra time (at most 35% more) so they arrive
@@ -1522,14 +1534,15 @@ function createCourt() {
               }
             }
             // Backspin on drop shots: forward speed bleeds off, so it drops steeply after the net.
-            const uh = s.softShot ? 1 - (1 - u) ** 1.7 : u;
+            const uh = s.softShot ? 1 - (1 - u) ** 1.25 : u;
             setBall({ x: lerp(s.from.x, s.to0.x, uh), y: lerp(s.from.y, s.to0.y, uh) }, h);
           } else {
             if (!marked) {
               marks.push({ ...s.bounce, out: !isIn(s.bounce) }); marked = true;
               // Big and loud, every view: aces, drop-shot winners and passing-shot winners.
               const inside = isIn(s.bounce);
-              const pop = s.kind === 'ace' ? 'ACE!' : s.final && inside && s.goodDrop && s.kind === 'drop' ? 'DROPPER!' : s.final && inside && (s.passWin || s.kind === 'pass') ? 'WINNER!' : null;
+              const clean = s.final && inside && (s.beaten || s.passWin || ['winner', 'volley', 'pass', 'smash'].includes(s.kind));
+              const pop = s.kind === 'ace' ? 'ACE!' : clean && (s.kind === 'drop' || s.goodDrop) ? 'DROPPER!' : clean && s.kind !== 'serve' && s.kind !== 'underarm' ? 'WINNER!' : null;
               if (pop) banner = { text: pop, t0: clock(), big: true };
               if (o.cinematic && s.fx === 'shake') { cam.shake = 14; cam.shakeT0 = clock(); }
             }

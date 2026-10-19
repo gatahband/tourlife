@@ -4,7 +4,7 @@ const BADGES = [
   { id: 'first_win', icon: '✅', name: 'First Win', desc: 'Win your first match.', match: r => r.won },
   { id: 'comeback', icon: '🔄', name: 'Comeback Kid', desc: 'Win a match after losing the first set.', match: r => r.won && r.sets[0] && r.sets[0].games[0] < r.sets[0].games[1] },
   { id: 'bagel', icon: '🥯', name: 'Bagel Baker', desc: 'Win a set 6-0.', match: r => r.sets.some(s => s.games[0] === 6 && s.games[1] === 0) },
-  { id: 'marathon', icon: '⏱️', name: 'Marathon Man', desc: 'Win a match in a final-set tiebreak.', match: r => r.won && r.sets.length === 3 && !!r.sets[2].tb },
+  { id: 'marathon', icon: '⏱️', name: 'Marathon Man', desc: 'Win a match in a final-set tiebreak.', match: r => r.won && (r.sets.length === 3 || r.sets.length === 5) && !!r.sets[r.sets.length - 1].tb },
   { id: 'giant', icon: '🗡️', name: 'Giant Killer', desc: 'Beat the No. 1 or No. 2 seed.', match: r => r.won && r.opponent && r.opponent.seed && r.opponent.seed <= 2 },
   { id: 'rival', icon: '⚔️', name: 'Settling Scores', desc: 'Beat one of your rivals.', match: (r, c) => r.won && r.opponent && r.opponent.id && isRival(c, r.opponent.id) },
   { id: 'clutch', icon: '🧊', name: 'Ice in the Veins', desc: 'Win 3 big-point calls in one match.', match: r => r.calls && r.calls.won >= 3 },

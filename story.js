@@ -231,7 +231,7 @@ function callsLine(rec) {
 function adjustLine(rec) {
   if (!rec.adjusts) return '';
   return rec.adjusts.map(a => {
-    const sw = ['first', 'second', 'third'][a.after - 1] || 'set';
+    const sw = ['first', 'second', 'third', 'fourth'][a.after - 1] || 'set';
     const lead = a.score.split(' ').reduce((n, st) => { const [x, y] = st.split('-').map(Number); return n + (x > y ? 1 : -1); }, 0);
     const state = lead > 0 ? 'with a set in hand' : lead < 0 ? 'a set down' : 'level';
     const what = a.changes.length > 2 ? `${a.changes.slice(0, 2).join(', ')} and more` : a.changes.join(' and ');
@@ -242,10 +242,22 @@ function adjustLine(rec) {
   }).join(' ');
 }
 
+// Stepping up a level: your first match at a Challenger, on the ATP Tour, at a Masters or a Slam.
+const DEBUT_NAME = { CH: 'Challenger', ATP250: 'ATP Tour', ATP500: 'ATP 500', M1000: 'Masters 1000', GS: 'Grand Slam' };
+function debutLine(rec, ev) {
+  const d = rec.debut;
+  if (!d) return '';
+  const name = DEBUT_NAME[d.fam];
+  if (d.qual) return `This was your first ever ${name} qualifying match${rec.won ? ', and you won it' : ''}. ${rec.won ? 'The bigger stage suits you.' : 'Now you know what the level feels like.'}`;
+  const where = d.fam === 'GS' ? ` in ${ev.city}` : '';
+  return rec.won ? `It was your first ever ${name} main-draw match${where}, and you won it. A day to remember.`
+    : `It was your first ever ${name} main-draw match${where}. You lost, but you belong at this level now.`;
+}
+
 function matchStory(rec, ev, player) {
   const oppName = esc(shortName(rec.opponent));
   return [
-    `${openingLine(rec, ev, rec.opponent)} ${surfaceLine(rec, ev, player)}`,
+    `${openingLine(rec, ev, rec.opponent)} ${debutLine(rec, ev)} ${surfaceLine(rec, ev, player)}`,
     `${setsLine(rec, oppName)} ${swingLine(rec, oppName)} ${breakLine(rec, oppName)} ${extrasLine(rec, oppName)} ${styleLine(rec, oppName)}`.trim(),
     `${planLine(rec, oppName)} ${moraleLine(rec)} ${adjustLine(rec)} ${callsLine(rec)} ${mindLine(rec, player, oppName)} ${closingLine(rec)} ${typeof h2hStory === 'function' ? h2hStory(rec) : ''}`.trim(),
   ];
@@ -325,7 +337,7 @@ function matchSignals(rec, ev) {
   if (aces <= 1) sig.fewAces = `You hit ${aces === 0 ? 'no aces' : 'only one ace'}.`;
   const dip = rec.moments.find(x => x.who === 'you' && x.kind === 'dip');
   if (dip) sig.dip = `You ${dip.label} in the ${ORDINAL[dip.set - 1]} set.`;
-  if (rec.sets.length === 3) sig.decider = 'It went the distance: three sets.';
+  if (rec.sets.length === 3 || rec.sets.length === 5) sig.decider = `It went the distance: ${rec.sets.length === 5 ? 'five' : 'three'} sets.`;
   if (rec.stats.points + rec.oppStats.points > 150) sig.longRallies = 'A long, physical match.';
   const dp = rec.stats.dropPlayed || 0;
   if (dp >= 3 && (rec.stats.dropWon || 0) / dp < 0.4) sig.badDrops = `Only ${rec.stats.dropWon || 0} of ${dp} drop shots worked.`;

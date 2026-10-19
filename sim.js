@@ -252,7 +252,7 @@ function newMatch(a, b, rng = Math.random, track = false) {
   return {
     a, b, sets: [], games: [0, 0], tb: null, server: rng() < 0.5 ? 0 : 1,
     form: null, mood: [0, 0], moodLeft: [0, 0], totalGames: 0,
-    stats: [s(), s()], moments: [], winner: null, track, points: [],
+    stats: [s(), s()], moments: [], winner: null, track, points: [], bestOf: 3,
   };
 }
 
@@ -355,16 +355,21 @@ function tickMood(m) {
   for (const i of [0, 1]) if (m.moodLeft[i] > 0 && --m.moodLeft[i] === 0) m.mood[i] = 0;
 }
 
+// Sets needed to win the match (best of 3, or best of 5 at the Slams).
+const setsToWin = m => Math.ceil((m.bestOf || 3) / 2);
+// Tiebreak length: first to 10 in the fifth set of a best-of-five (the Grand Slam rule), else first to 7.
+const tbTarget = m => (m.bestOf || 3) === 5 && m.sets.length === 4 ? 10 : 7;
+
 // Who would win the set (and whether the match) by winning the next point, if anyone.
 function pressure(m, pts, tb) {
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
   for (const i of [0, 1]) {
     const o = 1 - i, p = pts[i] + 1;
-    const winsGame = tb ? p >= 7 && p - pts[o] >= 2 : p >= 4 && p - pts[o] >= 2;
+    const winsGame = tb ? p >= tbTarget(m) && p - pts[o] >= 2 : p >= 4 && p - pts[o] >= 2;
     if (!winsGame) continue;
     const g = m.games[i] + 1;
     if (!tb && !(g >= 6 && g - m.games[o] >= 2)) return null;
-    return { who: i, match: won[i] === 1 };
+    return { who: i, match: won[i] === setsToWin(m) - 1 };
   }
   return null;
 }
@@ -784,7 +789,7 @@ function* tiebreakGen(m, ps, ev, rng) {
     momentumPoint(m, ps, winner);
     pts[winner]++;
     m.stats[winner].points++;
-    const over = pts[winner] >= 7 && pts[winner] - pts[1 - winner] >= 2;
+    const over = pts[winner] >= tbTarget(m) && pts[winner] - pts[1 - winner] >= 2;
     if (over) { m.games[winner]++; m.totalGames++; }
     logPoint(m, { s, w: winner, ace: pt.how === 'ace', ...pt, bp: null, press, tb: true, pts: [...pts], end: over });
     if (over) {
@@ -822,8 +827,8 @@ function* setGen(m, ps, ev, rng = Math.random) {
     m.moments.push({ set: m.sets.length + 1, who: loser, kind: 'adapt', label: 'found answers to the game plan', at: m.points.length - 1 });
   }
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
-  if (won[0] === 2) m.winner = 0;
-  if (won[1] === 2) m.winner = 1;
+  if (won[0] === setsToWin(m)) m.winner = 0;
+  if (won[1] === setsToWin(m)) m.winner = 1;
   return set;
 }
 

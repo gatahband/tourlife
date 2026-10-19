@@ -26,6 +26,24 @@ const activeDeals = c => dealsOf(c).filter(d => d.until >= c.week);
 
 function bandPay(rank) { return rank ? (DEAL_BANDS.find(([r]) => rank <= r) || [0, 0])[1] : 0; }
 
+// Deals scale: weekly pay rises with your ranking after you sign (up to 2.5x), never falls below the base.
+function dealPay(c, d) {
+  const now = bandPay(currentRank(c)), then = bandPay(d.signedRank || 0);
+  return Math.round(d.weekly * (then && now > then ? Math.min(2.5, Math.sqrt(now / then)) : 1) / 10) * 10;
+}
+
+// Racket deals come with a frame built for your game. The higher you were ranked when you signed, the
+// more prestigious the frame, and the bigger the boost in matches.
+const RACKET_STAT = { gatex: 'serve', wilgatah: 'net', babolgat: 'ground' };
+const FRAME = rank => rank <= 20 ? ['Signature', 0.03] : rank <= 100 ? ['Tour Pro', 0.02] : rank <= 300 ? ['Pro', 0.012] : ['Club', 0.006];
+function racketBoost(c) {
+  const d = activeDeals(c).find(x => x.cat === 'racket');
+  if (!d || !RACKET_STAT[d.brand]) return null;
+  const [frame, pct] = FRAME(d.signedRank || 999);
+  return { stat: RACKET_STAT[d.brand], pct, frame, brand: brandOf(d.brand).name };
+}
+const boostText = (stat, pct, frame) => `${frame} frame: +${(pct * 100).toFixed(1)}% ${attrLabel(stat)} in matches`;
+
 // After a good week: maybe a brand calls with an offer (one at a time, one deal per category).
 function maybeOffer(c) {
   const rank = currentRank(c);
@@ -41,19 +59,19 @@ function maybeOffer(c) {
   const b = pick(Math.random, brands);
   const weekly = Math.max(50, Math.round(bandPay(rank) * CAT_PAY[cat] * (0.85 + Math.random() * 0.3) / 10) * 10);
   const weeks = pick(Math.random, [26, 39, 52]);
-  c.offer = { brand: b.id, cat, weekly, weeks, bonus: weekly * 4 };
+  c.offer = { brand: b.id, cat, weekly, weeks, bonus: weekly * 4, rank };
   c.lastOfferRank = rank;
 }
 
 function signDeal(c, o) {
-  dealsOf(c).push({ brand: o.brand, cat: o.cat, weekly: o.weekly, until: c.week + o.weeks, signed: c.week });
+  dealsOf(c).push({ brand: o.brand, cat: o.cat, weekly: o.weekly, until: c.week + o.weeks, signed: c.week, signedRank: o.rank || currentRank(c) });
   if (o.bonus) earn(c, o.bonus, `${brandOf(o.brand).name} signing bonus`);
 }
 
 // Weekly pay from every active deal; a note when one runs out.
 function payDeals(c) {
   for (const d of dealsOf(c)) {
-    if (d.until >= c.week) earn(c, d.weekly, `${brandOf(d.brand).name} (${CAT_LABEL[d.cat].toLowerCase()} deal)`);
+    if (d.until >= c.week) earn(c, dealPay(c, d), `${brandOf(d.brand).name} (${CAT_LABEL[d.cat].toLowerCase()} deal)`);
     else if (!d.ended) { d.ended = true; c.notice = `Your ${brandOf(d.brand).name} deal has ended. Keep winning and offers will come.`; c.lastOfferRank = null; }
   }
 }
@@ -65,7 +83,9 @@ function openOffer(c) {
     `<div class="offer"><div class="offerbadge">${brandBadge(b)}</div><h2 class="itop">${b.name} wants you</h2>` +
     `<p class="hint center"><i>"${b.line}"</i></p>` +
     `<p class="big center">A ${CAT_LABEL[o.cat].toLowerCase()} deal: <b>${money(o.weekly)} a week</b> for ${o.weeks} weeks, plus a <b>${money(o.bonus)}</b> signing bonus.</p>` +
-    `<p class="hint center">You can only wear one ${CAT_LABEL[o.cat].toLowerCase()} brand at a time.</p>` +
+    `<p class="hint center">📈 The pay rises as your ranking climbs (up to 2.5×).</p>` +
+    (o.cat === 'racket' && RACKET_STAT[o.brand] ? `<p class="center offerboost">🎾 ${boostText(RACKET_STAT[o.brand], FRAME(o.rank || currentRank(c))[1], FRAME(o.rank || currentRank(c))[0])}</p>` : '') +
+    `<div class="offerx"><span>Signing rules out, while the deal runs:</span>${BRANDS.filter(x => x.cat === o.cat && x.id !== o.brand).map(brandBadge).join('')}</div>` +
     `<div class="shrow helpnav"><button type="button" class="btn" id="ofYes">Sign the deal</button><button type="button" class="btn ghost" id="ofNo">Turn it down</button></div></div>`);
   const done = () => { c.offer = null; writeJSON(CAREER_KEY, c); closeModal(); renderTournaments(current.player); };
   $('ofYes').onclick = () => { signDeal(c, o); toast(`✍️ Signed with ${b.name}`, `${money(o.weekly)} a week`); done(); };
@@ -77,7 +97,8 @@ function sponsorsHtml(c) {
   const ds = activeDeals(c);
   return `<div class="deals"><h3 class="ssec">Sponsors</h3>` +
     (ds.length ? ds.map(d => { const b = brandOf(d.brand);
-      return `<div class="deal">${brandBadge(b)}<span>${CAT_LABEL[d.cat]} · <b>${money(d.weekly)}/week</b> · ${d.until - c.week} weeks left</span></div>`; }).join('')
+      const pay = dealPay(c, d), rb = d.cat === 'racket' ? racketBoost(c) : null;
+      return `<div class="deal">${brandBadge(b)}<span>${CAT_LABEL[d.cat]} · <b>${money(pay)}/week</b>${pay > d.weekly ? ' 📈' : ''} · ${d.until - c.week} weeks left${rb ? `<br><small>🎾 ${boostText(rb.stat, rb.pct, rb.frame)}</small>` : ''}</span></div>`; }).join('')
       : `<p class="hint">No deals yet. Break into the top 1,000 and brands will start calling.</p>`) +
     (c.offer ? `<button type="button" class="btn small" id="hOffer">📩 You have an offer from ${brandOf(c.offer.brand).name}</button>` : '') + `</div>`;
 }

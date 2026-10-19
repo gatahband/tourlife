@@ -21,6 +21,22 @@ function fatigueBar(f) {
   return `<div class="fbar"><span>Fatigue</span><div class="ftrack"><i class="${cls}" style="width:${clamp(f, 0, 100)}%"></i></div><b>${Math.round(f)} · ${fatigueLabel(f)}</b></div>`;
 }
 
+// A training day adds fatigue (overnight recovery only takes the edge off); a rest day clears it.
+function drillFatigue(d, c, p) {
+  const recover = DAILY_RECOVERY + recoveryBoost(c) + staminaRecovery(p);
+  return d.fatigue > 0 ? Math.max(3, Math.round(d.fatigue - recover * 0.4)) : -Math.round(recover - d.fatigue);
+}
+
+// Your whole build while you train: every stat, what the last session moved, and your playstyle.
+function buildPanel(p, last) {
+  const style = detectStyles(p.attrs, p.fav)[0];
+  return `<div class="tbuild"><div class="tbhead"><b>Your build</b><span>${style.emoji || ''} ${style.name}</span></div>` +
+    ATTRS.map(([k, label]) => {
+      const v = p.attrs[k], up = last && last.stats.includes(k);
+      return `<div class="tbrow${up ? ' up' : ''}"><span>${label}</span><div class="tbbar"><i style="width:${clamp(v, 0, 100)}%"></i></div><b>${v.toFixed(1)}${up ? ` <small>+${pctText(last.gain)}</small>` : ''}</b></div>`;
+    }).join('') + `</div>`;
+}
+
 function renderTraining() {
   const c = current.career, p = current.player, dt = c.downtime;
   if (!dt) { renderTournaments(p); showScreen('home'); return; }
@@ -30,7 +46,8 @@ function renderTraining() {
   $('tMeta').textContent = `Week ${weekInSeason(c.week)} · ${monthOf(c.week)} · ${where[1]} ${where[2]}`;
   $('tStatus').innerHTML = fatigueBar(p.fatigue || 0) +
     `<div class="tovr">OVR <b>${overall(p).toFixed(1)}</b> · ${levelOf(overall(p)).name}</div>` +
-    `<p class="hint">${left} free day${left === 1 ? '' : 's'} left${dt.next ? ` · then ${flagOf(dt.next.nation)} ${dt.next.city} (${tierLabel(dt.next.tier)}, ${surfaceLabel(dt.next.surface)})` : ''}.</p>`;
+    `<p class="hint">${left} free day${left === 1 ? '' : 's'} left${dt.next ? ` · then ${flagOf(dt.next.nation)} ${dt.next.city} (${tierLabel(dt.next.tier)}, ${surfaceLabel(dt.next.surface)})` : ''}.</p>` +
+    buildPanel(p, dt.lastSession);
 
   const box = $('tBody');
   // Step 1: where to spend the days.
@@ -92,7 +109,7 @@ function renderTraining() {
       const after = d.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${range}</b></span>`).join('');
       return `<button type="button" class="drill" data-drill="${d.id}"><span class="ticon">${d.icon}</span><b>${d.title}</b>` +
         `<small>${d.desc}</small><div class="chips">${after}</div>` +
-        `<div class="dfat">${d.fatigue > 0 ? `+${d.fatigue}` : d.fatigue} fatigue</div></button>`;
+        `<div class="dfat">${(f => f > 0 ? `+${f}` : `${f}`)(drillFatigue(d, c, p))} fatigue</div></button>`;
     }).join('')}</div>` +
     (burnout(c) < 1 ? `<p class="hint warnline">🔥 Burnout: ${idleWeeks(c)} weeks in a row without an event, so training only counts ${Math.round(burnout(c) * 100)}% this week. Play a tournament to reset it.</p>` : '') +
     (rustOf(c) >= 0.001 ? `<p class="hint warnline">🧊 ${rustText(c)}</p>` : '') +
@@ -112,9 +129,10 @@ function applyDay(drillId, gain = rollTrain(false)) {
   const c = current.career, p = current.player, dt = c.downtime;
   const d = DRILLS.find(x => x.id === drillId);
   const before = overall(p);
-  p.fatigue = clamp((p.fatigue || 0) - DAILY_RECOVERY - recoveryBoost(c) - staminaRecovery(p) + d.fatigue, 0, 100);
+  p.fatigue = clamp((p.fatigue || 0) + drillFatigue(d, c, p), 0, 100);
   gain *= burnout(c); // training week after week without playing counts for less
   for (const k of d.stats) applyGain(p.attrs, k, gain);
+  dt.lastSession = d.stats.length ? { stats: d.stats, gain } : null;
   p.playstyle = detectStyles(p.attrs, p.fav)[0].name;
   dt.used++;
   // Hard sessions on a tired body can end in an injury: the rest of the week is rest.

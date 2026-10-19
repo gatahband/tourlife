@@ -14,18 +14,24 @@ function replayMatch(rp) {
   return { m, ps, sets };
 }
 
-function watchRealMatch(rec) {
+// opts.neutral: the admin streaming any match (both players by name, no result shown up front).
+// opts.onDone when it finishes; opts.onNext offers "Next match"; opts.onClose when the window closes.
+function watchRealMatch(rec, opts = {}) {
   const rp = rec.replay;
   if (!rp) return;
   const { m, ps, sets } = replayMatch(rp);
+  const neutral = !!opts.neutral;
   const me = rp.side, op = 1 - me, view = i => (i === me ? 0 : 1);
-  const same = scoreLine(m, me) === rec.score;
-  const name = i => (i === me ? 'You' : shortName(ps[i]));
+  const same = neutral || scoreLine(m, me) === rec.score;
+  const name = i => (i === me && !neutral ? 'You' : shortName(ps[i]));
+  const label = i => (i === me && !neutral ? `${flagOf(ps[i].nation)} You` : `${flagOf(ps[i].nation)} ${esc(ps[i].name)}`);
   let ang = readJSON('tourlife.replayAngle') || 'broadcast', speed = readJSON(SPEED_KEY) || 1, paused = false, closed = false, skipTo = null;
 
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
-    `<h2 class="itop">${rec.won ? '✅' : '❌'} ${esc(rec.round)} vs ${flagOf(ps[op].nation)} ${esc(ps[op].name)}</h2>` +
-    `<p class="hint center">${esc(rp.ev.city || '')} · ${surfaceLabel(rp.ev.surface)}${rp.ev.indoor ? ' indoor' : ''} · Final score ${rec.score}</p>` +
+    (neutral ? `<h2 class="itop">${esc(rec.round)}: ${label(0)} vs ${label(1)}</h2>`
+      : `<h2 class="itop">${rec.won ? '✅' : '❌'} ${esc(rec.round)} vs ${flagOf(ps[op].nation)} ${esc(ps[op].name)}</h2>`) +
+    `<p class="hint center">${esc(rec.event || rp.ev.city || '')} · ${surfaceLabel(rp.ev.surface)}${rp.ev.indoor ? ' indoor' : ''}${neutral ? '' : ` · Final score ${rec.score}`}</p>` +
+    `<button type="button" class="btn small ghost rwfs" id="rwFs">⛶ Full screen</button><div id="rwStage">` +
     (same ? '' : `<p class="hint center warnline">This match was played on an older version, so the replay may differ a little from the real result.</p>`) +
     `<table class="board" id="rwBoard"></table>` +
     `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
@@ -33,8 +39,12 @@ function watchRealMatch(rec) {
     `<div class="seg" id="rwSpeed" style="grid-template-columns:repeat(3,1fr)">${[1, 2, 4].map(x => `<button type="button" data-s="${x}" class="${x === speed ? 'on' : ''}">${x}×</button>`).join('')}</div></div>` +
     `<canvas id="rwCourt" class="court"></canvas><div id="rwCall" class="call"></div>` +
     `<div class="btn-row three"><button type="button" class="btn ghost" id="rwPause">❚❚ Pause</button>` +
-    `<button type="button" class="btn ghost" id="rwGame">⏭ Next game</button><button type="button" class="btn ghost" id="rwSet">⏩ Next set</button></div>`,
-    { wide: true, onClose: () => { closed = true; ReplayCourt.skip = true; ReplayCourt.pauseCheck = () => false; } });
+    `<button type="button" class="btn ghost" id="rwGame">⏭ Next game</button><button type="button" class="btn ghost" id="rwSet">⏩ Next set</button></div>` +
+    (opts.onNext ? `<button type="button" class="btn" id="rwNext" hidden>Next match ›</button>` : '') + `</div>`,
+    { wide: true, onClose: () => { closed = true; ReplayCourt.skip = true; ReplayCourt.pauseCheck = () => false; if (!going && opts.onClose) opts.onClose(); } });
+  let going = false;
+  if ($('rwNext')) $('rwNext').onclick = () => { going = true; closeModal(); opts.onNext(); };
+  $('rwFs').onclick = () => { const st = $('rwStage'); (st.requestFullscreen || st.webkitRequestFullscreen).call(st); setTimeout(() => ReplayCourt.resize(), 200); };
 
   ReplayCourt.skip = false;
   ReplayCourt.mount($('rwCourt'));
@@ -43,10 +53,10 @@ function watchRealMatch(rec) {
   ReplayCourt.pauseCheck = () => paused;
   const prof = p => ({ real: !!p.atpRank, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
     style: detectStyles(p.attrs, p.fav)[0].name });
-  ReplayCourt.scene(rp.ev.surface, rp.ev.indoor, ['You', shortName(ps[op])], [prof(ps[me]), prof(ps[op])]);
+  ReplayCourt.scene(rp.ev.surface, rp.ev.indoor, [name(me), name(op)], [prof(ps[me]), prof(ps[op])]);
 
   const board = (done, games, labels, server) => {
-    const row = (i, v) => `<tr><th><span class="serve-dot${server === v ? '' : ' off'}"></span>${i === me ? `${flagOf(ps[i].nation)} You` : `${flagOf(ps[i].nation)} ${esc(ps[i].name)}`}</th>` +
+    const row = (i, v) => `<tr><th><span class="serve-dot${server === v ? '' : ' off'}"></span>${label(i)}</th>` +
       done.map(st => `<td class="${st.games[i] > st.games[1 - i] ? 'w' : ''}">${st.games[i]}</td>`).join('') +
       (games ? `<td class="cur">${games[i]}</td><td class="pts">${labels[v]}</td>` : '') + `</tr>`;
     $('rwBoard').innerHTML = row(me, 0) + row(op, 1);
@@ -93,6 +103,9 @@ function watchRealMatch(rec) {
       if (skipTo === 'set') skipTo = null;
       board(done, null, null, -1);
     }
-    if (!closed) $('rwCall').textContent = `${rec.won ? 'You won' : `${shortName(ps[op])} won`} ${rec.score}`;
+    if (closed) return;
+    $('rwCall').textContent = neutral ? `${shortName(ps[m.winner])} wins ${scoreLine(m, m.winner)}` : `${rec.won ? 'You won' : `${shortName(ps[op])} won`} ${rec.score}`;
+    if (opts.onDone) opts.onDone();
+    if ($('rwNext')) $('rwNext').hidden = false;
   })();
 }

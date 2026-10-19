@@ -427,6 +427,7 @@ function playAdminRound(ev) {
     const m = newMatch(slot.a, slot.b, rng, true);
     playMatch(m, ps, ev, rng);
     slot.recs = [0, 1].map(i => ps[i].real ? { ...realMatchRec(m, i, ps, ROUND_CODE[round.length * 2] || 'R32'), replay: { ...snap, side: i } } : null);
+    slot.replay = { ...snap, side: 0 }; // every match can be watched from the admin bracket
     slot.winner = m.winner === 0 ? slot.a : slot.b;
     slot.score = scoreLine(m, m.winner);
     slot.stats = [0, 1].map(i => ({ aces: m.stats[i].aces, df: m.stats[i].df, winners: m.stats[i].winners, ue: m.stats[i].ue,
@@ -473,6 +474,9 @@ function renderAdDraw(id) {
   const last = ev.rounds[ev.rounds.length - 1];
   const done = last.length === 1 && last[0].winner !== undefined;
   const nextName = roundName(last.length * 2);
+  // Streaming mode: results stay hidden in the bracket until you've watched that match.
+  const hide = !!readJSON('tourlife.adHide');
+  const shown = s => s.winner !== undefined && (!hide || s.watched);
   const who = i => {
     const e = ev.entrants[i];
     return `${e.seed ? `<i>${e.seed}</i>` : ''}${flagOf(e.nation)} ${e.real ? `<b>⭐ ${esc(e.name)}</b>` : esc(e.name)}`;
@@ -489,9 +493,11 @@ function renderAdDraw(id) {
     `</section><div class="adbracket">${ev.rounds.map((round, r) =>
       `<div class="adround"><h4>${roundName(round.length * 2)}</h4><div class="adms">${round.map((s, k) =>
         `<div class="admatch${s.winner !== undefined ? ' click' : ''}" data-m="${r}-${k}">` +
-          `<div class="${s.winner === s.a ? 'won' : s.winner !== undefined ? 'lost' : ''}">${who(s.a)}</div>` +
-          `<div class="${s.winner === s.b ? 'won' : s.winner !== undefined ? 'lost' : ''}">${who(s.b)}</div>` +
-          (s.score ? `<small>${s.score}</small>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
+          `<div class="${shown(s) && s.winner === s.a ? 'won' : shown(s) ? 'lost' : ''}">${who(s.a)}</div>` +
+          `<div class="${shown(s) && s.winner === s.b ? 'won' : shown(s) ? 'lost' : ''}">${who(s.b)}</div>` +
+          (s.score && shown(s) ? `<small>${s.score}</small>` : s.winner !== undefined ? '<small>🙈 result hidden</small>' : '') +
+          (s.replay ? `<button type="button" class="btn small adwatch" data-w="${r}-${k}">▶ Watch${s.watched ? ' again' : ''}</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
+    `<label class="chk adhide"><input type="checkbox" id="adHide" ${hide ? 'checked' : ''}> 🙈 Hide results until watched (for streaming)</label>` +
     `<button type="button" class="link" id="adBackList">All tournaments</button>`;
   if (!done) {
     $('adRound').onclick = () => { playAdminRound(ev); saveAdminEvent(ev); renderAdDraw(id); };
@@ -501,9 +507,21 @@ function renderAdDraw(id) {
     };
   }
   $('adBackList').onclick = () => renderAdmin();
+  $('adHide').onchange = e => { writeJSON('tourlife.adHide', e.target.checked); renderAdDraw(id); };
+  // Watch a match, then (optionally) roll straight on to the next one in the bracket.
+  const order = ev.rounds.flatMap((round, r) => round.map((s, k) => [r, k])).filter(([r, k]) => ev.rounds[r][k].replay);
+  const watch = (r, k) => {
+    const s = ev.rounds[r][k], idx = order.findIndex(([a, b]) => a === r && b === k), nxt = order[idx + 1];
+    watchRealMatch({ replay: s.replay, score: s.score, round: roundName(ev.rounds[r].length * 2), event: ev.name },
+      { neutral: true, onDone: () => { s.watched = true; saveAdminEvent(ev); },
+        onNext: nxt ? () => watch(...nxt) : null, onClose: () => renderAdDraw(id) });
+  };
   $('adBody').querySelector('.adbracket').onclick = e => {
+    const w = e.target.closest('.adwatch');
+    if (w) { const [r, k] = w.dataset.w.split('-').map(Number); watch(r, k); return; }
     const b = e.target.closest('.admatch.click');
     if (!b) return;
+    if (hide && !ev.rounds[b.dataset.m.split('-')[0]][b.dataset.m.split('-')[1]].watched) return;
     const [r, k] = b.dataset.m.split('-').map(Number), s = ev.rounds[r][k];
     const W = ev.entrants[s.winner], L = ev.entrants[s.winner === s.a ? s.b : s.a];
     const st = s.stats || [{}, {}], wi = s.winner === s.a ? 0 : 1, li = 1 - wi;

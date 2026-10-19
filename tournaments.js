@@ -1680,8 +1680,8 @@ function renderPoints() {
     const result = last.gameEnd
       ? `<span class="pres${last.broke ? ' brk' : ''}">${last.game} · ${esc(last.winner || '')} ${last.tb ? 'won the tiebreak' : last.broke ? 'broke' : 'held'}</span>` : '';
     const chips = g.pts.map(({ r, i }) =>
-      `<button type="button" class="pchip${r.highlight ? ' hl' : ''}" data-i="${i}" title="${esc(r.call || (r.gameEnd ? 'Game point' : ''))}">` +
-      `${r.highlight ? HL_ICON[r.highlight] + ' ' : ''}${r.gameEnd ? (r.tb ? 'TB' : 'Game') : r.label}${r.text ? `<small class="pdesc">${esc(shortHow(r.text))}</small>` : ''}</button>`).join('');
+      `<button type="button" class="pchip${r.highlight ? ' hl' : ''}" data-i="${i}" title="${esc(r.text ? shortHow(r.text) : r.call || (r.gameEnd ? 'Game point' : ''))}">` +
+      `${r.highlight ? HL_ICON[r.highlight] + ' ' : ''}${r.gameEnd ? (r.tb ? 'TB' : 'Game') : r.label}</button>`).join('');
     return `<div class="pgame"><div class="plabel2"><b>${title}</b>${sub}</div><div class="pchips">${chips}</div>${result}</div>`;
   }).join('')).join('');
   box.scrollTop = box.scrollHeight;

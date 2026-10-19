@@ -676,10 +676,13 @@ function autopilotNote() {
 // part of a season is fine. The real cost is losing a set and changing nothing: the next set is played
 // −2% on points (−1.2% if you came in with a prepared plan). Full Match never stops at set breaks, so a
 // lost set there always counts as no change.
-const SIM_PEN = 0.005, STUCK_PEN = 0.02;
+// Simulating plays you on autopilot: −4% on points, so a simmed match only goes your way if you're clearly
+// the better player. Watching three full games of the match earns full credit (no autopilot cost after that).
+const SIM_PEN = 0.04, STUCK_PEN = 0.02;
+const watchCredit = entry => (entry.live.gamesWatched || 0) >= WATCH_GAMES;
 function autopilotPenalty(entry, watching) {
   const { m } = entry.live, me = m.a === 0 ? 0 : 1;
-  let pen = (watching ? 0 : SIM_PEN) + rustOf(current.career);
+  let pen = (watching || watchCredit(entry) ? 0 : SIM_PEN) + rustOf(current.career);
   const last = m.sets[m.sets.length - 1];
   const lostLast = last && last.games[me] < last.games[1 - me];
   const changed = (entry.live.adjusts || []).some(a => a.after === m.sets.length);
@@ -931,7 +934,8 @@ async function playOneSet(animate = true) {
     anim.running = true; anim.live = true;
     renderMatch();
     const A = makeAnimator(m.sets.slice(), m.sets.length + 1);
-    let step = 0;
+    let step = 0, lastSim = 0;
+    const fixedPen = ps[me].focusPen; // rust and a stuck plan; the autopilot part is decided point by point
     set = await playSetLive(m, ps, ev, async info => {
       step++;
       const fresh = m.points.slice(shown);
@@ -944,6 +948,16 @@ async function playOneSet(animate = true) {
       }
       shown = m.points.length;
       if (shown > (L.shownSaved || 0)) { L.shownSaved = shown; writeJSON(ENTRY_KEY, entry); }
+      // Autopilot, point by point: skipping through points (without three watched games yet) plays you flat.
+      // Recorded, so a refresh replays the set the same way.
+      let sim;
+      if (shown < target) { const r = (L.calls || []).filter(c => c.id === 'pen' && c.step <= step).slice(-1)[0]; sim = r ? r.v : 0; }
+      else {
+        sim = !Court.skip || watchCredit(entry) ? 0 : SIM_PEN;
+        if (sim !== lastSim) { L.calls = [...(L.calls || []), { step, id: 'pen', v: sim }]; }
+      }
+      lastSim = sim;
+      ps[me].focusPen = fixedPen + sim;
       // Changeover (after the first game, then every two), at the top level: a chance to adjust the plan.
       const lastPt = fresh[fresh.length - 1];
       if (lastPt && lastPt.end && !lastPt.tb && (lastPt.games[0] + lastPt.games[1]) % 2 === 1 && changeoversOn(entry)) {
@@ -954,7 +968,7 @@ async function playOneSet(animate = true) {
       }
       if (info.bp !== null || info.press) {
         if (shown < target) {
-          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan'), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
+          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan' && c.id !== 'pen'), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
           if (rc && rc.id === 'off') anim.noCalls = true;
           if (call) makeCall(m, ps, me, call);
         } else { anim.step = step; await bigPoint(info, ps, me); }
@@ -1019,7 +1033,7 @@ function bigPoint(info, ps, me) {
       if (id === 'off') anim.noCalls = true;
       // Remember the call, so a refresh mid-set replays the point the same way.
       const L = current.entry && current.entry.live;
-      if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step || c.id === 'plan'); L.calls.push({ step: anim.step, id }); }
+      if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step || c.id === 'plan' || c.id === 'pen'); L.calls.push({ step: anim.step, id }); }
       const call = calls.find(c => c.id === id);
       if (call) makeCall(m, ps, me, call);
       box.hidden = true; box.onclick = null;

@@ -58,6 +58,8 @@ function scoutDetailHtml(o) {
     `On big points: <b>${attr(o, 'mental') < 52 ? 'tightens up (go after them)' : attr(o, 'mental') > 66 ? 'raises their level (stay solid)' : 'plays them like any other point'}</b>`,
     `Rallies: <b>${pl.aggression === 'aggressive' ? 'goes for it early' : pl.aggression === 'patient' ? 'happy to grind' : 'mixes it up'}</b>, ${planLabel('spin', pl.spin).toLowerCase()} spin`,
   ];
+  const qs = quirksOf(o);
+  lines.push(qs.length ? `Hidden strength${qs.length > 1 ? 's' : ''}: <b>${qs.map(q => q.text).join('; ')}</b>` : 'Hidden strengths: <b>none found</b>');
   return `<div class="scoutx"><h4 class="sh4">🔎 Detailed scouting</h4><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul></div>`;
 }
 

@@ -262,6 +262,9 @@ function initForm(m, ps, rng) {
   // How well each player's game plan comes off today. 1 = as expected; it can click (up to 2x)
   // or flop and even backfire (below 0). Smarter players execute a little more reliably.
   m.exec = ps.map(p => rollExec(p, rng));
+  // A textbook (coach-copied) plan is what the other camp prepared for: it comes off less well from the
+  // start, more so the higher the level.
+  ps.forEach((p, i) => { if (p.textbook) m.exec[i] *= 1 - 0.3 * p.textbook * Math.min(1.5, ADAPT_RATE[advTier] || 1); });
   // Each player's playstyle for this match: it shapes how their points are played (see servePoint).
   m.styles = ps.map(p => typeof detectStyles === 'function' ? detectStyles(p.attrs, p.fav)[0].name : null);
 }
@@ -310,6 +313,36 @@ const hasPlan = p => Object.entries(planOf(p)).some(([k, v]) => v !== DEFAULT_PL
 function fatigue(m, p) {
   const pace = { conserve: 0.5, normal: 1, hustle: 1.6 }[advPlan(p).energy] || 1;
   return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001 * pace;
+}
+
+// --- Hidden strengths --------------------------------------------------------------------------
+// Many players have a strength their stats don't show, so a textbook plan can walk straight into it.
+// Coaches read the stats; detailed scouting (or watching closely) finds these.
+const QUIRKS = [
+  { id: 'highballs', key: 'depth', val: 'high', text: 'loves high balls: moonballs sit up for them' },
+  { id: 'passer', key: 'net', val: 'often', text: 'is a superb passer: net rushers get punished' },
+  { id: 'pace', key: 'spin', val: 'flat', text: 'feeds on pace: flat hitting plays into their hands' },
+  { id: 'readserve', key: 'serve', val: 'big', text: 'reads the big serve and returns it well' },
+  { id: 'disguise', key: 'wing', val: 'weak', text: 'is solid on their "weak" wing: they have worked on it' },
+  { id: 'clutch', key: 'pressure', val: 'broke', text: 'loves it when you go for broke on big points' },
+  { id: 'engine', key: 'energy', val: 'hustle', text: 'never tires: hustling just burns your own legs' },
+  { id: 'counter', key: 'aggression', val: 'aggressive', text: 'counterpunches brilliantly against attackers' },
+  { id: 'dropread', key: 'drops', val: 'often', text: 'gets to drop shots in a flash' },
+  { id: 'jammer', key: 'returnPos', val: 'inside', text: 'jams anyone who stands inside to return' },
+];
+function quirksOf(p) {
+  if (!p || p.isPlayer || p.real) return [];
+  let h = 2166136261;
+  for (const ch of String(p.name || '') + 'qk') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const n = h % 100 < 35 ? 0 : h % 100 < 80 ? 1 : 2, a = (h >>> 8) % QUIRKS.length, b = (a + 1 + ((h >>> 16) % (QUIRKS.length - 1))) % QUIRKS.length;
+  return [QUIRKS[a], QUIRKS[b]].slice(0, n);
+}
+// Does A's plan play into one of B's hidden strengths?
+function quirkHits(A, B) {
+  const qs = quirksOf(B);
+  if (!qs.length) return [];
+  const pl = { ...planOf(A), ...advPlan(A, B) }, g = wingGap(B);
+  return qs.filter(q => q.val === 'weak' ? (pl.wing === 'bh' && g > 0.15) || (pl.wing === 'fh' && g < -0.1) : pl[q.key] === q.val);
 }
 
 // --- Adapting --------------------------------------------------------------------------------
@@ -388,7 +421,7 @@ function advEdge(m, A, B, ev, clutch) {
     if (pl.pressure === 'broke') e += clamp(0.0012 * (55 - attr(B, 'mental')) + 0.0006 * (attr(A, 'mental') - 60), -0.03, 0.03);
     if (pl.pressure === 'safe') e += clamp(0.0006 * (attr(B, 'mental') - 55), -0.012, 0.012);
   }
-  return e;
+  return A.textbook && e > 0 ? e * (1 - 0.6 * A.textbook) : e; // a copied plan's edges are expected (and partly covered)
 }
 
 // Lefty serving to a righty: the slice out wide on the ad side is the classic weapon.
@@ -408,7 +441,8 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
     + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
     + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch) // advanced plan (coach unlocks)
-    + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0); // week's preparation (prep.js)
+    + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
+    - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length); // walking into a hidden strength
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;
@@ -909,7 +943,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
     // At tour level, a player falling behind mid-set may adjust right away.
     const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
     if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
-      && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+      && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0))) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
   }
   const set = { games: [...m.games], tb };
   // A lead of 3+ games (or a break-up 5-3) that got away.
@@ -921,7 +955,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
   // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
   // and the higher the level, the more often it happens.
   const winner = 1 - loser;
-  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate()) adaptTo(m, ps, loser, winner, m.sets.length + 1);
+  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate() * (1 + 0.6 * (ps[winner].textbook || 0))) adaptTo(m, ps, loser, winner, m.sets.length + 1);
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
   if (won[0] === setsToWin(m)) m.winner = 0;
   if (won[1] === setsToWin(m)) m.winner = 1;

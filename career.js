@@ -561,6 +561,11 @@ function liveAdvice(m, ps, me, ev) {
   const ad = lastAdapt(m, me);
   const cts = ad ? counters(ad.key, cur).map(c => ({ ...c, plan: Object.fromEntries(Object.entries(c.plan).filter(([k, v]) => cur[k] !== v)) })).filter(c => Object.keys(c.plan).length) : [];
   if (ad && cts.length) tips.push(`${shortName(O)} ${ad.label}. Two ways to answer it (buttons below).`);
+  // A few games in, the Master coach spots any hidden strength you're playing into.
+  if (m.totalGames >= 4) for (const q of quirkHits(A, O)) {
+    const fix = q.key === 'wing' ? 'neutral' : DEFAULT_PLAN[q.key];
+    if (tips.length < 3 && plan[q.key] === undefined) { plan[q.key] = fix; tips.push(`Careful: ${shortName(O)} ${q.text}. Switch ${GAME_PLAN.find(g => g.key === q.key).label.toLowerCase()} to ${planLabel(q.key, fix).toLowerCase()}.`); }
+  }
   const pct = (a, b) => (b ? a / b : 0);
   const set = (k, v, why) => { if (tips.length < 3 && cur[k] !== v && plan[k] === undefined) { plan[k] = v; tips.push(why); } };
   // Their serve is hurting you.

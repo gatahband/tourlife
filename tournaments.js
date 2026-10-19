@@ -564,6 +564,7 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
       (coach ? `<td class="them">${planLabel(g.key, theirs[g.key])}</td>` : '') + `</tr>`;
   }).join('');
   const table = `<table class="ptable"><thead><tr><th></th><td>You</td>${coach ? '<td>Coach says</td><td class="them">They play</td>' : ''}</tr></thead><tbody>${rows}</tbody></table>`;
+  const tbNote = coach ? `<p class="hint">Your coach reads the stats. Copy the plan word for word and smart opponents read it faster, and some players have strengths no stat shows. Make it your own.</p>` : '';
   const note = !coach ? `<p class="hint coachtease">🧑‍🏫 Hire a coach (Home → Money &amp; Team) to see how they play and get a counter-plan.</p>`
     : diffs.length ? `<p class="coachsays">🧑‍🏫 ${titleCase(teamOf(c, 'coach').name)} suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'} (highlighted).</p>`
     : `<p class="coachsays ok">🧑‍🏫 ${titleCase(teamOf(c, 'coach').name)}: Your plan is spot on for this one.</p>`;
@@ -575,7 +576,7 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
     sec('Conditions & Matchup', weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
     sec('Know Your Opponent', know) +
     sec('How To Beat Them', beat) +
-    sec('Your Game Plan', note + table + btns) + `</div>`;
+    sec('Your Game Plan', note + table + tbNote + btns) + `</div>`;
 }
 
 function bindPrematch(entry, oi, rerender) {
@@ -918,7 +919,14 @@ async function playOneSet(animate = true) {
   const rb = typeof racketBoost === 'function' ? racketBoost(current.career) : null;
   if (rb) { ps[me].baseAttrs = { ...ps[me].attrs }; ps[me].attrs[rb.stat] = Math.min(99, ps[me].attrs[rb.stat] * (1 + rb.pct)); }
   { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge; ps[me].prepClutch = pe.clutch; } // this week's preparation
-  ps[me].advLevel = teamLevel(current.career, 'coach'); // which advanced plan settings your coach has unlocked
+  ps[me].advLevel = teamLevel(current.career, 'coach');
+  // Copying the coach's plan word for word is textbook, and smart opponents read textbook plans faster.
+  if (hasTeam(current.career, 'coach')) {
+    const cp = coachPlan(ps[op], ev, ps[me]), mine = planOf(ps[me]), lv = ps[me].advLevel;
+    // How close to the coach's plan, from 0 (your own) to 1 (a straight copy). Changing one setting isn't enough.
+    const keys = GAME_PLAN.filter(g => !(g.coach && lv < g.coach)), same = keys.filter(g => cp[g.key] === mine[g.key]).length / keys.length;
+    ps[me].textbook = clamp((same - 0.6) / 0.4, 0, 1);
+  } else ps[me].textbook = 0; // which advanced plan settings your coach has unlocked
   // Your plan as the set began (a changeover can change it mid-set; a replay must start from the same one).
   if (L.planAtStart) ps[me].plan = JSON.parse(L.planAtStart); else L.planAtStart = JSON.stringify(ps[me].plan || planOf(ps[me]));
   const before = JSON.parse(JSON.stringify(m.stats));
@@ -991,6 +999,9 @@ async function playOneSet(animate = true) {
     const who = mo.who === me ? 'You' : esc(ps[op].name);
     lines.push(`${momentEmoji(mo, ps[mo.who])} ${who} ${moodText(mo, mo.who === me)}.${mo.effect ? ` <small class="mfx ${mo.kind === 'surge' ? 'up' : 'down'}">${mo.effect}</small>` : ''}`);
   }
+  // Playing into a hidden strength: after the set, you notice.
+  const hits = quirkHits(ps[me], ps[op]).filter(q => !(L.seenQuirks || []).includes(q.id));
+  if (hits.length) { L.seenQuirks = [...(L.seenQuirks || []), ...hits.map(q => q.id)]; lines.push(...hits.map(q => `🔍 You notice: ${esc(shortName(ps[op]))} ${q.text}.`)); }
   log.push(lines.join('<br>'));
   if (m.winner !== null) concludeMatch();
   const points = m.points;

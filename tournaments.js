@@ -1250,7 +1250,7 @@ function renderMatch() {
   $('mCtl').innerHTML = '';
   $('mCourtWrap').classList.toggle('paused', anim.paused);
   // Playback speed: a column down the right side of the court (GATAH VISION has its own real-time / slow-mo).
-  $('mSpeed').hidden = false;
+  $('mSpeed').hidden = Court.view === 'gatah';
   $('mSpeed').innerHTML = [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
   if (anim.running) {
     // While a set plays, its controls sit on the court itself.
@@ -1609,7 +1609,7 @@ function renderGvBar() {
   const bar = $('mGvBar'), spd = $('mGvSpeed');
   const on = Court.view === 'gatah';
   bar.hidden = spd.hidden = !on;
-  if ($('mSpeed')) $('mSpeed').hidden = false;
+  if ($('mSpeed')) $('mSpeed').hidden = on; // in GATAH VISION the speeds join real time / slow-mo in one menu
   const cam = { angle: 'broadcast', slow: 1, ...readJSON(GV_KEY) };
   if (!on) return;
   Court.setAngle(cam.angle === 'broadcast' ? null : cam.angle);
@@ -1618,8 +1618,13 @@ function renderGvBar() {
   bar.innerHTML = [['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
     .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === cam.angle ? 'on' : ''}">${l}</button>`).join('');
   spd.innerHTML = [[1, 'Real time'], [2.5, 'Slow-mo']]
-    .map(([v, l]) => `<button type="button" data-s="${v}" class="${v === cam.slow ? 'on' : ''}">${l}</button>`).join('');
-  spd.onclick = e => bar.onclick(e);
+    .map(([v, l]) => `<button type="button" data-s="${v}" class="${v === cam.slow ? 'on' : ''}">${l}</button>`).join('') +
+    `<i class="segsep"></i>` + [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
+  spd.onclick = e => {
+    const b = e.target.closest('[data-speed]');
+    if (b) { anim.speed = +b.dataset.speed; writeJSON(SPEED_KEY, anim.speed); renderGvBar(); return; }
+    bar.onclick(e);
+  };
   bar.onclick = e => {
     const a = e.target.closest('[data-v]'), sp = e.target.closest('[data-s]');
     if (a) cam.angle = a.dataset.v;

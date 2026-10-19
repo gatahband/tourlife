@@ -973,3 +973,14 @@ h2.ctr { text-align: center; }
   .foldt { font-size: 16px; white-space: normal; flex: 1; }
 }
 @media (max-width: 560px) { .ptable .them { display: none; } .ptable th { white-space: normal; } .ptable { font-size: 13px; } }
+/* Playstyle tile: tap to open your full build */
+.buildfold > summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.buildfold > summary::-webkit-details-marker { display: none; }
+.buildfold > summary.ovrbuild { transition: border-color .15s; border: 1px solid transparent; }
+.buildfold > summary.ovrbuild:hover { border-color: var(--line); }
+.obmore { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font-style: normal; font-size: 13px; font-weight: 700; color: var(--accent); }
+.obmore .foldchev { width: 22px; height: 22px; }
+.buildfold[open] .obmore .foldchev { transform: rotate(180deg); }
+.buildslot { background: var(--field); border-radius: 0 0 14px 14px; padding: 4px 14px 14px; margin-top: -6px; }
+.obstyle .obmore { display: flex; width: max-content; }
+#hBuildDetails #hTopDesc { display: none; }

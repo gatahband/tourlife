@@ -204,19 +204,25 @@ function renderOvr(p) {
     return `<div class="rcell" data-odds="${key}" data-tier="${t}" data-mode="${el}"><span>${TIERS[t].label}${el === 'qual' ? ' · via qualifying' : ''}</span>` +
       `<b>${val ? `${val.title < 0.01 ? '<1' : Math.round(val.title * 100)}% Title` : '…'}</b><small>${val ? `${Math.round(val.qf * 100)}% Reach the QF` : 'working it out'}</small></div>`;
   };
+  // The build view lives inside the Playstyle tile: park it safely before the card is redrawn.
+  const build = $('hBuildDetails');
+  if (build && $('hOvr').contains(build)) $('hBuildHolder').appendChild(build);
   $('hOvr').innerHTML =
     `<div class="ovrtop"><div class="ovrnum"><b>${ovr.toFixed(1)}</b><span>OVR</span></div>` +
     `<div class="ovrinfo"><b>${lv.name}</b><small>${lv.note}</small>` +
     (lv.next ? `<div class="ovrprog"><i style="width:${prog * 100}%"></i></div><small>${(lv.next.min - ovr).toFixed(1)} to ${lv.next.name} (${lv.next.min})</small>` : '') +
     `</div></div>` +
     // Your build at a glance: playstyle and the seven stats.
-    `<div class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small></div>` +
-    `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></div>` +
+    `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show my build <i class="foldchev" aria-hidden="true"></i></em></div>` +
+    `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary><div class="buildslot" id="hBuildSlot"></div></details>` +
     `<h3 class="ssec">Your chances at the levels you can play</h3>` +
     `<div class="ovrexp">${levels.map(cell).join('')}</div>` +
     fatigueBar(p.fatigue || 0) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     `<p class="hint">Simulated title and quarter-final chances per event at each level you can enter now (on hard courts, in good conditions). Surfaces, weather, your plan and form swing them.</p>`;
+  if (build) $('hBuildSlot').appendChild(build);
+  $('hOvr').querySelector('.buildfold').ontoggle = e => { const m = e.target.querySelector('.obmore'); if (m) m.firstChild.textContent = e.target.open ? 'Hide my build ' : 'Show my build '; };
+  if (foldOpen('h-build')) $('hOvr').querySelector('.obmore').firstChild.textContent = 'Hide my build ';
   // Fill in any odds not worked out yet, one at a time so the page stays responsive.
   const todo = [...$('hOvr').querySelectorAll('[data-odds]')].filter(el => el.querySelector('b').textContent === '…');
   const next = () => {

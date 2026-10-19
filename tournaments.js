@@ -247,7 +247,6 @@ function renderTournaments(player) {
     const pct = Math.round(s.score * 100);
     return `<li class="${i === 0 ? 'best' : ''}"><span>${s.name}</span><div class="bar"><div style="width:${pct}%"></div></div><span>${pct}%</span></li>`;
   }).join('');
-  $('hStyleBox').ontoggle = () => { $('hStyleBox').querySelector('.chev').textContent = $('hStyleBox').open ? 'Hide my build' : 'Show my build'; };
 
   renderOvr(player);
   renderRivals(c);

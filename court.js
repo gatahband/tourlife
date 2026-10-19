@@ -507,7 +507,7 @@ function createCourt() {
       // Wind-up: the racket rises into view on the side you'll hit from, taken back and low.
       const wing = label.wingSide === 'bh' ? -hand : hand;
       const t = ease(label.sw || 0);
-      head = { x: W / 2 + wing * W * lerp(0.22, 0.4, t), y: lerp(H * 1.15, H * (label.volley ? 0.8 : 0.9), t) };
+      head = { x: W / 2 + wing * W * lerp(0.22, 0.4, t), y: lerp(H * 1.15, H * (label.volley ? 0.8 : label.touch ? 0.5 : 0.9), t) }; // slices: taken back high
       tilt = wing * 0.9;
     } else if (label.racket === 'serve') {
       // Contact: the head starts where the ball is on screen, then sweeps down across the body.
@@ -530,7 +530,9 @@ function createCourt() {
           : { x: W / 2 + wing * W * 0.33, y: H * 0.86 };
       }
       const sw2 = ease(clamp((age - 0.08) / 0.35, 0, 1));
-      const finish = { x: W / 2 - wing * W * (short ? 0.02 : 0.3), y: H * (short ? 0.72 : 0.5) };
+      const slice = ['slice', 'drop'].includes(label.flight);
+      // Drives finish high across the body; slices cut down and finish low and forward.
+      const finish = slice ? { x: W / 2 + wing * W * 0.05, y: H * 1.05 } : { x: W / 2 - wing * W * (short ? 0.02 : 0.3), y: H * (short ? 0.72 : 0.5) };
       head = { x: lerp(label.povStart.x, finish.x, sw2 * (short ? 0.4 : 1)), y: lerp(label.povStart.y, finish.y, sw2 * (short ? 0.4 : 1)) };
       tilt = wing * lerp(0.9, 0.3, sw);
     }
@@ -779,7 +781,8 @@ function createCourt() {
     if (lab.racket === 'prep') {
       const rs = lab.wingSide === 'bh' ? -fh : fh;
       const ready = { x: rs * 0.15, y: -d * 0.35, z: 1.05 };
-      const back = lab.volley ? { x: rs * 0.55, y: -d * 0.1, z: 1.3 } : { x: rs * 0.6, y: d * 0.55, z: 1.2 };
+      // Slices and drops are taken back high (above the shoulder) to come down through the ball.
+      const back = lab.volley ? { x: rs * 0.55, y: -d * 0.1, z: 1.3 } : lab.touch ? { x: rs * 0.55, y: d * 0.4, z: 1.75 } : { x: rs * 0.6, y: d * 0.55, z: 1.2 };
       const head = mix(ready, back, ease(lab.sw || 0));
       const near = { x: rs * 0.22, y: 0, z: 1.4 }, far = { x: -rs * 0.22, y: 0, z: 1.4 };
       return { head, grip: mix(near, head, 0.45), shoulders: twoHanded(side, lab) ? [near, far] : [near] };
@@ -789,7 +792,7 @@ function createCourt() {
     // Finishes stay on the hitting side so forehands and backhands read clearly (a drive finishes high
     // near the head rather than all the way over the other shoulder).
     const finish = lab.flight === 'volley' ? { x: rs * 0.55, y: -d * 0.5, z: 1.15 }
-      : ['slice', 'drop'].includes(lab.flight) ? { x: rs * 0.4, y: -d * 0.55, z: 0.85 }
+      : ['slice', 'drop'].includes(lab.flight) ? { x: rs * 0.25, y: -d * 0.65, z: 0.5 } // down and through, low and forward
       : { x: rs * 0.12, y: -d * 0.05, z: 1.85 };
     // Hold at contact a beat, then swing through.
     const head = mix(contact, finish, ease(clamp((age - 0.12) / 0.35, 0, 1)));
@@ -1218,7 +1221,9 @@ function createCourt() {
       // Lob over a player at the net: they smash it out of the air, or turn and chase it.
       chasingLob[recv] = false;
       if (shot.lob && next && atNet(recv)) {
-        if (Math.random() < 0.7) next.smash = true; else chasingLob[recv] = true;
+        // A deep lob gets chased; only a lob that falls short gets smashed out of the air.
+        if (Math.abs(bounce.y) < 9 || Math.random() < 0.35) { next.smash = true; if (Math.abs(bounce.y) > 8.5) bounce.y = Math.sign(bounce.y) * rand(6.5, 8.5); }
+        else chasingLob[recv] = true;
       }
       // A short lob to a player at the back: they move in and smash it after the bounce.
       if (shot.lob && next && !next.smash && !atNet(recv) && Math.abs(bounce.y) < 9 && Math.random() < 0.75) next.bounceSmash = true;
@@ -1228,8 +1233,8 @@ function createCourt() {
       // Put-aways are struck harder than rally balls.
       const v = (isServe ? serveMps : fl.mps * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.25 : 1)) * surf().pace;
       // Where the receiver would like to meet it. Returns are taken back at the returner's depth.
-      const desiredFor = b => next && next.smash ? { x: b.x * 0.9, y: lerp(r0.y, b.y, 0.7) }
-        : next && next.bounceSmash ? { x: b.x * 1.05, y: dir(recv) * (Math.abs(b.y) + rand(1, 2.2)) }
+      const desiredFor = b => next && next.smash ? { x: b.x * 0.9, y: lerp(r0.y, b.y, 0.5) }
+        : next && next.bounceSmash ? { x: b.x * 1.05, y: dir(recv) * (Math.abs(b.y) + rand(0.3, 1)) } // step in and take it high off the bounce
         : isServe && !inAirNext(next) ? { x: clamp(b.x * 1.4, -DOUBLES - 1.5, DOUBLES + 1.5), y: dir(recv) * (returnDepth(recv) - 0.2 + (kick ? 0.9 : 0) + rand(-0.3, 0.4)) }
         : contactPoint(b, recv, shot, next, shot.popped ? 'popped' : call.flight);
       // Seen from above, the ball travels in a straight line, before and after the bounce. The receiver
@@ -1269,7 +1274,7 @@ function createCourt() {
       const isWinner = final && ['winner', 'volley', 'drop', 'underarm', 'ace'].includes(shot.kind) || (final && shot.post);
       const WIN_WINDOW = 1.5;
       if (isWinner) met = meet(bounce, WIN_WINDOW);
-      if (isWinner) for (let it = 0; it < 6 && met.ok; it++) {
+      if (isWinner) for (let it = 0; it < 8 && (met.ok || met.need - met.can < 1.2); it++) {
         const b2 = landing(shot, from, deuce, r0);
         if (shot.kind === 'winner' || shot.kind === 'volley') b2.x = -Math.sign(r0.x || 1) * rand(3.3, 4.05);
         const m2 = meet(b2, WIN_WINDOW);
@@ -1301,7 +1306,7 @@ function createCourt() {
       }
       let contact = met.contact, body = met.body;
       wingNext[recv] = met.wing;
-      const tb = inAir ? 1 : fl.split;
+      let tb = inAir ? 1 : fl.split;
       const to0 = inAir ? contact : bounce;
       const endH = next && next.smash ? 2.7 : inAir ? 1.2 : 0;
       const cross = Math.sign(from.y) !== Math.sign(to0.y) ? Math.abs(from.y) / (Math.abs(from.y) + Math.abs(to0.y)) : null;
@@ -1318,12 +1323,17 @@ function createCourt() {
       const postTo = !final ? contact
         : { x: bounce.x + ux * (goodDrop ? 0.4 : L * 0.35), y: bounce.y + uy * (goodDrop ? 0.4 : L * 0.35) };
       const preDist = dist(from, to0);
+      // Share of the flight before the bounce, from the real distances (ball slows a little after the
+      // bounce), so it never crawls the last metre to the racket.
+      if (!inAir) { const pre = preDist / v, post = dist(bounce, postTo) / (v * surf().keep); tb = clamp(pre / (pre + post), 0.4, 0.94); }
       const realMs = final ? flightMs(preDist, dist(bounce, postTo), v) : met.ms;
       // On a point-ending shot the receiver runs flat out at the ball's line and gets only as far as they can.
       const need = dist(r0, body), tSec = realMs / 1000;
       const cap = shot.kind === 'ace' ? 0.2 : shot.kind === 'out' ? 0.5 : 0.92;
       // (They only have until the ball passes the spot they're running to.)
-      const reach = !final ? 1 : need < 0.01 ? 0 : Math.min(cap, runDist(met.ms / 1000) / need);
+      let reach = !final ? 1 : need < 0.01 ? 0 : Math.min(cap, runDist(met.ms / 1000) / need);
+      // A clean winner is clearly out of reach: they lunge, but finish well short of the ball.
+      if (isWinner && need > 0.01) reach = Math.min(reach, Math.max(0, 1 - 1.7 / need));
       // The hitter recovers only as far as they can before the ball comes back.
       const hD = dist(h0, hGoal);
       // Energy: hustlers sprint back into position after every shot; conservers walk.

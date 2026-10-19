@@ -22,6 +22,7 @@ const BADGES = [
   { id: 'top10', icon: '🔟', name: 'Top 10', desc: 'Reach the top 10.', career: c => (c.bestRank || 9999) <= 10 },
   { id: 'no1', icon: '🌍', name: 'World No. 1', desc: 'Reach No. 1 in the world.', career: c => c.bestRank === 1 },
   { id: 'million', icon: '💰', name: 'Millionaire', desc: 'Earn $1,000,000 in prize money.', career: c => c.history.reduce((a, h) => a + (h.prize || 0), 0) >= 1e6 },
+  { id: 'elite', icon: '🏛️', name: 'Elite Program', desc: 'Reach the top 100 and win 5 main-draw matches at ATP level. Unlocks the Performance Center.', career: c => (c.bestRank || 9999) <= 100 && atpWins(c) >= 5 },
   { id: 'real', icon: '📨', name: 'The Real Deal', desc: 'Play in a real tournament against other people.', career: c => c.history.some(h => h.real) },
 ];
 

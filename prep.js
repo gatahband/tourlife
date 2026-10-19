@@ -11,6 +11,23 @@ const PREP = [
   { id: 'pressure', icon: '🧠', name: 'Sports psychologist', cost: 700, desc: 'Composure on break points, set points and tiebreaks.' },
   { id: 'video', icon: '📼', name: 'Video analysis', cost: 1300, desc: 'Study your past matches. An edge against anyone who has beaten you before, and a full "what went wrong" breakdown after every loss this week.' },
 ];
+// --- Performance Center ---------------------------------------------------------------------------
+// The high-end tier, unlocked by the 🏛️ Elite Program achievement (top 100 plus 5 ATP-level main-draw wins).
+// Big items take two of your three slots, every one has a cost beyond money, and none of them wins for you.
+const PC = [
+  { id: 'pcfit', icon: '🫁', name: 'Elite fitness camp', cost: 8000, slots: 2, desc: 'You tire half as fast in long matches all tournament, and recover better between rounds. But the camp itself costs you: you start the week +10 fatigue.' },
+  { id: 'pcintel', icon: '🛰️', name: 'Opponent intelligence package', cost: 5000, slots: 1, desc: 'Full intelligence on every opponent this week: hidden strengths, serve patterns, rally length. A small edge in every match.' },
+  { id: 'pcspar', icon: '🥊', name: 'Specialist sparring partner', cost: 6000, slots: 2, desc: 'A former pro who plays exactly one style. A big edge against that style, nothing against anyone else.' },
+  { id: 'pcbreak', icon: '🔬', name: 'Technical breakthrough session', cost: 12000, slots: 2, desc: 'Intensive work on one stat: +4% to it in matches this week, and a 1-in-4 chance of a lasting gain. Another part of your game gets a little rusty this week (−1.5%).' },
+];
+const PC_RECOVERY = { cost: 3500, steps: [20, 12, 6] }; // between rounds; each one helps less
+const allPrep = () => [...PREP, ...PC];
+const prepSlots = it => it.slots || 1;
+const slotsUsed = pr => pr.items.reduce((n, id) => n + prepSlots(allPrep().find(x => x.id === id) || {}), 0);
+const atpWins = c => (c.history || []).filter(h => !h.real && ['ATP250', 'ATP500', 'M1000', 'GS'].includes(h.tier) && !String(h.reached).startsWith('Q'))
+  .reduce((n, h) => n + (h.matches || []).filter(m => m.won && !m.qual).length, 0);
+const pcUnlocked = c => !!(c.badges && c.badges.elite);
+
 // The kind of player a hitting partner imitates.
 const PARTNERS = {
   lefty: { name: 'a left-hander', match: o => o.hand === 'left' },
@@ -23,7 +40,7 @@ const PARTNERS = {
 const PREP_MULT = { M15: 0.25, M25: 0.3, CH75: 0.8, CH125: 1, ATP250: 2, ATP500: 2.5, M1000: 3.2, GS: 4 };
 const prepCost = (item, tier) => Math.max(50, Math.round(item.cost * (PREP_MULT[tier] || 1) / 10) * 10);
 const prepOf = entry => (entry.prep = entry.prep || { items: [], partner: null });
-const hasPrep = (entry, id) => !!(entry && entry.prep && entry.prep.items.includes(id));
+const hasPrep = (entry, id) => !!(entry && entry.prep && (entry.prep.items.includes(id) || (id === 'scout' && entry.prep.items.includes('pcintel'))));
 
 // Your edge from this week's preparation against this opponent. clutch: extra on big points only.
 function prepEdges(entry, opp) {
@@ -32,6 +49,13 @@ function prepEdges(entry, opp) {
   const ev = eventOf(entry), c = current.career, tags = [];
   let edge = 0, clutch = 0;
   if (pr.items.includes('scout')) { edge += 0.004; tags.push('🔎 You know their patterns'); }
+  if (pr.items.includes('pcintel')) { edge += 0.006; tags.push('🛰️ Full intelligence on them'); }
+  if (pr.items.includes('pcspar') && pr.spar && PARTNERS[pr.spar]) {
+    if (PARTNERS[pr.spar].match(opp)) { edge += 0.016; tags.push(`🥊 A week of sparring with ${PARTNERS[pr.spar].name}`); }
+    else tags.push(`🥊 Your sparring partner played like ${PARTNERS[pr.spar].name}: no help here`);
+  }
+  if (pr.items.includes('pcfit')) tags.push('🫁 Elite fitness: you tire half as fast');
+  if (pr.items.includes('pcbreak') && pr.breakStat) tags.push(`🔬 Breakthrough: ${attrLabel(pr.breakStat)} +4% this week`);
   if (pr.items.includes('partner') && pr.partner && PARTNERS[pr.partner]) {
     if (PARTNERS[pr.partner].match(opp)) { edge += 0.009; tags.push(`🎾 You practised against ${PARTNERS[pr.partner].name} all week`); }
     else tags.push(`🎾 Your hitting partner played like ${PARTNERS[pr.partner].name}: no help against this one`);
@@ -67,10 +91,10 @@ function scoutDetailHtml(o) {
 function prepHtml(entry, opp) {
   const pr = prepOf(entry), ev = eventOf(entry), c = current.career;
   const open = !entry.matches.length && !entry.live;
-  const used = pr.items.length;
+  const used = slotsUsed(pr);
   if (!open) {
-    return used ? `<div class="prepbox done"><b>This week's preparation</b><div class="chips">${pr.items.map(id => { const it = PREP.find(x => x.id === id);
-      return `<span class="chip">${it.icon} ${it.name}${id === 'partner' && pr.partner ? ` (${PARTNERS[pr.partner].name})` : ''}</span>`; }).join('')}</div></div>` : '';
+    return (pr.items.length ? `<div class="prepbox done"><b>This week's preparation</b><div class="chips">${pr.items.map(id => { const it = allPrep().find(x => x.id === id);
+      return `<span class="chip">${it.icon} ${it.name}${id === 'partner' && pr.partner ? ` (${PARTNERS[pr.partner].name})` : ''}</span>`; }).join('')}</div></div>` : '') + recoveryHtml(entry);
   }
   const guess = Object.keys(PARTNERS).find(k => PARTNERS[k].match(opp)) || 'server';
   return `<div class="prepbox"><div class="prephead"><b>Prepare for the week</b><span>${used} / ${PREP_SLOTS} slots · ${money(c.money)} in the bank</span></div>` +
@@ -82,21 +106,64 @@ function prepHtml(entry, opp) {
         (it.id === 'partner' ? `<select class="inp" id="prepPartner" ${got ? 'disabled' : ''}>${Object.entries(PARTNERS).map(([k, v]) =>
           `<option value="${k}" ${(pr.partner || guess) === k ? 'selected' : ''}>Plays like ${v.name}</option>`).join('')}</select>` : '') +
         `</div><button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(cost)}</button></div>`;
-    }).join('')}</div></div>`;
+    }).join('')}</div>` + pcHtml(entry, opp, used) + `</div>`;
+}
+
+// The Performance Center row: locked (with your progress) until you earn the Elite Program achievement.
+function pcHtml(entry, opp, used) {
+  const pr = prepOf(entry), c = current.career;
+  if (!pcUnlocked(c)) {
+    if ((c.bestRank || 9999) > 300) return '';
+    const w = Math.min(5, atpWins(c));
+    return `<div class="pclock"><b>🏛️ Performance Center</b> <span>🔒 Unlocks with the Elite Program achievement: reach the top 100 (best so far: ${c.bestRank ? '#' + c.bestRank : 'unranked'}) and win 5 main-draw matches at ATP level (${w}/5).</span></div>`;
+  }
+  const guess = Object.keys(PARTNERS).find(k => PARTNERS[k].match(opp)) || 'server';
+  return `<div class="pchead"><b>🏛️ Performance Center</b><span>Premium. Two-slot items fill most of your week.</span></div><div class="prepitems">${PC.map(it => {
+    const got = pr.items.includes(it.id), can = !got && used + prepSlots(it) <= PREP_SLOTS && c.money >= it.cost;
+    return `<div class="prepitem pc${got ? ' got' : ''}"><span class="ticon">${it.icon}</span><div><b>${it.name}${it.slots > 1 ? ' <em class="slot2">2 slots</em>' : ''}</b><small>${it.desc}</small>` +
+      (it.id === 'pcspar' ? `<select class="inp" id="pcSpar" ${got ? 'disabled' : ''}>${Object.entries(PARTNERS).map(([k, v]) => `<option value="${k}" ${(pr.spar || guess) === k ? 'selected' : ''}>Plays like ${v.name}</option>`).join('')}</select>` : '') +
+      (it.id === 'pcbreak' ? `<select class="inp" id="pcStat" ${got ? 'disabled' : ''}>${ATTRS.map(([k, l]) => `<option value="${k}" ${pr.breakStat === k ? 'selected' : ''}>${l}</option>`).join('')}</select>` : '') +
+      `</div><button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(it.cost)}</button></div>`;
+  }).join('')}</div>`;
+}
+
+// Between rounds (Performance Center): premium recovery, each one helping less.
+function recoveryHtml(entry) {
+  const pr = prepOf(entry), c = current.career, n = pr.rec || 0;
+  if (!pcUnlocked(c) || !entry.matches.length || entry.result || n >= PC_RECOVERY.steps.length) return '';
+  return `<div class="prepbox done pcrec"><b>🛁 Premium recovery treatment</b> <span>−${PC_RECOVERY.steps[n]} fatigue before your next match${n ? ' (each one this week helps less)' : ''}.</span>` +
+    `<button type="button" class="btn small" id="pcRec" ${c.money < PC_RECOVERY.cost ? 'disabled' : ''}>${money(PC_RECOVERY.cost)}</button></div>`;
 }
 
 function bindPrep(entry, rerender) {
   document.querySelectorAll('[data-prep]').forEach(b => {
     b.onclick = () => {
-      const pr = prepOf(entry), it = PREP.find(x => x.id === b.dataset.prep), cost = prepCost(it, eventOf(entry).tier), c = current.career;
-      if (pr.items.length >= PREP_SLOTS || c.money < cost || pr.items.includes(it.id)) return;
+      const pr = prepOf(entry), it = allPrep().find(x => x.id === b.dataset.prep), c = current.career;
+      const cost = it.slots !== undefined ? it.cost : prepCost(it, eventOf(entry).tier);
+      if (slotsUsed(pr) + prepSlots(it) > PREP_SLOTS || c.money < cost || pr.items.includes(it.id)) return;
       charge(c, cost, `${it.name} (${eventOf(entry).city})`);
       pr.items.push(it.id);
       if (it.id === 'partner') pr.partner = $('prepPartner').value;
       if (it.id === 'recovery') { current.player.fatigue = clamp((current.player.fatigue || 0) - 15, 0, 100); writeJSON(SAVE_KEY, current.player); }
+      if (it.id === 'pcspar') pr.spar = $('pcSpar').value;
+      if (it.id === 'pcfit') { current.player.fatigue = clamp((current.player.fatigue || 0) + 10, 0, 100); writeJSON(SAVE_KEY, current.player); }
+      if (it.id === 'pcbreak') {
+        pr.breakStat = $('pcStat').value;
+        if (Math.random() < 0.25) { applyGain(current.player.attrs, pr.breakStat, 0.015); writeJSON(SAVE_KEY, current.player); setTimeout(() => toast('🔬 Breakthrough!', `A lasting gain in ${attrLabel(pr.breakStat)}`), 2700); }
+      }
       writeJSON(CAREER_KEY, c); writeJSON(ENTRY_KEY, entry);
       toast(`${it.icon} Booked: ${it.name}`, money(cost));
       rerender();
     };
   });
+  if ($('pcRec')) $('pcRec').onclick = () => {
+    const pr = prepOf(entry), c = current.career, n = pr.rec || 0;
+    if (c.money < PC_RECOVERY.cost || n >= PC_RECOVERY.steps.length) return;
+    charge(c, PC_RECOVERY.cost, `Premium recovery (${eventOf(entry).city})`);
+    current.player.fatigue = clamp((current.player.fatigue || 0) - PC_RECOVERY.steps[n], 0, 100);
+    pr.rec = n + 1;
+    writeJSON(SAVE_KEY, current.player); writeJSON(CAREER_KEY, c); writeJSON(ENTRY_KEY, entry);
+    toast('🛁 Recovery done', `−${PC_RECOVERY.steps[n]} fatigue`);
+    rerender();
+  };
 }

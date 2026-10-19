@@ -709,7 +709,7 @@ function wrapUpMatch(entry) {
     rec.fullWatch = !!entry.live.total && (entry.live.watched || 0) >= entry.live.total;
     rec.watchBonus = Math.round(WATCH_BONUS * Math.min(1, rec.gamesWatched / WATCH_GAMES) * 10000) / 10000;
   }
-  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4), 0, 100);
+  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4) * (hasPrep(entry, 'pcfit') ? 0.8 : 1), 0, 100);
   writeJSON(SAVE_KEY, p);
   shakeRust(current.career);
   writeJSON(CAREER_KEY, current.career);
@@ -918,6 +918,15 @@ async function playOneSet(animate = true) {
   if (ps[me].baseAttrs) ps[me].attrs = { ...ps[me].baseAttrs };
   const rb = typeof racketBoost === 'function' ? racketBoost(current.career) : null;
   if (rb) { ps[me].baseAttrs = { ...ps[me].attrs }; ps[me].attrs[rb.stat] = Math.min(99, ps[me].attrs[rb.stat] * (1 + rb.pct)); }
+  // Performance Center: a technical breakthrough (+4% to one stat, −1.5% to another this week) and elite fitness.
+  const pr = entry.prep || {};
+  if (pr.items && pr.items.includes('pcbreak') && pr.breakStat) {
+    if (!ps[me].baseAttrs) ps[me].baseAttrs = { ...ps[me].attrs };
+    const dip = pr.breakStat === 'stam' ? 'ret' : 'stam';
+    ps[me].attrs[pr.breakStat] = Math.min(99, ps[me].attrs[pr.breakStat] * 1.04);
+    ps[me].attrs[dip] = ps[me].attrs[dip] * 0.985;
+  }
+  ps[me].fitCamp = !!(pr.items && pr.items.includes('pcfit'));
   { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge; ps[me].prepClutch = pe.clutch; } // this week's preparation
   ps[me].advLevel = teamLevel(current.career, 'coach');
   // Copying the coach's plan word for word is textbook, and smart opponents read textbook plans faster.

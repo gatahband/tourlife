@@ -312,7 +312,7 @@ const hasPlan = p => Object.entries(planOf(p)).some(([k, v]) => v !== DEFAULT_PL
 
 function fatigue(m, p) {
   const pace = { conserve: 0.5, normal: 1, hustle: 1.6 }[advPlan(p).energy] || 1;
-  return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001 * pace;
+  return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001 * pace * (p.fitCamp ? 0.5 : 1); // elite fitness camp
 }
 
 // --- Hidden strengths --------------------------------------------------------------------------

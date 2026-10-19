@@ -157,6 +157,7 @@ function advanceWeek() {
   weeklyMoney(c);
   noteWeek(c);
   moraleWeek(c, p);
+  noteMark();
   c.week++;
   if (weekInSeason(c.week) === 1) newSeason(c, p);
   c.downtime = null;

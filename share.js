@@ -40,6 +40,7 @@ function playerCard() {
 
 // Import: becomes a saved career and is loaded. A player card starts a fresh career with that player.
 function importSave(obj) {
+  if (olderThanMark(obj)) { alert("This save is older than where this career has already got to on this device, so it can't be loaded. (No replaying matches from a backup.)"); return; }
   // A full career keeps its id (loading your own backup replaces it); a player card always starts a new slot.
   const id = obj.kind === 'career' && obj.player.created || Date.now();
   shelveLive();

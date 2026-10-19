@@ -27,13 +27,36 @@ const burnout = c => Math.pow(0.6, Math.max(0, idleWeeks(c) - 1));
 const RUST_STEP = 0.006, RUST_MAX = 0.04, RUST_SHAKE = 0.012;
 const rustOf = c => c.rust || 0;
 
+// A week only counts as played if you actually played a match in it. Entering and pulling out before
+// your first match doesn't reset burnout.
 function noteWeek(c) {
-  const played = c.history.some(h => h.week === c.week);
+  const played = c.history.some(h => h.week === c.week && !h.exhibition && (h.matches || []).length > 0);
   if (played) c.idleWeeks = 0;
   else if (!isOffSeason(c.week)) {
     c.idleWeeks = idleWeeks(c) + 1;
     if (c.idleWeeks > 2) c.rust = Math.min(RUST_MAX, rustOf(c) + RUST_STEP);
   }
+}
+
+// --- No save-scumming ---------------------------------------------------------------------------
+// Every career's furthest point on this device (week, matches, sets) is remembered. An older copy of the
+// same career can't be loaded over it, so you can't replay a lost match from a backup.
+const MARK_KEY = 'tourlife.marks';
+function careerProgress(c, entry) {
+  const matches = (c.history || []).reduce((n, h) => n + (h.matches || []).length, 0) + ((entry && entry.matches) || []).length;
+  const sets = entry && entry.live && entry.live.m ? entry.live.m.sets.length : 0;
+  return (c.week || 0) * 100000 + matches * 10 + sets;
+}
+function noteMark() {
+  const p = current.player, c = current.career;
+  if (!p || !c || !p.created) return;
+  const marks = readJSON(MARK_KEY) || {}, v = careerProgress(c, current.entry);
+  if (!(marks[p.created] >= v)) { marks[p.created] = v; writeJSON(MARK_KEY, marks); }
+}
+function olderThanMark(obj) {
+  if (obj.kind !== 'career' || !obj.player || !obj.player.created || !obj.career) return false;
+  const marks = readJSON(MARK_KEY) || {};
+  return marks[obj.player.created] > careerProgress(obj.career, obj.entry);
 }
 
 function shakeRust(c) {

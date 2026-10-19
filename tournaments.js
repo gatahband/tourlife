@@ -997,6 +997,7 @@ async function playOneSet(animate = true) {
   m.points = [];
   entry.live.total = (entry.live.total || 0) + points.length;
   L.inSet = false; L.snap = null; L.calls = []; L.shownSaved = 0; L.planAtStart = null;
+  noteMark(); // furthest point reached (see fairplay.js)
   if (ps[me].baseAttrs) { ps[me].attrs = ps[me].baseAttrs; delete ps[me].baseAttrs; }
   writeJSON(ENTRY_KEY, entry);
   if (animate) {

@@ -1004,8 +1004,10 @@ function createCourt() {
     // flatten everything, grinders and clay-courters roll it.
     const flatOdds = st === 'First-Strike Player' ? (c.k <= 2 ? 0.75 : 0.45) : st === 'Power Hitter' ? 0.55
       : st === 'Defensive Grinder' || st === 'Clay-Court Specialist' ? 0.03 : { flat: 0.6, mixed: 0.18, topspin: 0.04 }[spin];
+    const agg = side === undefined ? null : (prof[side].plan || {}).aggression;
+    const flatOdds2 = clamp(flatOdds + (agg === 'aggressive' ? 0.2 : agg === 'patient' ? -0.1 : 0), 0, 0.9);
     const defender = st === 'Defensive Grinder' || st === 'Counterpuncher' || st === 'Marathon Man';
-    const drive = () => out(Math.random() < flatOdds ? 'FLAT!' : 'TOPSPIN!');
+    const drive = () => out(Math.random() < flatOdds2 ? 'FLAT!' : 'TOPSPIN!');
     if (k === 'serve' || k === 'ace' || k === 'fault') return { type: speedText(kmh).toUpperCase(), wing: null, racket: 'serve', flight: 'serve' };
     const wing = wingName === 'Forehand' ? 'FH' : 'BH';
     const out = (type, flight) => ({ type, wing, racket: wing.toLowerCase(), flight: flight || TYPE_FLIGHT[type] });
@@ -1092,10 +1094,14 @@ function createCourt() {
     if (shot.kind === 'drop' || shot.kind === 'underarm') return { x: clamp(bounce.x * 1.05, -DOUBLES, DOUBLES), y: d * rand(0.9, 1.8) };
     const carry = { serve: rand(3.5, 5.5), topspin: rand(2.2, 4.4), flat: rand(1.8, 3.4), slice: rand(1.0, 2.2),
       lob: rand(1.5, 4.5), smash: rand(3, 6), post: rand(1.5, 3), volley: rand(1.2, 2.4), popped: rand(1, 2) }[flight] ?? rand(1.3, 2.8);
+    // How the receiver's plan meets the ball: aggressive players step in and take it on the rise, patient
+    // players and moonballers let it come to them deep, deep drivers hold the baseline.
+    const pl = prof[recv].plan || {}, ad = prof[recv].adv || {};
+    const early = flight === 'serve' ? 0 : (pl.aggression === 'aggressive' ? -0.9 : pl.aggression === 'patient' ? 0.9 : 0) + (ad.depth === 'high' ? 1.0 : ad.depth === 'deep' ? -0.4 : 0);
     return {
       // Wide balls drag the receiver out past the alley; short angles even further.
       x: clamp(bounce.x * 1.3 + (Math.abs(bounce.x) > 3.2 && Math.abs(bounce.y) < 8 ? Math.sign(bounce.x) * rand(0.8, 2.2) : 0), -DOUBLES - 2.6, DOUBLES + 2.6),
-      y: d * clamp(Math.abs(bounce.y) + carry, 1.5, BASE + 6.5),
+      y: d * clamp(Math.abs(bounce.y) + carry + early, 1.5, BASE + 6.5),
     };
   }
 
@@ -1181,7 +1187,11 @@ function createCourt() {
         : (shot.kind === 'volleyx' || shot.kind === 'volley') ? { x: h0.x * 0.7, y: h0.y }
         : isServe ? { x: h0.x * 0.4, y: dir(hitter) * (BASE + 0.8) }
         // Recover towards the middle at your preferred depth; from far out wide or deep you only get part of the way back.
-        : { x: h0.x * (Math.abs(h0.x) > DOUBLES ? 0.55 : 0.3), y: dir(hitter) * lerp(Math.abs(h0.y), home, Math.abs(h0.y) > BASE + 3 ? 0.4 : 0.6) };
+        : (() => {
+          // Energy: hustlers get all the way back to the middle; conservers drift and stay near where they hit.
+          const en = (prof[hitter].adv || {}).energy, back = en === 'hustle' ? 0.05 : en === 'conserve' ? 0.65 : Math.abs(h0.x) > DOUBLES ? 0.55 : 0.3;
+          return { x: h0.x * back, y: dir(hitter) * lerp(Math.abs(h0.y), home, en === 'hustle' ? 0.9 : en === 'conserve' ? 0.25 : Math.abs(h0.y) > BASE + 3 ? 0.4 : 0.6) };
+        })();
 
       // Into the net (including a drop shot that doesn't clear it).
       if (shot.kind === 'net') {
@@ -1621,6 +1631,7 @@ function createCourt() {
 
   return {
     mount, scene, sceneArgs, draw, playPoint, play, reset, setView, setAngle, setOptions,
+    planOnly: (pt, info) => plan(pt, info), // testing: the shot-by-shot script for a point, without playing it
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = { text, t0: clock() }; draw(); },

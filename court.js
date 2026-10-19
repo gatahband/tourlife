@@ -1623,7 +1623,7 @@ function createCourt() {
   async function playPoint(pt, info, speed) {
     const script = plan(pt, info);
     const real = view === 'gatah';
-    const rally = await play(script, { speed, real, cinematic: real, slow: real ? liveSlow : 1 });
+    const rally = await play(script, { speed, real, cinematic: real, slow: real ? liveSlow / (speed || 1) : 1 }); // GATAH VISION: real pace × your speed
     rally.script = script;
     rally.highlight = script.highlight;
     return rally;

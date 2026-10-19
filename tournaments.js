@@ -1141,7 +1141,7 @@ function makeAnimator(prior, setNo) {
       review: rally.script.segs.some(sg => sg.review) });
     renderPoints();
     const gv = Court.view === 'gatah';
-    const sp = gv ? 1 : anim.speed;
+    const sp = anim.speed;
     await pause((pt.end ? (gv ? 1800 : 1000) : (gv ? 1100 : 450)) / sp + (moods.length ? 900 / sp : 0));
     inGame = pt.end ? 0 : inGame + 1;
   } } };
@@ -1250,7 +1250,7 @@ function renderMatch() {
   $('mCtl').innerHTML = '';
   $('mCourtWrap').classList.toggle('paused', anim.paused);
   // Playback speed: a column down the right side of the court (GATAH VISION has its own real-time / slow-mo).
-  $('mSpeed').hidden = Court.view === 'gatah';
+  $('mSpeed').hidden = false;
   $('mSpeed').innerHTML = [1, 2, 4].map(x => `<button type="button" data-speed="${x}" class="${x === anim.speed ? 'on' : ''}">${x}× speed</button>`).join('');
   if (anim.running) {
     // While a set plays, its controls sit on the court itself.
@@ -1609,7 +1609,7 @@ function renderGvBar() {
   const bar = $('mGvBar'), spd = $('mGvSpeed');
   const on = Court.view === 'gatah';
   bar.hidden = spd.hidden = !on;
-  if ($('mSpeed')) $('mSpeed').hidden = on;
+  if ($('mSpeed')) $('mSpeed').hidden = false;
   const cam = { angle: 'broadcast', slow: 1, ...readJSON(GV_KEY) };
   if (!on) return;
   Court.setAngle(cam.angle === 'broadcast' ? null : cam.angle);

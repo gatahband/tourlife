@@ -55,6 +55,11 @@ function noteMark() {
   const marks = readJSON(MARK_KEY) || {}, v = careerProgress(c, current.entry);
   if (!(marks[p.created] >= v)) { marks[p.created] = v; writeJSON(MARK_KEY, marks); }
 }
+// After choosing another device's (earlier) copy, that copy becomes the furthest point on this device.
+function clearMark(obj) {
+  const marks = readJSON(MARK_KEY) || {};
+  if (obj.player && obj.player.created) { marks[obj.player.created] = careerProgress(obj.career || {}, obj.entry); writeJSON(MARK_KEY, marks); }
+}
 function olderThanMark(obj) {
   if (obj.kind !== 'career' || !obj.player || !obj.player.created || !obj.career) return false;
   const marks = readJSON(MARK_KEY) || {};

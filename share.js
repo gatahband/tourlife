@@ -29,7 +29,14 @@ async function decodeSave(code) {
 }
 
 // The whole career (player, results, the event in progress).
-const fullSave = () => { const p = readJSON(SAVE_KEY); return { v: 1, kind: 'career', player: p, sig: fingerprint(p), career: readJSON(CAREER_KEY), entry: readJSON(ENTRY_KEY) }; };
+// Which device a save was made on (so a backup from this device can't be used to replay matches, while moving
+// a career between your own devices always works).
+function deviceId() {
+  let id = null; try { id = localStorage.getItem('tourlife.device'); } catch {}
+  if (!id) { id = Math.random().toString(36).slice(2, 10); try { localStorage.setItem('tourlife.device', id); } catch {} }
+  return id;
+}
+const fullSave = () => { const p = readJSON(SAVE_KEY); return { v: 1, kind: 'career', player: p, sig: fingerprint(p), career: readJSON(CAREER_KEY), entry: readJSON(ENTRY_KEY), savedOn: deviceId() }; };
 
 // Just the player and a short summary: small enough to send in a form.
 function playerCard() {
@@ -40,7 +47,15 @@ function playerCard() {
 
 // Import: becomes a saved career and is loaded. A player card starts a fresh career with that player.
 function importSave(obj) {
-  if (olderThanMark(obj)) { alert("This save is older than where this career has already got to on this device, so it can't be loaded. (No replaying matches from a backup.)"); return; }
+  if (olderThanMark(obj)) {
+    const here = (readJSON(CAREER_KEY) || {}).week, there = (obj.career || {}).week;
+    const when = w => w ? `season ${seasonOfWeek(w)}, week ${weekInSeason(w)}` : 'an earlier point';
+    // A backup made on this device: no going back to replay matches.
+    if (obj.savedOn && obj.savedOn === deviceId()) { alert(`This backup was made on this device and is behind where you are now (${when(here)}), so it can't be loaded. Matches can't be replayed from a backup.`); return; }
+    // From another device: fine, but say that it's behind the copy here.
+    if (!confirm(`The copy of this career on this device is further along (${when(here)}) than the one you're loading (${when(there)}). Load the other device's copy anyway? It will replace the one here.`)) return;
+    clearMark(obj);
+  }
   // A full career keeps its id (loading your own backup replaces it); a player card always starts a new slot.
   const id = obj.kind === 'career' && obj.player.created || Date.now();
   shelveLive();

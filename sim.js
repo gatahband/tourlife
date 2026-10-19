@@ -315,7 +315,7 @@ function fatigue(m, p) {
 // --- Advanced game plan (unlocked by better coaches) --------------------------------------
 // Target wing, shot depth, energy pacing and big-point risk. Your settings count only if your coach
 // has unlocked them; computer players at ATP level and above pick their own, so the top gets tactical.
-const ADV_UNLOCK = { wing: 2, depth: 2, energy: 3, pressure: 3 };
+const ADV_UNLOCK = { wing: 4, depth: 4, energy: 4, pressure: 4 }; // the Master coach
 const ADV_TIERS = new Set(['ATP250', 'ATP500', 'M1000', 'GS']);
 // How much weaker a player's backhand is than their forehand (negative: the forehand is the weaker
 // wing). Fixed per player; one-handers tend to have the bigger gap.

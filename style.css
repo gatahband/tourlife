@@ -912,3 +912,5 @@ h2.ctr { text-align: center; }
 .rwfs { width: auto; margin: 0 0 0 auto; display: block; padding: 6px 12px; font-size: 13px; }
 .prow.locked { opacity: .5; }
 .prow.locked .seg button { cursor: not-allowed; }
+.advice { background: rgba(255,214,10,.1); border: 1px solid rgba(255,214,10,.35); border-radius: 12px; padding: 10px 14px; margin: 10px auto; text-align: left; max-width: 560px; font-size: 14px; }
+.advice b { color: #ffd60a; } .advice ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }

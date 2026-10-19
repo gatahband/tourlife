@@ -14,7 +14,8 @@ const TEAM = {
     { name: 'None', cost: 0, desc: 'You coach yourself.' },
     { name: 'Club coach', cost: 300, train: 1.15, desc: 'Training +15%. Before matches: their game plan and a counter-plan.' },
     { name: 'Tour coach', cost: 900, train: 1.25, desc: 'Training +25%. Full scouting: their rough ratings, plan and a counter-plan.' },
-    { name: 'Elite coach', cost: 2500, train: 1.35, desc: 'Training +35%. Exact ratings, plan and a counter-plan.' }] },
+    { name: 'Elite coach', cost: 2500, train: 1.35, desc: 'Training +35%. Exact ratings, plan and a counter-plan.' },
+    { name: 'Master coach', cost: 5000, train: 1.45, desc: 'Training +45%. Unlocks the advanced game plan (target wing, depth, energy, big points) and coaches you during matches.' }] },
   physio: { icon: '💆', name: 'Physio', levels: [
     { name: 'None', cost: 0, desc: 'No help recovering.' },
     { name: 'Physio', cost: 300, recover: 3, injury: 0.8, desc: 'Recover faster each day; 20% fewer injuries, shorter layoffs.' },
@@ -481,7 +482,7 @@ function coachPlan(o, ev, me) {
   };
 }
 function advCoach(o, ev, me) {
-  const lv = teamLevel(current.career, 'coach'), mine = planOf(me), a = o.attrs, g = wingGap(o);
+  const lv = teamLevel(current.career, 'coach') >= 4 ? 4 : 0, mine = planOf(me), a = o.attrs, g = wingGap(o);
   const fast = ev.surface === 'grass' || ev.indoor, hot = typeof wxOf === 'function' && wxOf(ev).heat > 1.15;
   return {
     wing: lv >= 2 ? (g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral') : mine.wing,
@@ -490,6 +491,41 @@ function advCoach(o, ev, me) {
     energy: lv >= 3 ? (hot && me.attrs.stam < 62 ? 'conserve' : me.attrs.stam >= 66 && !hot ? 'hustle' : 'normal') : mine.energy,
     pressure: lv >= 3 ? (a.mental < 52 ? 'broke' : a.mental > 66 ? 'safe' : 'standard') : mine.pressure,
   };
+}
+
+// Master coach, mid-match: reads how the match is actually going and suggests changes, with the reasons.
+// Returns { tips: [text], plan: {changes} }.
+function liveAdvice(m, ps, me, ev) {
+  const op = 1 - me, Y = m.stats[me], T = m.stats[op], A = ps[me], O = ps[op], cur = planOf(A);
+  const tips = [], plan = {};
+  const pct = (a, b) => (b ? a / b : 0);
+  const set = (k, v, why) => { if (tips.length < 3 && cur[k] !== v && plan[k] === undefined) { plan[k] = v; tips.push(why); } };
+  // Their serve is hurting you.
+  if (T.servePts >= 12 && (T.aces / T.servePts > 0.09 || pct(T.firstWon, T.firstIn) > 0.78)) set('returnPos', 'deep', `Their first serve is winning ${Math.round(pct(T.firstWon, T.firstIn) * 100)}% of points. Stand deeper to return.`);
+  else if (T.servePts >= 12 && pct(T.secondWon, T.servePts - T.firstIn) < 0.45) set('returnPos', 'inside', `Their second serve is weak (${Math.round(pct(T.secondWon, T.servePts - T.firstIn) * 100)}% won). Step in and attack it.`);
+  // Your serve.
+  if (Y.servePts >= 12 && pct(Y.firstIn, Y.servePts) < 0.55) set('serve', 'safe', `Only ${Math.round(pct(Y.firstIn, Y.servePts) * 100)}% of first serves are going in. Take some pace off and make them.`);
+  if (Y.df >= 4) set('serve', 'safe', `${Y.df} double faults already. Play safer on serve.`);
+  // Errors vs winners.
+  if (Y.ue >= T.ue + 4) { set('aggression', 'patient', `You've made ${Y.ue} unforced errors to their ${T.ue}. Be patient and make them play.`); set('depth', 'high', 'Give yourself more margin over the net until the errors stop.'); }
+  else if (T.ue >= Y.ue + 5) set('aggression', 'patient', `They're missing a lot (${T.ue} errors). Keep the ball in play and let them.`);
+  if (T.winners >= Y.winners + 6) set('depth', 'deep', `They've hit ${T.winners} winners. Push them back with deep balls so they can't attack.`);
+  // Net game.
+  if (Y.netPlayed >= 5 && pct(Y.netWon, Y.netPlayed) < 0.45) set('net', 'rarely', `You're only winning ${Math.round(pct(Y.netWon, Y.netPlayed) * 100)}% at the net. Stay back.`);
+  else if (Y.netPlayed >= 4 && pct(Y.netWon, Y.netPlayed) > 0.7) set('net', 'often', `You're winning ${Math.round(pct(Y.netWon, Y.netPlayed) * 100)}% at the net. Come in more.`);
+  // Big points.
+  if (Y.bpChances >= 3 && pct(Y.bpWon, Y.bpChances) < 0.3 && attr(O, 'mental') < 60) set('pressure', 'broke', `You've taken ${Y.bpWon} of ${Y.bpChances} break points. They're nervous: go for it on the big ones.`);
+  else if (Y.bpFaced >= 3 && pct(Y.bpSaved, Y.bpFaced) < 0.5) set('pressure', 'safe', `You've saved only ${Y.bpSaved} of ${Y.bpFaced} break points. Stay solid when it's tight.`);
+  // Legs.
+  if (m.totalGames >= 18 && attr(A, 'stam') < 62 && cur.energy === 'hustle') set('energy', 'conserve', 'This is getting long. Save your legs or you will fade.');
+  else if (m.totalGames >= 18 && attr(A, 'stam') >= 66 && attr(O, 'stam') < 56) set('energy', 'hustle', 'They are tiring. Raise the intensity and make every point physical.');
+  // Their weaker wing.
+  const g = wingGap(O), want = g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : null;
+  if (want) set('wing', want, `Keep going at their ${want === 'bh' ? 'backhand' : 'forehand'}: it is the weaker side.`);
+  // Nothing wrong: say so.
+  const won = m.games[me] - m.games[op] + m.sets.reduce((n, st) => n + (st.games[me] > st.games[op] ? 3 : -3), 0);
+  if (!tips.length) tips.push(won >= 0 ? "It's working. Change nothing." : "The plan is right; it's small margins. Stay with it.");
+  return { tips, plan };
 }
 
 const SHORT_ATTR = { serve: 'Serve', ground: 'Ground', ret: 'Return', net: 'Net', stam: 'Stamina', mental: 'Mental', iq: 'IQ' };

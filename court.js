@@ -949,9 +949,9 @@ function createCourt() {
   const FLIGHT = {
     serve:   { apex: 0.12, h: () => 2.8,             mps: 40, bounce: 1.2,  split: 0.6 },
     kick:    { apex: 0.14, h: () => 3.0,             mps: 30, bounce: 2.3,  split: 0.55 },
-    topspin: { apex: 0.42, h: () => rand(2.4, 3.2),  mps: 23, bounce: 1.7,  split: 0.62 },
-    slice:   { apex: 0.56, h: () => rand(1.15, 1.5), mps: 18, bounce: 0.55, split: 0.68 },
-    flat:    { apex: 0.5,  h: () => rand(1.05, 1.35), mps: 29, bounce: 1.0, split: 0.6 },
+    topspin: { apex: 0.42, h: () => rand(2.4, 3.2),  mps: 27, bounce: 1.7,  split: 0.62 },
+    slice:   { apex: 0.56, h: () => rand(1.15, 1.5), mps: 20, bounce: 0.55, split: 0.68 },
+    flat:    { apex: 0.5,  h: () => rand(1.05, 1.35), mps: 35, bounce: 1.0, split: 0.6 },
     lob:     { apex: 0.5,  h: () => rand(7, 9.5),    mps: 11, bounce: 2.4,  split: 0.78 },
     drop:    { apex: null, h: () => 1.3,             mps: 11, bounce: 0.5,  split: 0.6 },
     popped:  { apex: null, h: () => 2.3,             mps: 12, bounce: 0.9,  split: 0.62 },
@@ -1300,7 +1300,8 @@ function createCourt() {
       const goodDrop = final && (shot.kind === 'drop' || shot.kind === 'underarm');
       const serveMps = (faults ? pt.kmh2 : pt.kmh1) / 3.6 * 0.75;
       // Put-aways are struck harder than rally balls.
-      const v = (isServe ? serveMps : fl.mps * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.25 : 1)) * surf().pace;
+      const power = 0.88 + (prof[hitter].ground ?? 50) / 400; // a 50-rated hitter ≈ 1.0, a 90 ≈ 1.1
+      const v = (isServe ? serveMps : fl.mps * power * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.2 : 1)) * surf().pace;
       // Where the receiver would like to meet it. Returns are taken back at the returner's depth.
       const desiredFor = b => next && next.smash ? { x: b.x * 0.9, y: lerp(r0.y, b.y, 0.5) }
         : next && next.bounceSmash ? { x: b.x * 1.05, y: dir(recv) * (Math.abs(b.y) + rand(0.3, 1)) } // step in and take it high off the bounce
@@ -1369,9 +1370,12 @@ function createCourt() {
       }
       // Still can't get there? Give the ball just enough extra time (at most 35% more) so they arrive
       // rather than appear: no player ever jumps to a ball.
+      // The ball keeps the speed it was hit at. A stretched player lunges and reaches with the racket (up to
+      // about a metre further than the body gets); only a big miss gets a little extra time (at most 10%).
+      let lunge = 1;
       if (!final && !met.ok) {
-        const needMs = runTime(dist(r0, met.body)) * 1000 + 40;
-        if (needMs <= met.ms * 1.35) { met.ms = needMs; met.ok = true; }
+        if (met.need - met.can <= 1.0) { lunge = Math.max(0.6, met.can / met.need); met.ok = true; }
+        else { const needMs = runTime(dist(r0, met.body) - 1.0) * 1000; if (needMs <= met.ms * 1.1) { met.ms = needMs; met.ok = true; lunge = Math.max(0.6, (met.need - 1) / met.need); } }
       }
       let contact = met.contact, body = met.body;
       wingNext[recv] = met.wing;
@@ -1400,7 +1404,7 @@ function createCourt() {
       const need = dist(r0, body), tSec = realMs / 1000;
       const cap = shot.kind === 'ace' ? 0.2 : shot.kind === 'out' ? 0.5 : 0.92;
       // (They only have until the ball passes the spot they're running to.)
-      let reach = !final ? 1 : need < 0.01 ? 0 : Math.min(cap, runDist(met.ms / 1000) / need);
+      let reach = !final ? lunge : need < 0.01 ? 0 : Math.min(cap, runDist(met.ms / 1000) / need);
       // A clean winner is clearly out of reach: they lunge, but finish well short of the ball.
       if (isWinner && need > 0.01) reach = Math.min(reach, Math.max(0, 1 - 1.7 / need));
       // The hitter recovers only as far as they can before the ball comes back.

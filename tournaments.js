@@ -965,7 +965,7 @@ function openMatch() {
   };
   advTier = ev.tier; // tour-level computer players choose their own advanced plan
   const oth = p => ps[ps[0] === p ? 1 : 0];
-  const profile = p => ({ adv: advPlan(p.isPlayer ? { ...p, advLevel: teamLevel(current.career, 'coach') } : p, oth(p)), real: !!p.atpRank && !p.isPlayer, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
+  const profile = p => ({ ground: p.attrs.ground, adv: advPlan(p.isPlayer ? { ...p, advLevel: teamLevel(current.career, 'coach') } : p, oth(p)), real: !!p.atpRank && !p.isPlayer, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
     style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   Court.scene(ev.surface, ev.indoor, ['You' + tag(ps[me]), shortName(ps[1 - me]) + tag(ps[1 - me])],
     [profile(ps[me]), profile(ps[1 - me])]);

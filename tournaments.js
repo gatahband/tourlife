@@ -101,7 +101,8 @@ function readJSON(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
 }
 function writeJSON(key, val) {
-  if (val === null) { delete PENDING[key]; try { localStorage.removeItem(key); } catch {} return true; }
+  if (val === null) { delete PENDING[key]; try { localStorage.removeItem(key); } catch {} if (typeof idbPut === 'function') idbPut(key, null); return true; }
+  if (typeof idbPut === 'function') idbPut(key, JSON.stringify(val)); // mirrored to the large backup store first (safety.js)
   for (let step = 0; step < 6; step++) {
     const text = JSON.stringify(val);
     try { localStorage.setItem(key, text); delete PENDING[key]; if (window.saveFailed && !Object.keys(PENDING).length) window.saveFailed = false; return true; }

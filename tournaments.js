@@ -1451,9 +1451,11 @@ function renderMatch() {
       });
     } else if (mode === 'watch') {
       $('mActions').innerHTML = (m.sets.length ? setBreak() : '') +
-        `<div class="btn-row three">${btn('mWatch', m.sets.length ? `Watch Set ${m.sets.length + 1}` : 'Resume Watching')}${btn('mAll', 'Sim to End', true)}${speeds}</div>`;
+        `<div class="btn-row four">${btn('mWatch', m.sets.length ? `Watch Set ${m.sets.length + 1}` : 'Resume Watching')}` +
+        (m.sets.length ? btn('mSet', `Sim Set ${m.sets.length + 1}`, true) : '') + `${btn('mAll', 'Sim to End', true)}${speeds}</div>`;
       bindBreak();
       $('mWatch').onclick = watchMatch;
+      if ($('mSet')) $('mSet').onclick = () => playOneSet(false); // sim just this set, then stop at the next set break
       $('mAll').onclick = simAll;
     } else {
       $('mActions').innerHTML = (m.sets.length ? setBreak() : '') + `<div class="btn-row four">${btn('mSet', `Sim Set ${m.sets.length + 1}`)}` +

@@ -127,10 +127,13 @@ async function checkForUpdate() {
     const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
     const { v } = await r.json();
     if (!v || v === window.TL_VERSION) return;
-    const b = document.createElement('button');
+    let dismissed = null; try { dismissed = localStorage.getItem('tourlife.updDismissed'); } catch {}
+    if (dismissed === v) return; // closed for this version; the next update shows again
+    const b = document.createElement('div');
     b.className = 'update-bar';
-    b.textContent = '🎾 A new version of TourLife is ready. Tap to update.';
-    b.onclick = () => { location.href = `${location.pathname}?v=${v}${location.hash}`; };
+    b.innerHTML = `<button type="button" class="upgo">🎾 A new version of TourLife is ready. Tap to update.</button><button type="button" class="upx" aria-label="Close">×</button>`;
+    b.querySelector('.upgo').onclick = () => { location.href = `${location.pathname}?v=${v}${location.hash}`; };
+    b.querySelector('.upx').onclick = () => { try { localStorage.setItem('tourlife.updDismissed', v); } catch {} b.remove(); };
     document.body.appendChild(b);
   } catch {}
 }

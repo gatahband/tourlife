@@ -774,7 +774,11 @@ h2.ctr { text-align: center; }
 .connrow { font-size: 14px; margin: 4px 0; }
 .savebar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .savebar .btn { margin: 0; }
-.update-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60; background: #0a84ff; color: #fff; border: 0; border-radius: 14px; padding: 14px 20px; font: inherit; font-size: 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.45); cursor: pointer; max-width: 92vw; }
+.update-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 60; background: #0a84ff; color: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); max-width: 92vw; display: flex; align-items: center; }
+.update-bar button { background: none; border: 0; color: #fff; font: inherit; cursor: pointer; }
+.update-bar .upgo { padding: 14px 8px 14px 20px; font-size: 16px; font-weight: 600; text-align: left; }
+.update-bar .upx { padding: 10px 16px; font-size: 24px; line-height: 1; opacity: .85; border-left: 1px solid rgba(255,255,255,.3); align-self: stretch; }
+.update-bar .upx:hover { opacity: 1; }
 
 /* Spotlight tour */
 .tour-veil { position: fixed; inset: 0; z-index: 70; }

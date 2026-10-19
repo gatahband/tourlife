@@ -31,19 +31,32 @@ const GAME_PLAN = [
     hint: 'Works with Tennis IQ and Net Proficiency, on clay, and against tired opponents. A poor one hands away the point.' },
   { key: 'underarm', label: 'Underarm serve', opts: [['never', 'Never'], ['rarely', 'Rarely'], ['sometimes', 'Sometimes']],
     hint: 'Cheeky. Catches returners standing deep. A smart, quick returner punishes it, and it works less each time you try it in a match.' },
+  // Unlocked by better coaches (Tour coach: wing and depth; Elite coach: energy and big points).
+  { key: 'wing', label: 'Target wing', coach: 2, opts: [['fh', 'Forehand'], ['neutral', 'Neutral'], ['bh', 'Backhand']],
+    hint: 'Send most rally balls to one side. Pick on their weaker wing (your coach can tell you which). Smart players adjust as the match goes on.' },
+  { key: 'depth', label: 'Shot depth & margin', coach: 2, opts: [['high', 'High margin'], ['balanced', 'Balanced'], ['deep', 'Deep & driving']],
+    hint: 'High margin: moonballs over the net, safe and great on clay against big hitters, but net rushers feast. Deep & driving: pins them back. Needs strong Groundstrokes, best on quick courts.' },
+  { key: 'energy', label: 'Energy pacing', coach: 3, opts: [['conserve', 'Conserve'], ['normal', 'Normal'], ['hustle', 'All-out hustle']],
+    hint: 'Hustle wins more points but tires you much faster (worse in the heat) and leaves you more tired after. Conserve saves your legs for later rounds.' },
+  { key: 'pressure', label: 'Big-point risk', coach: 3, opts: [['safe', 'Safe & solid'], ['standard', 'Standard'], ['broke', 'Go for broke']],
+    hint: 'On break points, set points and tiebreaks. Go for broke against a nervous, fragile opponent; stay safe and solid against a tough one.' },
 ];
 
-// Renders the plan settings into el; calls onChange(plan) after each change.
+// Renders the plan settings into el; calls onChange(plan) after each change. Coach-only settings show
+// locked until your coach is good enough.
 function planEditor(el, plan, onChange) {
   const draw = () => {
-    el.innerHTML = GAME_PLAN.map(g =>
-      `<div class="prow"><div class="plabel"><b>${g.label}</b><small>${g.hint}</small></div>` +
-      `<div class="seg" data-key="${g.key}">${g.opts.map(([v, l]) =>
-        `<button type="button" data-v="${v}" class="${plan[g.key] === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>`).join('');
+    const lv = typeof teamLevel === 'function' && current.career ? teamLevel(current.career, 'coach') : 0;
+    el.innerHTML = GAME_PLAN.map(g => {
+      const locked = g.coach && lv < g.coach;
+      return `<div class="prow${locked ? ' locked' : ''}"><div class="plabel"><b>${g.coach ? '🎓 ' : ''}${g.label}</b><small>${locked ? `🔒 Unlocks with a ${TEAM.coach.levels[g.coach].name}. ${g.hint}` : g.hint}</small></div>` +
+        `<div class="seg" data-key="${g.key}">${g.opts.map(([v, l]) =>
+          `<button type="button" data-v="${v}" class="${(plan[g.key] || DEFAULT_PLAN[g.key]) === v ? 'on' : ''}" ${locked ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>`;
+    }).join('');
   };
   el.onclick = e => {
     const b = e.target.closest('[data-v]');
-    if (!b) return;
+    if (!b || b.disabled) return;
     plan[b.parentElement.dataset.key] = b.dataset.v;
     draw();
     onChange(plan);
@@ -58,7 +71,8 @@ function planSummary(plan) {
   return [`${planLabel('serve', plan.serve)} serve`, `${planLabel('returnPos', plan.returnPos)} return`,
     planLabel('aggression', plan.aggression),
     ...(plan.spin && plan.spin !== 'mixed' ? [planLabel('spin', plan.spin)] : []), `Net: ${planLabel('net', plan.net)}`, `Drops: ${planLabel('drops', plan.drops)}`,
-    ...(plan.underarm && plan.underarm !== 'never' ? [`Underarm: ${planLabel('underarm', plan.underarm)}`] : [])].join(' · ');
+    ...(plan.underarm && plan.underarm !== 'never' ? [`Underarm: ${planLabel('underarm', plan.underarm)}`] : []),
+    ...['wing', 'depth', 'energy', 'pressure'].filter(k => plan[k] && plan[k] !== DEFAULT_PLAN[k]).map(k => `${GAME_PLAN.find(g => g.key === k).label}: ${planLabel(k, plan[k])}`)].join(' · ');
 }
 
 const TEMPERAMENTS = {

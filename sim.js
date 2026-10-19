@@ -4,7 +4,8 @@ const ATTR_KEYS = ['serve', 'ground', 'ret', 'net', 'stam', 'mental', 'iq'];
 const LEFTY_SHARE = 0.13;
 
 // Game plan: five tactical settings. You choose yours; opponents get one that suits their stats.
-const DEFAULT_PLAN = { serve: 'balanced', returnPos: 'normal', aggression: 'balanced', net: 'sometimes', drops: 'sometimes', underarm: 'never', spin: 'mixed' };
+const DEFAULT_PLAN = { serve: 'balanced', returnPos: 'normal', aggression: 'balanced', net: 'sometimes', drops: 'sometimes', underarm: 'never', spin: 'mixed',
+  wing: 'neutral', depth: 'balanced', energy: 'normal', pressure: 'standard' };
 const planOf = p => ({ ...DEFAULT_PLAN, ...(p.dropShots ? { drops: p.dropShots } : {}), ...p.plan });
 
 function opponentPlan(a, rng) {
@@ -307,7 +308,62 @@ const ex = (m, i) => (m.exec ? m.exec[i] : 1);
 const hasPlan = p => Object.entries(planOf(p)).some(([k, v]) => v !== DEFAULT_PLAN[k]);
 
 function fatigue(m, p) {
-  return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001;
+  const pace = { conserve: 0.5, normal: 1, hustle: 1.6 }[advPlan(p).energy] || 1;
+  return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001 * pace;
+}
+
+// --- Advanced game plan (unlocked by better coaches) --------------------------------------
+// Target wing, shot depth, energy pacing and big-point risk. Your settings count only if your coach
+// has unlocked them; computer players at ATP level and above pick their own, so the top gets tactical.
+const ADV_UNLOCK = { wing: 2, depth: 2, energy: 3, pressure: 3 };
+const ADV_TIERS = new Set(['ATP250', 'ATP500', 'M1000', 'GS']);
+// How much weaker a player's backhand is than their forehand (negative: the forehand is the weaker
+// wing). Fixed per player; one-handers tend to have the bigger gap.
+function wingGap(p) {
+  let h = 2166136261;
+  for (const ch of String(p.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return (h % 1000) / 1000 * 0.9 - 0.2 + (p.backhand === 'one' ? 0.15 : 0);
+}
+let advTier = null; // the tier of the match being played (set by setGen)
+function advPlan(p, o) {
+  const pl = planOf(p), lv = p.advLevel || 0;
+  if (p.isPlayer) {
+    const out = {};
+    for (const k of Object.keys(ADV_UNLOCK)) out[k] = lv >= ADV_UNLOCK[k] ? pl[k] : DEFAULT_PLAN[k];
+    return out;
+  }
+  if (p.real || !ADV_TIERS.has(advTier) || !o) return { wing: pl.wing, depth: pl.depth, energy: pl.energy, pressure: pl.pressure };
+  // Tour-level computer players play the percentages.
+  const g = wingGap(o), a = p.attrs;
+  return {
+    wing: g > 0.25 ? 'bh' : g < -0.1 ? 'fh' : 'neutral',
+    depth: a.ground >= 62 ? 'deep' : a.ground < 52 ? 'high' : 'balanced',
+    energy: a.stam >= 66 ? 'hustle' : 'normal',
+    pressure: attr(o, 'mental') < 50 ? 'broke' : attr(o, 'mental') > 68 ? 'safe' : 'standard',
+  };
+}
+// A's edge on a point against B from these settings.
+function advEdge(m, A, B, ev, clutch) {
+  const pl = advPlan(A, B);
+  let e = 0;
+  // Target wing: pick on the weaker side. Smart opponents adjust (run around it) as the match goes on.
+  if (pl.wing !== 'neutral') {
+    const g = wingGap(B) * (pl.wing === 'bh' ? 1 : -1);
+    e += 0.014 * g * Math.max(0.35, 1 - m.totalGames * attr(B, 'iq') / 100 * 0.025);
+  }
+  // Depth and margin: moonballs suit clay and blunt big hitters; deep driving suits strong ball-strikers on quick courts.
+  const fast = ev.surface === 'grass' || ev.indoor, clay = ev.surface === 'clay';
+  if (pl.depth === 'high') e += (clay ? 0.006 : fast ? -0.007 : 0) + (planOf(B).aggression === 'aggressive' ? 0.004 : 0) - (planOf(B).net === 'often' ? 0.005 : 0) + (55 - attr(A, 'ground')) * 0.0002;
+  if (pl.depth === 'deep') e += (attr(A, 'ground') - 60) * 0.0005 + (fast ? 0.004 : clay ? -0.002 : 0);
+  // Energy: all-out hustle wins more points now (and tires you faster); conserving does the opposite.
+  if (pl.energy === 'hustle') e += 0.008;
+  if (pl.energy === 'conserve') e -= 0.005;
+  // Big points: go for broke against a fragile opponent, stay solid against a tough one.
+  if (clutch) {
+    if (pl.pressure === 'broke') e += clamp(0.0012 * (55 - attr(B, 'mental')) + 0.0006 * (attr(A, 'mental') - 60), -0.03, 0.03);
+    if (pl.pressure === 'safe') e += clamp(0.0006 * (attr(B, 'mental') - 55), -0.012, 0.012);
+  }
+  return e;
 }
 
 // Lefty serving to a righty: the slice out wide on the ad side is the classic weapon.
@@ -325,7 +381,8 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + m.form[s] - m.form[r] + m.mood[s] - m.mood[r]
     - (fatigue(m, A) - fatigue(m, B)) * (typeof wxOf === 'function' ? wxOf(ev).heat : 1) - tiredness(A) + tiredness(B)
     - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
-    + (A.moraleEdge || 0) - (B.moraleEdge || 0); // morale (see morale.js)
+    + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
+    + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch); // advanced plan (coach unlocks)
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;
@@ -801,6 +858,7 @@ function* tiebreakGen(m, ps, ev, rng) {
 
 // One full set; returns { games, tb } where tb is the tiebreak score if one was played.
 function* setGen(m, ps, ev, rng = Math.random) {
+  advTier = ev.tier;
   if (!m.form) initForm(m, ps, rng);
   m.games = [0, 0];
   m.points = [];

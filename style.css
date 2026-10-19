@@ -910,3 +910,5 @@ h2.ctr { text-align: center; }
 #rwStage:fullscreen { background: #0b0d11; padding: 16px; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
 #rwStage:fullscreen .court { max-width: none; }
 .rwfs { width: auto; margin: 0 0 0 auto; display: block; padding: 6px 12px; font-size: 13px; }
+.prow.locked { opacity: .5; }
+.prow.locked .seg button { cursor: not-allowed; }

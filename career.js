@@ -476,6 +476,19 @@ function coachPlan(o, ev, me) {
     net: a.ground <= 48 || ev.surface === 'grass' ? 'often' : a.ground >= 60 ? 'rarely' : 'sometimes',
     drops: a.stam <= 48 || a.net <= 46 || ev.surface === 'clay' ? 'often' : a.net >= 60 ? 'rarely' : 'sometimes',
     underarm: op.returnPos === 'deep' && me.attrs.iq >= 55 ? 'rarely' : 'never',
+    // Advanced settings, when your coach is good enough to unlock them.
+    ...advCoach(o, ev, me),
+  };
+}
+function advCoach(o, ev, me) {
+  const lv = teamLevel(current.career, 'coach'), mine = planOf(me), a = o.attrs, g = wingGap(o);
+  const fast = ev.surface === 'grass' || ev.indoor, hot = typeof wxOf === 'function' && wxOf(ev).heat > 1.15;
+  return {
+    wing: lv >= 2 ? (g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral') : mine.wing,
+    depth: lv >= 2 ? (ev.surface === 'clay' && (planOf(o).aggression === 'aggressive' || a.ground >= 60) && planOf(o).net !== 'often' ? 'high'
+      : me.attrs.ground >= 62 && !(ev.surface === 'clay') ? 'deep' : 'balanced') : mine.depth,
+    energy: lv >= 3 ? (hot && me.attrs.stam < 62 ? 'conserve' : me.attrs.stam >= 66 && !hot ? 'hustle' : 'normal') : mine.energy,
+    pressure: lv >= 3 ? (a.mental < 52 ? 'broke' : a.mental > 66 ? 'safe' : 'standard') : mine.pressure,
   };
 }
 

@@ -423,6 +423,9 @@ function scoutReport(o) {
   const plan = planOf(o);
   const tendencies = Object.entries(TENDENCY).map(([k, m]) => m[plan[k]]).filter(Boolean);
   if (o.hand === 'left') tendencies.unshift('Left-handed: watch the serve out wide on the ad side');
+  const g = wingGap(o);
+  if (g > 0.3) tendencies.push(`Weaker on the backhand${o.backhand === 'one' ? ' (one-hander)' : ''}`);
+  else if (g < -0.1) tendencies.push('Weaker on the forehand');
   return {
     strengths: ups.map(([k]) => SCOUT[k].up),
     weaknesses: downs.map(([k]) => SCOUT[k].down),

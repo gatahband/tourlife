@@ -554,10 +554,11 @@ function scoutCard(opp, ev, me, plan, { morale = '', planBtn = 'dPlanBtn' } = {}
 
   // Your plan, with the coach's suggestion beside each setting.
   const rec = coach ? coachPlan(opp, ev, me) : null, theirs = planOf(opp);
-  const diffs = rec ? GAME_PLAN.filter(g => rec[g.key] !== plan[g.key]) : [];
-  const rows = GAME_PLAN.map(g => {
-    const d = rec && rec[g.key] !== plan[g.key];
-    return `<tr class="${d ? 'diff' : ''}"><th>${g.label}</th><td>${planLabel(g.key, plan[g.key])}</td>` +
+  const diffs = rec ? GAME_PLAN.filter(g => (!g.coach || lvl >= g.coach) && rec[g.key] !== (plan[g.key] || DEFAULT_PLAN[g.key])) : [];
+  const pv = k => plan[k] || DEFAULT_PLAN[k];
+  const rows = GAME_PLAN.filter(g => !g.coach || lvl >= g.coach).map(g => {
+    const d = rec && rec[g.key] !== pv(g.key);
+    return `<tr class="${d ? 'diff' : ''}"><th>${g.coach ? '🎓 ' : ''}${g.label}</th><td>${planLabel(g.key, pv(g.key))}</td>` +
       (coach ? `<td>${d ? `<b>${planLabel(g.key, rec[g.key])}</b>` : '<span class="ok">✓</span>'}</td>` : '') +
       (coach ? `<td class="them">${planLabel(g.key, theirs[g.key])}</td>` : '') + `</tr>`;
   }).join('');
@@ -698,7 +699,7 @@ function wrapUpMatch(entry) {
     rec.fullWatch = !!entry.live.total && (entry.live.watched || 0) >= entry.live.total;
     rec.watchBonus = Math.round(WATCH_BONUS * Math.min(1, rec.gamesWatched / WATCH_GAMES) * 10000) / 10000;
   }
-  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4), 0, 100);
+  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4), 0, 100);
   writeJSON(SAVE_KEY, p);
   shakeRust(current.career);
   writeJSON(CAREER_KEY, current.career);
@@ -904,6 +905,7 @@ async function playOneSet(animate = true) {
   if (ps[me].baseAttrs) ps[me].attrs = { ...ps[me].baseAttrs };
   const rb = typeof racketBoost === 'function' ? racketBoost(current.career) : null;
   if (rb) { ps[me].baseAttrs = { ...ps[me].attrs }; ps[me].attrs[rb.stat] = Math.min(99, ps[me].attrs[rb.stat] * (1 + rb.pct)); }
+  ps[me].advLevel = teamLevel(current.career, 'coach'); // which advanced plan settings your coach has unlocked
   // Your plan as the set began (a changeover can change it mid-set; a replay must start from the same one).
   if (L.planAtStart) ps[me].plan = JSON.parse(L.planAtStart); else L.planAtStart = JSON.stringify(ps[me].plan || planOf(ps[me]));
   const before = JSON.parse(JSON.stringify(m.stats));

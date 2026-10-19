@@ -312,6 +312,30 @@ function fatigue(m, p) {
   return Math.max(0, m.totalGames - 20) / 20 * Math.max(0, 70 - p.attrs.stam) * 0.001 * pace;
 }
 
+// --- Adapting --------------------------------------------------------------------------------
+// How often players adjust to an opponent's plan, by level: rarely at the ITFs, constantly at the top.
+const ADAPT_RATE = { M15: 0.4, M25: 0.5, CH75: 0.85, CH125: 1, ATP250: 1.2, ATP500: 1.3, M1000: 1.45, GS: 1.5 };
+const adaptRate = () => ADAPT_RATE[advTier] || 1;
+// What the adjuster changes depends on the plan they're facing (its most distinctive setting).
+function adaptTo(m, ps, who, target, set) {
+  const pl = planOf(ps[target]), ad = advPlan(ps[target], ps[who]);
+  const opts = [
+    ad.wing !== 'neutral' && { key: 'wing', label: `is standing further back and running around the ${ad.wing === 'bh' ? 'backhand' : 'forehand'}` },
+    pl.aggression === 'aggressive' && { key: 'aggression', label: 'is blocking everything back deep, waiting for the errors' },
+    pl.serve === 'big' && { key: 'serve', label: 'is standing deeper to return the big serve' },
+    pl.net === 'often' && { key: 'net', label: 'is passing lower and lobbing more' },
+    ad.depth === 'high' && { key: 'depth', label: 'is stepping in to take the moonballs early' },
+    pl.spin === 'flat' && { key: 'spin', label: 'is slicing low so the flat balls have nothing to hit through' },
+    pl.drops === 'often' && { key: 'drops', label: 'is reading the drop shot and staying closer' },
+    pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
+  ].filter(Boolean);
+  const pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
+  m.exec[target] -= 0.25 + attr(ps[who], 'iq') / 200;
+  if (pick.key === 'wing') { m.adj = m.adj || {}; m.adj[ps[who].name] = { wing: ad.wing }; }
+  m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set }];
+  m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
+}
+
 // --- Advanced game plan (unlocked by better coaches) --------------------------------------
 // Target wing, shot depth, energy pacing and big-point risk. Your settings count only if your coach
 // has unlocked them; computer players at ATP level and above pick their own, so the top gets tactical.
@@ -349,7 +373,8 @@ function advEdge(m, A, B, ev, clutch) {
   // Target wing: pick on the weaker side. Smart opponents adjust (run around it) as the match goes on.
   if (pl.wing !== 'neutral') {
     const g = wingGap(B) * (pl.wing === 'bh' ? 1 : -1);
-    e += 0.014 * g * Math.max(0.35, 1 - m.totalGames * attr(B, 'iq') / 100 * 0.025);
+    const covered = m.adj && m.adj[B.name] && m.adj[B.name].wing === pl.wing ? 0.25 : 1; // they've moved to cover it
+    e += 0.014 * g * covered * Math.max(0.35, 1 - m.totalGames * attr(B, 'iq') / 100 * 0.025);
   }
   // Depth and margin: moonballs suit clay and blunt big hitters; deep driving suits strong ball-strikers on quick courts.
   const fast = ev.surface === 'grass' || ev.indoor, clay = ev.surface === 'clay';
@@ -382,7 +407,8 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     - (fatigue(m, A) - fatigue(m, B)) * (typeof wxOf === 'function' ? wxOf(ev).heat : 1) - tiredness(A) + tiredness(B)
     - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
     + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
-    + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch); // advanced plan (coach unlocks)
+    + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch) // advanced plan (coach unlocks)
+    + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0); // week's preparation (prep.js)
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;
@@ -880,6 +906,10 @@ function* setGen(m, ps, ev, rng = Math.random) {
     if ((g0 >= 6 || g1 >= 6) && Math.abs(g0 - g1) >= 2) break;
     if (g0 === 6 && g1 === 6) { tb = yield* tiebreakGen(m, ps, ev, rng); break; }
     yield* gameGen(m, ps, ev, rng);
+    // At tour level, a player falling behind mid-set may adjust right away.
+    const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
+    if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
+      && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
   }
   const set = { games: [...m.games], tb };
   // A lead of 3+ games (or a break-up 5-3) that got away.
@@ -888,12 +918,10 @@ function* setGen(m, ps, ev, rng = Math.random) {
   m.sets.push(set);
   const loser = set.games[0] > set.games[1] ? 1 : 0;
   trigger(m, ps, loser, 'setLost', rng);
-  // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more.
+  // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
+  // and the higher the level, the more often it happens.
   const winner = 1 - loser;
-  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < 0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) {
-    m.exec[winner] -= 0.25 + attr(ps[loser], 'iq') / 200;
-    m.moments.push({ set: m.sets.length + 1, who: loser, kind: 'adapt', label: 'found answers to the game plan', at: m.points.length - 1 });
-  }
+  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate()) adaptTo(m, ps, loser, winner, m.sets.length + 1);
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
   if (won[0] === setsToWin(m)) m.winner = 0;
   if (won[1] === setsToWin(m)) m.winner = 1;

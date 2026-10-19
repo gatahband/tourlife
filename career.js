@@ -493,11 +493,60 @@ function advCoach(o, ev, me) {
   };
 }
 
+// Video analysis: the full read on an opponent (not limited by your coach's level).
+const advCoachFull = o => { const g = wingGap(o); return { wing: g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral' }; };
+// Before a rematch: the counter-plan from your video analysis of the last loss.
+function videoPlanHtml(c, opp, plan) {
+  const v = opp.id && c.videoPlans && c.videoPlans[opp.id];
+  if (!v) return '';
+  const lv = teamLevel(c, 'coach');
+  const diffs = GAME_PLAN.filter(g => (!g.coach || lv >= g.coach) && v.plan[g.key] && v.plan[g.key] !== (plan[g.key] || DEFAULT_PLAN[g.key]));
+  return `<div class="advice"><b>📼 Your video analysis of the last loss (${esc(v.score)})</b>` +
+    (diffs.length ? `<ul>${diffs.map(g => `<li>${g.label}: <b>${planLabel(g.key, v.plan[g.key])}</b></li>`).join('')}</ul><button type="button" class="btn small" id="vidUse">Use the video plan</button>`
+      : '<p class="hint">Your plan already follows it.</p>') + `</div>`;
+}
+
+// When an opponent adjusts to your plan: two ways to answer it (the Master coach offers both).
+function counters(key, cur) {
+  const other = cur.wing === 'bh' ? 'fh' : 'bh';
+  return ({
+    wing: [{ label: `Switch to their ${other === 'bh' ? 'backhand' : 'forehand'} and catch them out of position`, plan: { wing: other } },
+      { label: 'Go back to neutral and drive deep through the middle', plan: { wing: 'neutral', depth: 'deep' } }],
+    aggression: [{ label: 'Be patient: make them hit one more ball', plan: { aggression: 'patient' } },
+      { label: 'Come forward and finish points at the net', plan: { net: 'often' } }],
+    serve: [{ label: 'Serve safer and mix up the placement', plan: { serve: 'balanced' } },
+      { label: 'Follow the serve in and rush them', plan: { net: 'often' } }],
+    net: [{ label: 'Stay back and rally', plan: { net: 'rarely' } },
+      { label: 'Approach off deeper, heavier balls', plan: { spin: 'topspin', depth: 'deep' } }],
+    depth: [{ label: 'Drive it deep and flat instead', plan: { depth: 'deep', spin: 'flat' } },
+      { label: 'Drop shot them when they step in', plan: { drops: 'often' } }],
+    spin: [{ label: 'Use heavy topspin to get the ball up high', plan: { spin: 'topspin' } },
+      { label: 'Shorten the points: attack earlier', plan: { aggression: 'aggressive' } }],
+    drops: [{ label: 'Save the drop shot for the big moments', plan: { drops: 'rarely' } },
+      { label: 'Push them deep first, then drop', plan: { depth: 'deep' } }],
+    returnPos: [{ label: 'Step back to a normal return position', plan: { returnPos: 'normal' } },
+      { label: 'Stand deep and start the rally neutral', plan: { returnPos: 'deep' } }],
+  })[key] || [{ label: 'Change the rhythm: switch your rally style', plan: { aggression: cur.aggression === 'aggressive' ? 'patient' : 'aggressive' } },
+    { label: 'Change the shape: heavier topspin and more margin', plan: { spin: 'topspin', depth: 'high' } }];
+}
+// The latest adjustment the opponent made against you this match, if any.
+const lastAdapt = (m, me) => (m.adapted || []).filter(a => a.against === me).slice(-1)[0] || null;
+// What a coach below Master tells you about it.
+function adaptNotice(m, ps, me) {
+  const a = lastAdapt(m, me), lv = teamLevel(current.career, 'coach');
+  if (!a || lv >= 4) return '';
+  return lv > 0 ? `🧑‍🏫 Your coach: "Something changed. ${esc(shortName(ps[1 - me]))} has adjusted to your plan, and it isn't working like before."` : '';
+}
+
 // Master coach, mid-match: reads how the match is actually going and suggests changes, with the reasons.
 // Returns { tips: [text], plan: {changes} }.
 function liveAdvice(m, ps, me, ev) {
   const op = 1 - me, Y = m.stats[me], T = m.stats[op], A = ps[me], O = ps[op], cur = planOf(A);
   const tips = [], plan = {};
+  // First: if they've adjusted to you, name it and give two counters.
+  const ad = lastAdapt(m, me);
+  const cts = ad ? counters(ad.key, cur).map(c => ({ ...c, plan: Object.fromEntries(Object.entries(c.plan).filter(([k, v]) => cur[k] !== v)) })).filter(c => Object.keys(c.plan).length) : [];
+  if (ad && cts.length) tips.push(`${shortName(O)} ${ad.label}. Two ways to answer it (buttons below).`);
   const pct = (a, b) => (b ? a / b : 0);
   const set = (k, v, why) => { if (tips.length < 3 && cur[k] !== v && plan[k] === undefined) { plan[k] = v; tips.push(why); } };
   // Their serve is hurting you.
@@ -525,7 +574,7 @@ function liveAdvice(m, ps, me, ev) {
   // Nothing wrong: say so.
   const won = m.games[me] - m.games[op] + m.sets.reduce((n, st) => n + (st.games[me] > st.games[op] ? 3 : -3), 0);
   if (!tips.length) tips.push(won >= 0 ? "It's working. Change nothing." : "The plan is right; it's small margins. Stay with it.");
-  return { tips, plan };
+  return { tips, plan, counters: cts };
 }
 
 const SHORT_ATTR = { serve: 'Serve', ground: 'Ground', ret: 'Return', net: 'Net', stam: 'Stamina', mental: 'Mental', iq: 'IQ' };

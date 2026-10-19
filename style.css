@@ -918,3 +918,17 @@ h2.ctr { text-align: center; }
 .prow.locked .seg button { cursor: not-allowed; }
 .advice { background: rgba(255,214,10,.1); border: 1px solid rgba(255,214,10,.35); border-radius: 12px; padding: 10px 14px; margin: 10px auto; text-align: left; max-width: 560px; font-size: 14px; }
 .advice b { color: #ffd60a; } .advice ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+/* Tournament preparation */
+.prepbox { background: var(--field); border-radius: 14px; padding: 14px; margin: 12px 0; }
+.prepbox.done { padding: 10px 14px; } .prepbox.done .chips { margin-top: 6px; }
+.prephead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 16px; }
+.prephead span { color: var(--muted); font-size: 13px; }
+.prepitems { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; margin-top: 8px; }
+.prepitem { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.prepitem.got { border-color: var(--good); }
+.prepitem b { display: block; font-size: 14px; } .prepitem small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; margin-top: 2px; }
+.prepitem select { margin-top: 6px; padding: 6px 8px; font-size: 13px; }
+.prepitem .btn { margin: 0; width: auto; white-space: nowrap; }
+.preptags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.scoutx { background: rgba(10,132,255,.08); border: 1px solid rgba(10,132,255,.3); border-radius: 12px; padding: 10px 14px; margin-top: 12px; }
+.scoutx .sh4 { margin-top: 0; color: var(--text); } .scoutx ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }

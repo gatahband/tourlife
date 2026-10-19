@@ -254,13 +254,36 @@ function debutLine(rec, ev) {
     : `It was your first ever ${name} main-draw match${where}. You lost, but you belong at this level now.`;
 }
 
+// What went wrong in a loss, most important first.
+function lessonsFor(rec, m, me, ps, ev) {
+  const op = 1 - me, Y = m.stats[me], T = m.stats[op], name = esc(shortName(ps[op])), L = [];
+  const ad = (m.adapted || []).filter(a => a.against === me);
+  const ordinal = ['', 'first', 'second', 'third', 'fourth', 'fifth'];
+  if (ad.length) {
+    const a = ad[ad.length - 1], changed = (rec.adjusts || []).some(x => x.after >= a.set - 1);
+    L.push(changed ? `${name} adjusted in the ${ordinal[a.set] || ''} set (${a.label.replace(/^is /, '')}). You changed your plan, but not enough to answer it.`
+      : `Your plan worked early, then ${name} ${a.label} in the ${ordinal[a.set] || ''} set, and you never changed it. Next time, answer it at a changeover or set break.`);
+  }
+  if (Y.ue >= T.ue + 6) L.push(`Too many unforced errors: ${Y.ue} to their ${T.ue}. A more patient plan with more margin would have kept you in it.`);
+  if (Y.bpChances >= 4 && Y.bpWon / Y.bpChances < 0.3) L.push(`You took only ${Y.bpWon} of ${Y.bpChances} break points. That's where it slipped away.`);
+  if (Y.servePts >= 20 && Y.firstIn / Y.servePts < 0.55) L.push(`Only ${Math.round(Y.firstIn / Y.servePts * 100)}% of first serves went in, so they were attacking your second serve all day.`);
+  if (T.servePts >= 20 && T.firstWon / Math.max(1, T.firstIn) > 0.8) L.push(`Their first serve won ${Math.round(T.firstWon / T.firstIn * 100)}% of points. Standing deeper to return would have helped.`);
+  if (Y.netPlayed >= 6 && Y.netWon / Y.netPlayed < 0.45) L.push(`You won only ${Y.netWon} of ${Y.netPlayed} points at the net. They were passing you.`);
+  if (rec.sets.length >= 3 && rec.sets[rec.sets.length - 1].games[0] <= 2) L.push('You faded badly in the deciding set. Pace your energy, or work on your fitness.');
+  if (!L.length) L.push(`${name} was just better today: no single thing went wrong.`);
+  return L;
+}
+const lessonsHtml = rec => rec.lessons && rec.lessons.length
+  ? `🔍 <b>What went wrong${rec.lessonsFull ? ' (video analysis)' : ''}:</b> ${rec.lessons.join(' ')}${rec.lessonsFull ? ' A counter-plan is saved for the next time you meet.' : ' (Book video analysis for the full breakdown.)'}` : '';
+
 function matchStory(rec, ev, player) {
   const oppName = esc(shortName(rec.opponent));
   return [
     `${openingLine(rec, ev, rec.opponent)} ${debutLine(rec, ev)} ${surfaceLine(rec, ev, player)}`,
     `${setsLine(rec, oppName)} ${swingLine(rec, oppName)} ${breakLine(rec, oppName)} ${extrasLine(rec, oppName)} ${styleLine(rec, oppName)}`.trim(),
     `${planLine(rec, oppName)} ${moraleLine(rec)} ${adjustLine(rec)} ${callsLine(rec)} ${mindLine(rec, player, oppName)} ${closingLine(rec)} ${typeof h2hStory === 'function' ? h2hStory(rec) : ''}`.trim(),
-  ];
+    lessonsHtml(rec),
+  ].filter(Boolean);
 }
 
 // --- Post-match adjustments ------------------------------------------------

@@ -46,6 +46,37 @@ function playerCard() {
 }
 
 // Import: becomes a saved career and is loaded. A player card starts a fresh career with that player.
+// --- Safety backups ---------------------------------------------------------------------------------
+// Before anything that replaces or removes a career (loading a save, switching or starting a career,
+// deleting a saved one), the career is copied here first. The last 3 are kept and can be restored any time,
+// so progress is never lost to a load or a mis-tap.
+const BACKUPS_KEY = 'tourlife.backups';
+const loadBackups = () => readJSON(BACKUPS_KEY) || [];
+function autoBackup(snap, reason) {
+  if (!snap || !snap.player || !snap.career) return;
+  const list = loadBackups();
+  // A trimmed copy (old seasons' matches keep their results but not point-by-point detail) to save room.
+  const career = JSON.parse(JSON.stringify(snap.career));
+  if (career.history) compactHistory(career);
+  if (career.highlights) career.highlights = career.highlights.slice(-4);
+  list.push({ at: Date.now(), reason, player: snap.player, career, entry: snap.entry || null });
+  // Keep the newest 3, and drop the oldest if the browser runs short of room.
+  let keep = list.slice(-3);
+  for (;;) { try { localStorage.setItem(BACKUPS_KEY, JSON.stringify(keep)); break; } catch { if (keep.length <= 1) break; keep = keep.slice(1); } }
+}
+const backupLive = reason => autoBackup({ player: readJSON(SAVE_KEY), career: readJSON(CAREER_KEY), entry: readJSON(ENTRY_KEY) }, reason);
+function backupsHtml() {
+  const list = loadBackups().slice().reverse();
+  if (!list.length) return '<p class="hint">None yet. One is made automatically before you load a save, switch or start a career, or delete one.</p>';
+  return `<div class="bklist">${list.map((b, i) => `<div class="bkrow"><span><b>${esc(b.player.name)}</b> · season ${seasonOfWeek(b.career.week || 1)}, week ${weekInSeason(b.career.week || 1)}` +
+    `<small>${esc(b.reason)} · ${new Date(b.at).toLocaleString()}</small></span><button type="button" class="btn small ghost" data-bk="${list.length - 1 - i}">Restore</button></div>`).join('')}</div>`;
+}
+function restoreBackup(i) {
+  const b = loadBackups()[i];
+  if (!b || !confirm(`Restore ${b.player.name} (season ${seasonOfWeek(b.career.week || 1)}, week ${weekInSeason(b.career.week || 1)})? The career you have open now is backed up first.`)) return;
+  importSave({ v: 1, kind: 'career', player: b.player, career: b.career, entry: b.entry, savedOn: 'restore' });
+}
+
 function importSave(obj) {
   if (olderThanMark(obj)) {
     const here = (readJSON(CAREER_KEY) || {}).week, there = (obj.career || {}).week;
@@ -56,6 +87,7 @@ function importSave(obj) {
     if (!confirm(`The copy of this career on this device is further along (${when(here)}) than the one you're loading (${when(there)}). Load the other device's copy anyway? The copy here is kept in your saved careers as "(newer copy)" so you can switch back.`)) return;
     clearMark(obj);
   }
+  backupLive(`Before loading ${obj.player && obj.player.name ? obj.player.name + "'s" : 'a'} save`); // never lose the career open now
   // A full career keeps its id (loading your own backup replaces it); a player card always starts a new slot.
   const id = obj.kind === 'career' && obj.player.created || Date.now();
   // If the copy here is further along than the one coming in, never throw it away: keep it in your saved
@@ -232,8 +264,10 @@ function openBackup() {
       `<button type="button" class="btn" id="shFile">Save a copy to this device</button>` +
       `<button type="button" class="link" id="shCopy">Or copy it as a code</button>` +
       `<textarea id="shCode" class="inp code" rows="3" readonly hidden></textarea></section>` +
-    `<section class="sh"><h3>Open a copy</h3>${importHtml()}</section>`);
+    `<section class="sh"><h3>Open a copy</h3>${importHtml()}</section>` +
+    `<section class="sh"><h3>🛟 Safety backups</h3><p class="hint">Made automatically before anything that could replace a career. Tap Restore to go back to one.</p>${backupsHtml()}</section>`);
   $('mx').onclick = closeModal;
+  $('sheet').querySelectorAll('[data-bk]').forEach(b => { b.onclick = () => restoreBackup(+b.dataset.bk); });
   bindImport();
   const codeP = encodeSave(fullSave());
   $('shMove').onclick = async () => {

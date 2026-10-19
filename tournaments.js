@@ -91,12 +91,58 @@ function surfaceFit(player, ev) {
 
 // --- Storage ---------------------------------------------------------------
 
+// Saving must never fail silently. If the browser's storage is full, space is freed (caches, backups, the
+// fine detail of old seasons' matches) and the write retried. Anything that still can't be written is kept
+// in memory (PENDING), so the game never falls back to an older copy, and you're warned straight away with a
+// button to download your progress.
+const PENDING = {};
 function readJSON(key) {
+  if (key in PENDING) { try { return JSON.parse(PENDING[key]); } catch { return null; } }
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
 }
 function writeJSON(key, val) {
-  try { val === null ? localStorage.removeItem(key) : localStorage.setItem(key, JSON.stringify(val)); }
-  catch { window.saveFailed = true; } // usually storage full: Home shows a warning
+  if (val === null) { delete PENDING[key]; try { localStorage.removeItem(key); } catch {} return true; }
+  for (let step = 0; step < 6; step++) {
+    const text = JSON.stringify(val);
+    try { localStorage.setItem(key, text); delete PENDING[key]; if (window.saveFailed && !Object.keys(PENDING).length) window.saveFailed = false; return true; }
+    catch {
+      PENDING[key] = text;
+      if (!freeSpace(step, key, val)) break;
+    }
+  }
+  window.saveFailed = true;
+  saveFailedWarning();
+  return false;
+}
+// Make room, least important first. Never deletes a career: only caches, spare backups and old match detail.
+function freeSpace(step, key, val) {
+  try {
+    if (step === 0) { for (const k of ['tourlife.odds', 'tourlife.replayAngle']) localStorage.removeItem(k); const b = readJSON('tourlife.backups'); if (b && b.length > 2) localStorage.setItem('tourlife.backups', JSON.stringify(b.slice(-2))); return true; }
+    if (step === 1) { // old seasons' matches keep their result but drop point-by-point detail, in every saved career
+      const saves = readJSON(SAVES_KEY) || [];
+      for (const sv of saves) if (sv.career) { compactHistory(sv.career); if (sv.career.highlights) sv.career.highlights = sv.career.highlights.slice(-4); }
+      localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); return true;
+    }
+    if (step === 2) { localStorage.removeItem('tourlife.backups'); return true; }
+    if (step === 3 && val && val.history) { compactHistory(val); if (val.highlights) val.highlights = val.highlights.slice(-6); return true; }
+    if (step === 4) { const c = readJSON(CAREER_KEY); if (c && c.history && key !== CAREER_KEY) { compactHistory(c); c.highlights = (c.highlights || []).slice(-6); localStorage.setItem(CAREER_KEY, JSON.stringify(c)); } return true; }
+  } catch {}
+  return step < 5;
+}
+// A red bar pinned to the top of the screen (nothing can cover it) until progress saves again.
+function saveFailedWarning() {
+  if (document.getElementById('saveBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'saveBar';
+  bar.innerHTML = `<b>⚠️ Progress can't be saved: this browser's storage is full.</b><span>Nothing is lost while this page stays open. Download it now, before closing or refreshing.</span>` +
+    `<button type="button" id="sfSave">⬇️ Download my progress</button>`;
+  document.body.appendChild(bar);
+  bar.querySelector('#sfSave').onclick = () => { if (typeof saveProgress === 'function') saveProgress(); };
+  // Keep trying quietly; the bar goes away once everything is saved.
+  const retry = setInterval(() => {
+    for (const k of Object.keys(PENDING)) { try { localStorage.setItem(k, PENDING[k]); delete PENDING[k]; } catch {} }
+    if (!Object.keys(PENDING).length) { window.saveFailed = false; bar.remove(); clearInterval(retry); }
+  }, 15000);
 }
 
 function loadCareer() {
@@ -128,6 +174,7 @@ const loadSaves = () => readJSON(SAVES_KEY) || [];
 function shelveLive() {
   const player = readJSON(SAVE_KEY);
   if (!player) return;
+  if (typeof backupLive === 'function') backupLive('Before switching careers');
   const id = player.created || Date.now();
   const saves = loadSaves().filter(x => x.id !== id);
   saves.push({ id, player: { ...player, created: id }, career: readJSON(CAREER_KEY), entry: readJSON(ENTRY_KEY), savedAt: Date.now() });
@@ -153,6 +200,8 @@ function switchCareer(id) {
 }
 
 function deleteSave(id) {
+  const gone = loadSaves().find(x => x.id === id);
+  if (gone && typeof autoBackup === 'function') autoBackup(gone, 'Before deleting a saved career');
   writeJSON(SAVES_KEY, loadSaves().filter(x => x.id !== id));
 }
 

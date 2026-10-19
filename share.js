@@ -297,11 +297,15 @@ async function checkRealResults() {
     `<h2 class="itop">🎾 Real tournament results</h2>` +
     fresh.map(({ ev, r }) => `<div class="card realres"><b>${esc(ev.name)}</b> <small>${ev.exhibition ? 'One-on-one' : tierLabel(ev.tier)} · ${surfaceLabel(ev.surface)}</small>` +
       `<p class="big">${ev.exhibition ? (r.reached === 'W' ? '🏆 You won the one-on-one!' : 'You lost the one-on-one') : `${ROUND_TXT[r.reached] || r.reached} · <b>+${r.points} pts</b>`}</p>` +
-      `<ul class="tlog">${r.matches.map(x => `<li>${x.won ? '✅' : '❌'} ${x.round} vs ${flagOf(x.opponent.nation)} ${esc(x.opponent.name)}${x.opponent.real ? ' ⭐' : ''} · ${x.score}</li>`).join('')}</ul>` +
+      `<ul class="tlog">${r.matches.map((x, mi) => `<li>${x.won ? '✅' : '❌'} ${x.round} vs ${flagOf(x.opponent.nation)} ${esc(x.opponent.name)}${x.opponent.real ? ' ⭐' : ''} · ${x.score}` +
+        `${x.replay ? ` <button type="button" class="btn small rwbtn" data-ev="${esc(ev.id)}" data-mi="${mi}">▶ Watch</button>` : ''}</li>`).join('')}</ul>` +
       (r.reached !== 'W' ? `<small class="hint">Champion: ${esc(ev.champion)}</small>` : '') + `</div>`).join('') +
     `<p class="hint center">⭐ = another real player. The matches are in your Match History.</p>` +
     `<button type="button" class="btn" id="rrOk">Nice</button>`);
   $('mx').onclick = closeModal;
   $('rrOk').onclick = closeModal;
+  $('sheet').querySelectorAll('.rwbtn').forEach(btn => {
+    btn.onclick = () => { const f = fresh.find(x => x.ev.id === btn.dataset.ev); if (f) watchRealMatch(f.r.matches[+btn.dataset.mi]); };
+  });
 }
 setTimeout(checkRealResults, 600);

@@ -903,3 +903,5 @@ h2.ctr { text-align: center; }
 .offerboost { font-weight: 700; color: var(--good); }
 .offerx { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 10px 0; font-size: 13px; color: var(--muted); }
 .offerx span:first-child { width: 100%; text-align: center; }
+.hwatch { flex-shrink: 0; margin-left: 8px; background: var(--accent); color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+.rwbtn { display: inline-block; width: auto; margin: 0 0 0 8px; padding: 4px 10px; font-size: 12px; }

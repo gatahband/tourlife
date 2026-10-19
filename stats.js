@@ -195,9 +195,13 @@ function renderHistory() {
     return `<button type="button" class="hrow" data-i="${i}">` +
       `<span class="wl ${rec.won ? 'w' : 'l'}">${rec.won ? 'W' : 'L'}</span>` +
       `<span class="hmain"><b>${flagOf(o.nation)} ${esc(o.name)}</b><small>${rec.round} · ${esc(ev.city)} ${(TIERS[ev.tier] || { label: ev.tier }).label} · Week ${it.week}</small></span>` +
-      `<span class="hscore">${rec.score}</span></button>`;
+      `<span class="hscore">${rec.score}</span>${rec.replay ? `<span class="hwatch" data-w="${i}">▶ Watch</span>` : ''}</button>`;
   }).join('');
-  box.onclick = e => { const b = e.target.closest('[data-i]'); if (b) openMatchStats(items[+b.dataset.i]); };
+  box.onclick = e => {
+    const w = e.target.closest('[data-w]');
+    if (w) { watchRealMatch(items[+w.dataset.w].rec); return; }
+    const b = e.target.closest('[data-i]'); if (b) openMatchStats(items[+b.dataset.i]);
+  };
 }
 
 // --- Post-match adjustment picker (popup) ---------------------------------------

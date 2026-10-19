@@ -419,10 +419,14 @@ function playAdminRound(ev) {
   const r = ev.rounds.length - 1, round = ev.rounds[r];
   for (const slot of round) {
     if (slot.winner !== undefined) continue;
-    const m = newMatch(slot.a, slot.b, Math.random, true);
+    // Played from a saved seed, with a snapshot of both players and the event: a player's game can replay
+    // the exact same match point by point on court ("Watch").
+    const seed = (Math.random() * 4294967296) >>> 0, rng = seeded(seed);
     const ps = [ev.entrants[slot.a], ev.entrants[slot.b]];
-    playMatch(m, ps, ev);
-    slot.recs = [0, 1].map(i => ps[i].real ? realMatchRec(m, i, ps, ROUND_CODE[round.length * 2] || 'R32') : null);
+    const snap = { seed, ps: JSON.parse(JSON.stringify(ps)), ev: { tier: ev.tier, surface: ev.surface, indoor: !!ev.indoor, weather: ev.weather || null, nation: ev.nation, city: ev.name } };
+    const m = newMatch(slot.a, slot.b, rng, true);
+    playMatch(m, ps, ev, rng);
+    slot.recs = [0, 1].map(i => ps[i].real ? { ...realMatchRec(m, i, ps, ROUND_CODE[round.length * 2] || 'R32'), replay: { ...snap, side: i } } : null);
     slot.winner = m.winner === 0 ? slot.a : slot.b;
     slot.score = scoreLine(m, m.winner);
     slot.stats = [0, 1].map(i => ({ aces: m.stats[i].aces, df: m.stats[i].df, winners: m.stats[i].winners, ue: m.stats[i].ue,

@@ -9,7 +9,9 @@
 const STAT_CAP = 95;
 
 // Share of a gain that sticks at this stat level: full at 50, about half at 72, none at the cap.
-const growthFactor = v => clamp((STAT_CAP - v) / 45, 0, 1);
+// Growth slows as a stat climbs, and steeply near the top: the last stretch to the cap is a real grind.
+// Tuned with tools/progress-sim.html: about 4–5 h of ITF, about 20 h to 95 for a player who plays their matches.
+const growthFactor = v => v >= STAT_CAP ? 0 : Math.max(0.06, Math.pow(clamp((STAT_CAP - v) / 45, 0, 1), 0.7));
 
 function applyGain(attrs, k, gain) {
   const v = attrs[k] ?? 50;

@@ -480,13 +480,17 @@ const MATCHUP = {
 };
 
 function matchupHtml(me, o) {
-  const mine = detectStyles(me.attrs, me.fav)[0], theirs = detectStyles(o.attrs, o.fav)[0];
+  const mine = styleOf(me), theirs = styleOf(o);
   const extra = [];
-  if (theirs.name === 'Return Specialist' && famOf(mine.name) !== 'defend') extra.push("Their return is a weapon: your serve won't buy as many free points.");
-  if ((theirs.name === 'Big Server' || theirs.name === 'First-Strike Player') && mine.name === 'Return Specialist') extra.push('Your return can take the sting out of their serve.');
-  if (theirs.name === 'Serve-and-Volleyer') extra.push('They follow most first serves to the net.');
-  if (theirs.name === 'Tactician') extra.push('Watch for the drop shot.');
-  return `<div class="matchup"><div class="mutop"><span>You: <b>${mine.name}</b></span><span class="muvs">🆚</span><span>Them: <b>${theirs.name}</b></span></div><p>${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</p>${styleRecordHtml(theirs.name)}</div>`;
+  const myTrait = (traitOf(me) || {}).name, theirTrait = (traitOf(o) || {}).name;
+  const bigServe = ['Serve-Dominant', 'Serve +1 Attacker', 'First-Strike Attacker'].includes(theirs.name) || theirTrait === 'Powerful Serve';
+  if (theirTrait === 'Return-Oriented' && famOf(mine.name) !== 'defend') extra.push("Their return is a weapon: your serve won't buy as many free points.");
+  if (bigServe && myTrait === 'Return-Oriented') extra.push('Your return can take the sting out of their serve.');
+  if (theirs.name === 'Serve +1 Attacker') extra.push('Expect the serve and a big forehand straight after it.');
+  if (theirs.name === 'Serve-and-Volley') extra.push('They follow most first serves to the net.');
+  if (theirs.name === 'Variety / Slice-Heavy' || theirs.name === 'Creative Shotmaker') extra.push('Watch for the drop shot.');
+  if (theirs.name === 'Heavy-Topspin Baseliner' || theirs.name === 'Heavy-Topspin Attacker') extra.push('The ball will kick up high to your backhand.');
+  return `<div class="matchup"><div class="mutop"><span>You: <b>${mine.name}</b></span><span class="muvs">🆚</span><span>Them: <b>${theirs.name}</b>${theirTrait ? ` · ${theirTrait}` : ''}</span></div><p>${MATCHUP[famOf(mine.name)][famOf(theirs.name)]}${extra.length ? ' ' + extra.join(' ') : ''}</p>${styleRecordHtml(theirs.name)}</div>`;
 }
 
 // Your win-loss record against a playstyle, this season and over your career.
@@ -495,9 +499,9 @@ function styleRecordHtml(style) {
   if (!c) return '';
   const season = seasonOfWeek(c.week);
   const all = [...c.history.flatMap(h => h.matches.map(m => [m, h.week])), ...((current.entry && current.entry.matches) || []).map(m => [m, c.week])]
-    .filter(([m]) => m.styles && m.styles[1] === style);
+    .filter(([m]) => m.styles && styleName(m.styles[1]) === style);
   const wl = list => `${list.filter(([m]) => m.won).length}–${list.filter(([m]) => !m.won).length}`;
-  const plural = /s$/.test(style) ? style : style + 's';
+  const plural = /er$/.test(style) ? style + 's' : style + ' players';
   return `<div class="murec"><span>Your record vs ${plural}</span><b>Season ${wl(all.filter(([, w]) => seasonOfWeek(w) === season))}</b><b>Career ${wl(all)}</b></div>`;
 }
 
@@ -509,7 +513,7 @@ function styleLine(rec, oppName) {
   const bits = [];
   if (longs >= 4) bits.push(`won ${r.long[0]} of ${longs} long rallies`);
   if (shorts >= 8) bits.push(`${r.short[0]} of ${shorts} quick points`);
-  return `Your ${rec.styles[0]} game against ${oppName}'s ${rec.styles[1]}: points averaged ${avg} shots${bits.length ? `, and you ${bits.join(' and ')}` : ''}.`;
+  return `Your ${styleName(rec.styles[0])} game against ${oppName}'s ${styleName(rec.styles[1])}: points averaged ${avg} shots${bits.length ? `, and you ${bits.join(' and ')}` : ''}.`;
 }
 
 function scoutHtml(o) {

@@ -149,7 +149,7 @@ function agePlayer(p) {
     : (k === 'stam' ? -0.04 : k === 'iq' || k === 'mental' ? 0.005 : -0.02);
   const before = overall(p);
   for (const k of Object.keys(p.attrs)) p.attrs[k] = Math.min(STAT_CAP, Math.round(p.attrs[k] * (1 + change(k)) * 1000) / 1000);
-  p.playstyle = detectStyles(p.attrs, p.fav)[0].name;
+  p.playstyle = styleOf(p).name;
   return overall(p) - before;
 }
 
@@ -266,7 +266,7 @@ function giveReward(c, p, r) {
     weakest.forEach(k => applyGain(p.attrs, k, 0.02));
   }
   if (r.kind === 'stat') r.stats.forEach(k => applyGain(p.attrs, k, r.gain));
-  p.playstyle = detectStyles(p.attrs, p.fav)[0].name;
+  p.playstyle = styleOf(p).name;
 }
 
 // Perks still running, for the Home card.

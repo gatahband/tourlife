@@ -241,7 +241,8 @@ function createCourt() {
   function homeDepth(side) {
     const ag = (prof[side].plan || {}).aggression, st = prof[side].style;
     // Defenders camp deep; first-strike players hug the baseline.
-    const styleD = st === 'Defensive Grinder' || st === 'Counterpuncher' || st === 'Marathon Man' ? 1.2 : st === 'First-Strike Player' || st === 'Power Hitter' ? -0.4 : 0;
+    const styleD = st === 'Defensive Grinder' || st === 'Counterpuncher' ? 1.2 : st === 'Heavy-Topspin Baseliner' ? 0.8
+      : st === 'First-Strike Attacker' || st === 'Flat Attacker' || st === 'Serve +1 Attacker' ? -0.4 : 0;
     const dp = (prof[side].adv || {}).depth; // moonballers camp deeper; deep drivers hold the baseline
     return BASE + (ag === 'patient' ? 2.2 : ag === 'aggressive' ? 0.3 : 1.0) + (surface === 'clay' ? 0.8 : 0) + styleD + (dp === 'high' ? 0.9 : dp === 'deep' ? -0.3 : 0);
   }
@@ -253,8 +254,8 @@ function createCourt() {
   function returnDepth(side) {
     if (curCall && curCall.side === side && curCall.id === 'attack') return BASE - 0.5;
     if (curCall && curCall.side === side && curCall.id === 'deep') return BASE + 3.6;
-    // Return specialists crowd the baseline; defenders give themselves time.
-    const st = prof[side].style, styleR = st === 'Return Specialist' ? -0.6 : st === 'Defensive Grinder' || st === 'Counterpuncher' ? 0.6 : 0;
+    // Strong returners crowd the baseline; defenders give themselves time.
+    const st = prof[side].style, styleR = prof[side].trait === 'Return-Oriented' ? -0.6 : st === 'Defensive Grinder' || st === 'Counterpuncher' ? 0.6 : 0;
     const rp = (prof[side].plan || {}).returnPos;
     const expectUnder = ((prof[1 - side].plan || {}).underarm || 'never') !== 'never';
     return BASE + (rp === 'deep' ? 3.2 : rp === 'inside' ? 0.3 : 1.2) - (expectUnder ? 0.7 : 0) + styleR;
@@ -1000,13 +1001,13 @@ function createCourt() {
     // How much the hitter flattens it out, from their game plan.
     const spin = side === undefined ? 'mixed' : (prof[side].plan || {}).spin || 'mixed';
     const st = side === undefined ? null : prof[side].style;
-    // Playstyle on top of the plan: first-strike players go flat right after the serve, power hitters
-    // flatten everything, grinders and clay-courters roll it.
-    const flatOdds = st === 'First-Strike Player' ? (c.k <= 2 ? 0.75 : 0.45) : st === 'Power Hitter' ? 0.55
-      : st === 'Defensive Grinder' || st === 'Clay-Court Specialist' ? 0.03 : { flat: 0.6, mixed: 0.18, topspin: 0.04 }[spin];
+    // Playstyle on top of the plan: first-strike players go flat right after the serve, flat attackers
+    // flatten everything, grinders and heavy-topspin players roll it.
+    const flatOdds = st === 'First-Strike Attacker' || st === 'Serve +1 Attacker' ? (c.k <= 2 ? 0.75 : 0.45) : st === 'Flat Attacker' ? 0.55
+      : st === 'Defensive Grinder' || st === 'Heavy-Topspin Baseliner' || st === 'Heavy-Topspin Attacker' ? 0.03 : { flat: 0.6, mixed: 0.18, topspin: 0.04 }[spin];
     const agg = side === undefined ? null : (prof[side].plan || {}).aggression;
     const flatOdds2 = clamp(flatOdds + (agg === 'aggressive' ? 0.2 : agg === 'patient' ? -0.1 : 0), 0, 0.9);
-    const defender = st === 'Defensive Grinder' || st === 'Counterpuncher' || st === 'Marathon Man';
+    const defender = st === 'Defensive Grinder' || st === 'Counterpuncher';
     const drive = () => out(Math.random() < flatOdds2 ? 'FLAT!' : 'TOPSPIN!');
     if (k === 'serve' || k === 'ace' || k === 'fault') return { type: speedText(kmh).toUpperCase(), wing: null, racket: 'serve', flight: 'serve' };
     const wing = wingName === 'Forehand' ? 'FH' : 'BH';
@@ -1022,14 +1023,14 @@ function createCourt() {
     if (c.chasingLob && Math.random() < 0.15) { shot.lob = true; return out('TWEENER!'); }
     if (k === 'pass' || c.oppAtNet) {
       // Defenders love the lob over a net rusher; attackers try to drive it past them.
-      const lobPass = defender ? 0.45 : st === 'First-Strike Player' || st === 'Power Hitter' || st === 'Aggressive Baseliner' ? 0.15 : 0.3;
+      const lobPass = defender ? 0.45 : st === 'First-Strike Attacker' || st === 'Flat Attacker' || st === 'Aggressive Baseliner' ? 0.15 : 0.3;
       if (Math.random() < lobPass) { shot.lob = true; return out('LOB!'); }
       return out(Math.random() < Math.max(0.3, flatOdds) ? 'FLAT!' : 'TOPSPIN!');
     }
     const lobOdds = (c.defensive ? 0.25 : surface === 'clay' ? 0.05 : 0.03) * (defender && c.defensive ? 1.6 : 1);
     if (k === 'rally' && Math.random() < lobOdds) { shot.lob = true; return out('LOB!'); }
     const sliceOdds = (wing === 'BH' ? (surface === 'grass' ? 0.38 : 0.2) : 0.04) + (c.defensive ? 0.2 : 0)
-      + (defender && c.defensive ? 0.15 : 0) + (st === 'Tactician' ? 0.12 : 0) - (st === 'First-Strike Player' || st === 'Power Hitter' ? 0.1 : 0);
+      + (defender && c.defensive ? 0.15 : 0) + (st === 'Variety / Slice-Heavy' || st === 'Creative Shotmaker' ? 0.12 : 0) - (st === 'First-Strike Attacker' || st === 'Flat Attacker' ? 0.1 : 0);
     if (Math.random() < sliceOdds) return out('SLICE!');
     if (k === 'winner' && Math.random() < 0.45) return out('FLAT!');
     return drive();

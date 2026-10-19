@@ -90,7 +90,7 @@ function generateOpponent(nation, tier, rng = Math.random, shift = 0) {
   attrs.iq = attrs.iq ?? 50;
   return {
     id: 'o' + Math.floor(rng() * 1e12).toString(36),
-    plan: opponentPlan(attrs, rng),
+    plan: { ...opponentPlan(attrs, rng), ...(style.spin ? { spin: style.spin } : {}), ...(style.agg ? { aggression: style.agg } : {}) },
     name: randomName(nation, rng),
     nation,
     age: randInt(rng, ...curve.ages),
@@ -266,39 +266,52 @@ function initForm(m, ps, rng) {
   // start, more so the higher the level.
   ps.forEach((p, i) => { if (p.textbook) m.exec[i] *= 1 - 0.3 * p.textbook * Math.min(1.5, ADAPT_RATE[advTier] || 1); });
   // Each player's playstyle for this match: it shapes how their points are played (see servePoint).
-  m.styles = ps.map(p => typeof detectStyles === 'function' ? detectStyles(p.attrs, p.fav)[0].name : null);
+  m.styles = ps.map(p => typeof styleOf === 'function' ? styleOf(p).name : null);
+  m.traits = ps.map(p => typeof traitOf === 'function' ? (traitOf(p) || {}).name || null : null);
 }
 
 // --- Playstyle matchups ---------------------------------------------------------------------
 // How playstyles show in points, for both players at once. None of this changes who wins a point
 // (that's decided first, from stats, plans and form); it changes how the point is won: the serve,
 // the return, rally length, net rushes, passing shots, drop shots, winners versus errors.
-const STYLE_FAMILY = { 'Big Server': 'attack', 'First-Strike Player': 'attack', 'Power Hitter': 'attack', 'Aggressive Baseliner': 'attack',
-  'Serve-and-Volleyer': 'net', 'Net Rusher': 'net', 'Defensive Grinder': 'defend', 'Counterpuncher': 'defend', 'Marathon Man': 'defend',
-  'Clay-Court Specialist': 'defend', 'Tactician': 'craft', 'Return Specialist': 'craft', 'Clutch Competitor': 'craft', 'All-Courter': 'craft' };
-const famOf = st => STYLE_FAMILY[st] || 'craft';
+const STYLE_FAMILY = { 'Serve-Dominant': 'attack', 'Serve +1 Attacker': 'attack', 'First-Strike Attacker': 'attack', 'Flat Attacker': 'attack',
+  'Aggressive Baseliner': 'attack', 'Heavy-Topspin Attacker': 'attack', 'Serve-and-Volley': 'net', 'Net Attacker': 'net',
+  'Defensive Grinder': 'defend', 'Counterpuncher': 'defend', 'Heavy-Topspin Baseliner': 'defend', 'Solid Baseliner': 'defend',
+  'Variety / Slice-Heavy': 'craft', 'Creative Shotmaker': 'craft', 'All-Court': 'craft' };
+// Old style names (saved match records from before the 2026 style revision) read as their new ones.
+const LEGACY_STYLE = { 'Big Server': 'Serve-Dominant', 'First-Strike Player': 'First-Strike Attacker', 'Power Hitter': 'Flat Attacker',
+  'Clay-Court Specialist': 'Heavy-Topspin Baseliner', 'All-Courter': 'All-Court', 'Net Rusher': 'Net Attacker',
+  'Serve-and-Volleyer': 'Serve-and-Volley', 'Tactician': 'Variety / Slice-Heavy', 'Return Specialist': 'Counterpuncher',
+  'Marathon Man': 'Defensive Grinder', 'Clutch Competitor': 'Solid Baseliner' };
+const styleName = st => LEGACY_STYLE[st] || st;
+const famOf = st => STYLE_FAMILY[styleName(st)] || 'craft';
 // Serve points the server wins: how many become aces or unreturned serves (server's style x returner's).
-const ACE_SERVER = { 'Big Server': 1.45, 'First-Strike Player': 1.3, 'Serve-and-Volleyer': 1.15, 'Power Hitter': 1.15 };
-const ACE_RETURNER = { 'Return Specialist': 0.55, 'Counterpuncher': 0.8, 'Defensive Grinder': 0.85 };
+// Secondary traits add to it: a powerful serve on one side, a returner's eye on the other.
+const ACE_SERVER = { 'Serve-Dominant': 1.45, 'First-Strike Attacker': 1.3, 'Serve +1 Attacker': 1.25, 'Serve-and-Volley': 1.15,
+  'Flat Attacker': 1.15, 'Creative Shotmaker': 1.1, 'Powerful Serve': 1.15 };
+const ACE_RETURNER = { 'Return-Oriented': 0.6, 'Counterpuncher': 0.8, 'Defensive Grinder': 0.85 };
 // Points the returner wins: how many are won outright with the return (more off second serves).
-const RETURN_WINNER = { 'Return Specialist': 0.3, 'Counterpuncher': 0.12, 'Power Hitter': 0.1, 'First-Strike Player': 0.1, 'Aggressive Baseliner': 0.08 };
+const RETURN_WINNER = { 'Return-Oriented': 0.25, 'Counterpuncher': 0.12, 'Flat Attacker': 0.1, 'First-Strike Attacker': 0.1, 'Aggressive Baseliner': 0.08 };
 // Coming in: [serve-and-volley behind a first serve, behind a second serve, approach or chip-and-charge in a rally].
-const NET_STYLE = { 'Serve-and-Volleyer': [0.65, 0.3, 0.1], 'Net Rusher': [0.3, 0.15, 0.24], 'All-Courter': [0.1, 0.04, 0.08] };
+const NET_STYLE = { 'Serve-and-Volley': [0.65, 0.3, 0.1], 'Net Attacker': [0.3, 0.15, 0.24], 'All-Court': [0.1, 0.04, 0.08],
+  'Creative Shotmaker': [0.08, 0.03, 0.1] };
 // Beating a net player: how often it's a clean pass or lob (rather than the volleyer missing).
 const PASSER = { defend: 0.82, craft: 0.75, attack: 0.7, net: 0.55 };
 // Rally points won with a drop shot.
-const DROP_STYLE = { 'Tactician': 0.2, 'Clay-Court Specialist': 0.08, 'All-Courter': 0.06 };
-const STYLE_RALLY = { 'Defensive Grinder': 1.6, 'Counterpuncher': 1.35, 'Marathon Man': 1.4, 'Clay-Court Specialist': 1.25,
-  'First-Strike Player': 0.55, 'Power Hitter': 0.7, 'Big Server': 0.7, 'Aggressive Baseliner': 0.8, 'Serve-and-Volleyer': 0.7, 'Net Rusher': 0.8 };
-const STYLE_CLEAN = { 'First-Strike Player': 0.2, 'Power Hitter': 0.18, 'Aggressive Baseliner': 0.1, 'Big Server': 0.08,
-  'Defensive Grinder': -0.2, 'Counterpuncher': -0.15, 'Marathon Man': -0.12, 'Clay-Court Specialist': -0.06 };
+const DROP_STYLE = { 'Variety / Slice-Heavy': 0.2, 'Creative Shotmaker': 0.14, 'Heavy-Topspin Baseliner': 0.08, 'All-Court': 0.06 };
+const STYLE_RALLY = { 'Defensive Grinder': 1.6, 'Counterpuncher': 1.35, 'Heavy-Topspin Baseliner': 1.25, 'Solid Baseliner': 1.15,
+  'Heavy-Topspin Attacker': 0.95, 'First-Strike Attacker': 0.55, 'Serve +1 Attacker': 0.65, 'Flat Attacker': 0.7, 'Serve-Dominant': 0.7,
+  'Aggressive Baseliner': 0.8, 'Serve-and-Volley': 0.7, 'Net Attacker': 0.8 };
+const STYLE_CLEAN = { 'First-Strike Attacker': 0.2, 'Flat Attacker': 0.18, 'Serve +1 Attacker': 0.15, 'Aggressive Baseliner': 0.1,
+  'Heavy-Topspin Attacker': 0.08, 'Serve-Dominant': 0.08, 'Solid Baseliner': -0.05, 'Heavy-Topspin Baseliner': -0.06,
+  'Counterpuncher': -0.15, 'Defensive Grinder': -0.2 };
 // Rally length: both styles set the tempo (two grinders = marathons, two first-strikers = two-shot
-// points), and the winner pulls it their way.
+// points), and the winner pulls it their way. Marathon players drag long matches out further.
 function matchupRally(sty, w, ev, m) {
   const f = i => STYLE_RALLY[sty[i]] || 1;
   let k = Math.sqrt(f(0) * f(1)) * Math.sqrt(f(w));
-  if (ev.surface === 'clay' && sty.includes('Clay-Court Specialist')) k *= 1.15;
-  if (sty.includes('Marathon Man') && m.totalGames > 18) k *= 1.2;
+  if (ev.surface === 'clay' && sty.includes('Heavy-Topspin Baseliner')) k *= 1.15;
+  if ((m.traits || []).includes('Marathon') && m.totalGames > 18) k *= 1.2;
   return k;
 }
 
@@ -595,7 +608,8 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   }
   const done = () => { if (w === s) pt.serve2 ? st.secondWon++ : st.firstWon++; return { w, pt }; };
   if (w === s) {
-    const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (ev.weather ? wxOf(ev).ace : 1);
+    const tr = m.traits || [];
+    const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_SERVER[tr[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (ACE_RETURNER[tr[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (ev.weather ? wxOf(ev).ace : 1);
     if (!pt.serve2 && rng() < Math.max(0, A.attrs.serve - 30) / 280 * SP.ace * aceK) { st.aces++; pt.how = 'ace'; return done(); }
     if (rng() < (pt.serve2 ? 0.05 : 0.16) * aceK) { pt.how = 'unreturned'; return done(); }
   }
@@ -631,8 +645,8 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
     Object.assign(pt, tactic.pt);
     return done();
   }
-  // Net players come in: a Serve-and-Volleyer follows most first serves, a Net Rusher attacks the net
-  // from anywhere, an All-Courter picks moments. How it ends depends on who is passing.
+  // Net players come in: a serve-and-volleyer follows most first serves, a Net Attacker comes in
+  // from anywhere, an All-Court player picks moments. How it ends depends on who is passing.
   const hit = k => k % 2 === 0 ? s : r;
   if (rush === null && !pt.netcord && !pt.drop) {
     let by = null, style = null;
@@ -656,12 +670,12 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   }
   const l = 1 - w;
   // A return winner: the returner's style (and standing in) shows on the very first ball.
-  if (w === r && !call && !pt.drop && !pt.netcord && rng() < (RETURN_WINNER[sty[r]] || 0) * (pt.serve2 ? 1.5 : 1) * (rp.returnPos === 'inside' ? 1.3 : 1)) {
+  if (w === r && !call && !pt.drop && !pt.netcord && rng() < Math.max(RETURN_WINNER[sty[r]] || 0, RETURN_WINNER[(m.traits || [])[r]] || 0) * (pt.serve2 ? 1.5 : 1) * (rp.returnPos === 'inside' ? 1.3 : 1)) {
     pt.how = 'winner'; pt.len = 2; pt.returnWinner = true;
     m.stats[r].winners++;
     return done();
   }
-  // Drop shots: a Tactician wins plenty of points with touch.
+  // Drop shots: a Variety / Slice-Heavy player wins plenty of points with touch.
   if (!pt.drop && !pt.netcord && rng() < (DROP_STYLE[sty[w]] || 0)) {
     let len = 3 + Math.floor(rng() * 4);
     if (hit(len - 1) !== w) len++;
@@ -680,7 +694,7 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
     * (clutch ? ({ broke: 0.5, safe: 1.6 }[a.pressure] || 1) : 1), 1);
   let len = 1 + Math.ceil(-Math.log(rng() || 0.01) * RALLY_MEAN[ev.surface] * styleLen * matchupRally(sty, w, ev, m) * (ev.weather ? wxOf(ev).rally : 1) * advLen);
   // A first-strike server wins it on the serve +1.
-  if (sty[w] === 'First-Strike Player' && w === s) len = Math.min(len, rng() < 0.7 ? 3 : 5);
+  if ((sty[w] === 'First-Strike Attacker' || sty[w] === 'Serve +1 Attacker') && w === s) len = Math.min(len, rng() < 0.7 ? 3 : 5);
   const W = ps[w].attrs, wp = planOf(ps[w]), lp = planOf(ps[l]);
   const fw = famOf(sty[w]), fl = famOf(sty[l]);
   // Attackers beat defenders with winners; defenders beat attackers by making them miss.

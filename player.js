@@ -99,29 +99,45 @@ const NATIONS = [
 const SURFACES = [['hard', 'Hard'], ['clay', 'Clay'], ['grass', 'Grass']];
 
 // Weights over [serve, ground, ret, net, stam, mental, iq]; matched by cosine similarity
-// against the player's deviation from their own average.
+// against the player's deviation from their own average. A style can also lean on the game plan
+// (spin, rally aggression): the right plan lifts it, the opposite one damps it. The style says how a
+// player builds points, not how good they are.
 const STYLES = [
-  { name: 'Big Server',            w: [ 3, 0,-1, 0,-1, 0,-1], desc: 'Free points off the first ball. Holds serve in bunches.' },
-  { name: 'Serve-and-Volleyer',    w: [ 2,-1, 0, 3,-1, 0, 0], desc: 'Serves and charges. Rallies are the enemy.' },
-  { name: 'Aggressive Baseliner',  w: [ 1, 3, 0,-1, 0, 0,-1], desc: 'Dictates from the back with heavy, early ball-striking.' },
-  { name: 'Counterpuncher',        w: [-1, 1, 2,-1, 1, 1, 1], desc: 'Absorbs pace and turns defense into offense.' },
-  { name: 'Defensive Grinder',     w: [-1, 1, 1,-2, 3, 1, 0], desc: 'One more ball, every time. Wins by attrition.' },
-  { name: 'All-Courter',           w: null,                desc: 'No weaknesses. Comfortable anywhere on the court.' },
-  { name: 'Return Specialist',     w: [-1, 0, 3, 0, 0, 1, 1], desc: 'Breaks serve for fun. Every return game is a threat.' },
-  { name: 'Clay-Court Specialist', w: [-1, 2, 0,-1, 2, 0, 1], desc: 'Topspin, patience and sliding. Built for the dirt.' },
-  { name: 'Net Rusher',            w: [-1, 1, 0, 3, 0, 0, 0], desc: 'Approaches behind groundstrokes and finishes at net.' },
-  { name: 'Power Hitter',          w: [ 2, 2,-1, 0,-1,-1,-2], desc: 'Raw pace off both sides. High risk, high reward.' },
-  { name: 'Tactician',             w: [-1, 0, 1, 1,-1, 1, 3], desc: 'Out-thinks opponents with variety, touch and drop shots.' },
-  { name: 'Marathon Man',          w: [-1, 0, 0, 0, 3, 1, 0], desc: 'Gets stronger in the fifth hour. Loves long matches.' },
-  { name: 'Clutch Competitor',     w: [ 0, 0, 1, 0, 0, 3, 1], desc: 'Lives for break points and tiebreaks.' },
-  { name: 'First-Strike Player',   w: [ 2, 1, 1, 0,-2, 0,-1], desc: 'Ends points in three shots or fewer.' },
+  { name: 'Serve-Dominant',          w: [ 3, 0,-1, 0,-1, 0,-1], desc: 'Free points and short service games. Holds in bunches.' },
+  { name: 'Serve +1 Attacker',       w: [ 2, 2,-1, 0,-1, 0,-1], agg: 'aggressive', desc: 'Uses the serve to set up an attack on the very next ball.' },
+  { name: 'First-Strike Attacker',   w: [ 2, 1, 1, 0,-2, 0,-1], desc: 'Attacks early on serve and return. Ends points within a few shots.' },
+  { name: 'Aggressive Baseliner',    w: [ 1, 3, 0,-1, 0, 0,-1], agg: 'aggressive', desc: 'Dictates rallies from the back with pace, depth and attacking groundstrokes.' },
+  { name: 'Flat Attacker',           w: [ 1, 3, 0, 0,-1,-1,-2], spin: 'flat', desc: 'Takes the ball early on flat trajectories to rush opponents.' },
+  { name: 'Solid Baseliner',         w: [ 1, 2, 0,-2, 1, 1, 0], desc: 'Wins with depth, consistency, positioning and controlled aggression.' },
+  { name: 'Counterpuncher',          w: [-1, 1, 2,-1, 1, 1, 1], agg: 'patient', desc: 'Absorbs and redirects pace, then turns defense into offense.' },
+  { name: 'Defensive Grinder',       w: [-1, 1, 1,-2, 3, 1, 0], desc: 'Retrieves everything. Wins by attrition and one more ball.' },
+  { name: 'Heavy-Topspin Baseliner', w: [-1, 2, 0,-1, 2, 0, 1], spin: 'topspin', desc: 'Heavy rotation, net clearance and high-bouncing depth to build points.' },
+  { name: 'Heavy-Topspin Attacker',  w: [ 0, 3, 0,-1, 1,-1,-1], spin: 'topspin', agg: 'aggressive', desc: 'Heavy spin used offensively: pushes opponents back, then finishes.' },
+  { name: 'All-Court',               w: null,                 desc: 'No weaknesses. Builds and finishes points from anywhere on court.' },
+  { name: 'Net Attacker',            w: [-1, 1, 0, 3, 0, 0, 0], desc: 'Comes forward behind attacking shots and finishes with volleys.' },
+  { name: 'Serve-and-Volley',        w: [ 2,-1, 0, 3,-1, 0, 0], desc: 'Follows the serve to the net. Rallies are the enemy.' },
+  { name: 'Variety / Slice-Heavy',   w: [-1, 0, 1, 1,-1, 1, 3], desc: 'Changes spin, height, pace and angles to break up rhythm.' },
+  { name: 'Creative Shotmaker',      w: [ 1, 0,-1, 2,-1,-1, 3], desc: 'Disguise, improvisation and the unexpected as everyday weapons.' },
 ];
 
 const SURFACE_BONUS = {
-  clay:  { 'Clay-Court Specialist': 0.15, 'Defensive Grinder': 0.05 },
-  grass: { 'Serve-and-Volleyer': 0.1, 'Big Server': 0.05 },
-  hard:  { 'Aggressive Baseliner': 0.05, 'First-Strike Player': 0.05 },
+  clay:  { 'Heavy-Topspin Baseliner': 0.15, 'Defensive Grinder': 0.05 },
+  grass: { 'Serve-and-Volley': 0.1, 'Serve-Dominant': 0.05 },
+  hard:  { 'Aggressive Baseliner': 0.05, 'First-Strike Attacker': 0.05 },
 };
+
+// Secondary trait: the stat that stands out most above a player's own average. Real players can carry
+// a researched trait instead (two of those have no stat of their own).
+const TRAITS = {
+  serve:  { name: 'Powerful Serve', desc: 'A first serve that wins cheap points.' },
+  ground: { name: 'Big Forehand', desc: 'A groundstroke weapon to finish rallies.' },
+  ret:    { name: 'Return-Oriented', desc: 'Neutralizes serves and turns return games into chances.' },
+  net:    { name: 'Soft Hands', desc: 'Touch and feel at the net.' },
+  stam:   { name: 'Marathon', desc: 'Gets stronger the longer it goes.' },
+  mental: { name: 'Clutch', desc: 'Lives for break points and tiebreaks.' },
+  iq:     { name: 'Tactical Brain', desc: 'Reads the match and adjusts.' },
+};
+const REAL_TRAITS = { 'Flat Hitting': 'Takes the ball early and flat.', Aggressive: 'Defends to attack: looks to flip rallies early.' };
 
 const $ = id => document.getElementById(id);
 
@@ -147,13 +163,16 @@ function indoorAffinity() {
   return 0;
 }
 
-function detectStyles(attrs, fav) {
+function detectStyles(attrs, fav, plan) {
   const v = ATTRS.map(([k]) => attrs[k]);
   const mean = v.reduce((a, b) => a + b, 0) / v.length;
   const d = v.map(x => x - mean);
   const dLen = Math.hypot(...d);
   const std = dLen / Math.sqrt(v.length);
   const bonus = SURFACE_BONUS[fav] || {};
+  // Matching plan settings lift a style; the opposite setting damps it, a middle one a little.
+  const OPP = { flat: 'topspin', topspin: 'flat', aggressive: 'patient', patient: 'aggressive' };
+  const lean = (want, have) => !want || !have ? 0 : have === want ? 0.1 : have === OPP[want] ? -0.5 : -0.2;
 
   return STYLES.map(s => {
     let score;
@@ -165,9 +184,28 @@ function detectStyles(attrs, fav) {
       const wLen = Math.hypot(...s.w);
       score = Math.max(0, d.reduce((a, x, i) => a + x * s.w[i], 0) / (dLen * wLen));
     }
-    score = Math.min(1, score + (score > 0 ? bonus[s.name] || 0 : 0));
-    return { ...s, score };
-  }).sort((a, b) => b.score - a.score);
+    if (score > 0) {
+      for (const k of [lean(s.spin, plan && plan.spin), lean(s.agg, plan && plan.aggression)]) score = k < 0 ? score * (1 + k) : score + k;
+      score += bonus[s.name] || 0;
+    }
+    return { ...s, raw: score, score: Math.min(1, score) };
+  }).sort((a, b) => b.raw - a.raw); // rank before the 100% cap so close styles don't tie
+}
+
+function detectTrait(attrs) {
+  const keys = ATTRS.map(([k]) => k), mean = keys.reduce((a, k) => a + attrs[k], 0) / keys.length;
+  const top = keys.reduce((a, k) => attrs[k] > attrs[a] ? k : a, keys[0]);
+  return attrs[top] - mean >= 3 ? TRAITS[top] : null;
+}
+
+// A player's style and trait: a real player's researched one, otherwise read off their stats and plan.
+function styleOf(p) {
+  const real = p.realStyle && STYLES.find(s => s.name === p.realStyle);
+  return real ? { ...real, score: 1 } : detectStyles(p.attrs, p.fav, typeof planOf === 'function' ? planOf(p) : p.plan)[0];
+}
+function traitOf(p) {
+  if (p.realTrait) return TRAITS[Object.keys(TRAITS).find(k => TRAITS[k].name === p.realTrait)] || { name: p.realTrait, desc: REAL_TRAITS[p.realTrait] || '' };
+  return detectTrait(p.attrs);
 }
 
 function render() {
@@ -192,9 +230,9 @@ function render() {
     : ind < 0 ? '🏟️ Indoor penalty — indoor hard courts expose your weakest surface.'
     : '🏟️ Indoor neutral — indoor events play on hard courts.';
 
-  const ranked = detectStyles(state.attrs, state.fav);
-  const best = ranked[0];
-  $('topStyle').textContent = best.name;
+  const ranked = detectStyles(state.attrs, state.fav, state.plan);
+  const best = ranked[0], trait = detectTrait(state.attrs);
+  $('topStyle').textContent = best.name + (trait ? ` · ${trait.name}` : '');
   $('topFill').style.width = `${Math.round(best.score * 100)}%`;
   $('topDesc').textContent = best.desc;
   $('styles').innerHTML = ranked.map((s, i) => {
@@ -245,7 +283,7 @@ function build() {
 
   $('hand').innerHTML = HANDS.map(([v, l]) => `<button type="button" data-v="${v}">${l.split('-')[0]}</button>`).join('');
   $('hand').onclick = e => { const b = e.target.closest('button'); if (b) { state.hand = b.dataset.v; render(); } };
-  planEditor($('cPlan'), state.plan, () => {});
+  planEditor($('cPlan'), state.plan, render);
 
   $('name').oninput = e => { state.name = e.target.value.trim(); };
   $('nation').onchange = e => { state.nation = e.target.value; };
@@ -270,7 +308,7 @@ function save() {
     attrs: { ...state.attrs },
     plan: { ...state.plan },
     surfaces: { fav: state.fav, worst: state.worst, indoor: indoorAffinity() },
-    playstyle: detectStyles(state.attrs, state.fav)[0].name,
+    playstyle: detectStyles(state.attrs, state.fav, state.plan)[0].name,
     created: Date.now(),
   };
   try {

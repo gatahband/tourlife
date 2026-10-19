@@ -29,8 +29,8 @@ function drillFatigue(d, c, p) {
 
 // Your whole build while you train: every stat, what the last session moved, and your playstyle.
 function buildPanel(p, last) {
-  const style = detectStyles(p.attrs, p.fav)[0];
-  return `<div class="tbuild"><div class="tbhead"><b>Your build</b><span>${style.emoji || ''} ${style.name}</span></div>` +
+  const style = styleOf(p);
+  return `<div class="tbuild"><div class="tbhead"><b>Your build</b><span>${style.name}${traitOf(p) ? ` · ${traitOf(p).name}` : ''}</span></div>` +
     ATTRS.map(([k, label]) => {
       const v = p.attrs[k], up = last && last.stats.includes(k);
       return `<div class="tbrow${up ? ' up' : ''}"><span>${label}</span><div class="tbbar"><i style="width:${clamp(v, 0, 100)}%"></i></div><b>${v.toFixed(1)}${up ? ` <small>+${pctText(last.gain)}</small>` : ''}</b></div>`;
@@ -61,11 +61,11 @@ function renderTraining() {
       `<button type="button" class="topt${disabled ? ' off' : ''}" data-choice="${id}" ${disabled ? 'disabled' : ''}><span class="ticon">${icon}</span>` +
       `<span><b>${title}</b><small>${desc}</small>${extra}</span></button>`;
     box.innerHTML = `<h2>How do you want to use the days?</h2><div class="topts">` +
-      opt('here', '🏟️', `Train here`, `${left} training day${left === 1 ? '' : 's'}. +1–3.5% per stat each day.`) +
+      opt('here', '🏟️', `Train here`, `${left} training day${left === 1 ? '' : 's'}. +0.4–1.3% per stat each day.`) +
       nextEvs.map((e, i) => {
         const t = travelDays(dt.at, e.nation), stay = left - t;
         return opt(`go${i}`, '✈️', `Travel early to ${flagOf(e.nation)} ${e.city}`,
-          stay > 0 ? `${t ? `${t} travel day${t === 1 ? '' : 's'}, then ` : ''}${stay} practice day${stay === 1 ? '' : 's'} on site: better gains (usually 2–3.5%) and a comfort boost on those courts. You'll be entered automatically.`
+          stay > 0 ? `${t ? `${t} travel day${t === 1 ? '' : 's'}, then ` : ''}${stay} practice day${stay === 1 ? '' : 's'} on site: better gains (usually 0.8–1.3%) and a comfort boost on those courts. You'll be entered automatically.`
             : `Too far to arrive early (${t} travel days).`,
           `<em class="tag2">${tierLabel(e.tier)}${e.mode === 'qual' ? ' qualifying' : ''} · ${surfaceLabel(e.surface)}${e.indoor ? ' · Indoor' : ''}</em>`, stay <= 0);
       }).join('') +
@@ -103,7 +103,7 @@ function renderTraining() {
     return;
   }
   const local = dt.choice === 'travel';
-  const range = local ? 'usually 2–3.5%' : '1–3.5%';
+  const range = local ? "usually 0.8–1.3%" : "0.4–1.3%";
   box.innerHTML = `<h2>Day ${dt.used + 1} of ${dt.days}${local ? ' · practising on site' : ''}</h2>` +
     `<div class="drills">${DRILLS.map(d => {
       const after = d.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${range}</b></span>`).join('');
@@ -133,7 +133,7 @@ function applyDay(drillId, gain = rollTrain(false)) {
   gain *= burnout(c); // training week after week without playing counts for less
   for (const k of d.stats) applyGain(p.attrs, k, gain);
   dt.lastSession = d.stats.length ? { stats: d.stats, gain } : null;
-  p.playstyle = detectStyles(p.attrs, p.fav)[0].name;
+  p.playstyle = styleOf(p).name;
   dt.used++;
   // Hard sessions on a tired body can end in an injury: the rest of the week is rest.
   if (d.fatigue > 0 && maybeInjure(c, p, 0.6)) {
@@ -175,7 +175,7 @@ function advanceWeek() {
 // Odds at the levels you can enter right now (simulated, saved per OVR so Home stays quick).
 const ODDS_CACHE = 'tourlife.odds';
 function cachedOdds(p, tier, mode) {
-  const key = `${tier}|${mode}|${overall(p).toFixed(1)}|${detectStyles(p.attrs, p.fav)[0].name}`;
+  const key = `${tier}|${mode}|${overall(p).toFixed(1)}|${styleOf(p).name}`;
   const cache = readJSON(ODDS_CACHE) || {};
   return { key, val: cache[key] };
 }
@@ -190,7 +190,7 @@ function saveOdds(key, val) {
 function renderOvr(p) {
   const ovr = overall(p), lv = levelOf(ovr), c = current.career;
   const prog = lv.next ? clamp((ovr - lv.min) / (lv.next.min - lv.min), 0, 1) : 1;
-  const st = detectStyles(p.attrs, p.fav)[0];
+  const st = styleOf(p);
   // The most useful three: one level below your best main-draw level, that level, and the next one up
   // (via qualifying if that's how you'd get in).
   const rank = currentRank(c);

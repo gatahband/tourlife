@@ -53,7 +53,7 @@ function watchRealMatch(rec, opts = {}) {
   ReplayCourt.pauseCheck = () => paused;
   advTier = rp.ev.tier;
   const prof = p => ({ adv: advPlan(p, ps[ps[0] === p ? 1 : 0]), real: !!p.atpRank, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
-    style: detectStyles(p.attrs, p.fav)[0].name });
+    style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   ReplayCourt.scene(rp.ev.surface, rp.ev.indoor, [name(me), name(op)], [prof(ps[me]), prof(ps[op])]);
 
   const board = (done, games, labels, server) => {

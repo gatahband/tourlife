@@ -84,7 +84,7 @@ const wxLabel = ev => { const k = ev && ev.weather; return k && WEATHER[k] ? `${
 function weatherHtml(ev, me, opp) {
   const k = ev.weather;
   if (!k || !WEATHER[k] || k === 'sunny' || k === 'indoor') return k && WEATHER[k] ? `<p class="wxline">${wxLabel(ev)} · ${WEATHER[k].desc}</p>` : '';
-  const sm = detectStyles(me.attrs, me.fav)[0].name, so = detectStyles(opp.attrs, opp.fav)[0].name;
+  const sm = styleOf(me).name, so = styleOf(opp).name;
   const a = wxEdge(me, sm, ev), b = wxEdge(opp, so, ev);
   const pct = x => `${x >= 0 ? '+' : '−'}${(Math.abs(x) * 100).toFixed(1)}%`;
   const verdict = a - b > 0.004 ? '<span class="wxv up">Suits you</span>' : b - a > 0.004 ? '<span class="wxv down">Suits them</span>' : '<span class="wxv">Even</span>';

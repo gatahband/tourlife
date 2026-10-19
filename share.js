@@ -319,7 +319,7 @@ setTimeout(checkRealResults, 600);
 async function shareBuild(p) {
   const W = 1080, H = 1440, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const x = cv.getContext('2d'), F = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const ovr = overall(p), lv = levelOf(ovr), styles = detectStyles(p.attrs, p.fav), st = styles[0];
+  const ovr = overall(p), lv = levelOf(ovr), styles = detectStyles(p.attrs, p.fav, planOf(p)), st = styleOf(p);
   const bg = x.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0d1420'); bg.addColorStop(1, '#151b2a');
   x.fillStyle = bg; x.fillRect(0, 0, W, H);
   const grad = (x0, x1) => { const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, '#0a84ff'); g.addColorStop(0.5, '#bf5af2'); g.addColorStop(1, '#ff375f'); return g; };

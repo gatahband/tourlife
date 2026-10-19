@@ -31,10 +31,10 @@ const pcUnlocked = c => !!(c.badges && c.badges.elite);
 // The kind of player a hitting partner imitates.
 const PARTNERS = {
   lefty: { name: 'a left-hander', match: o => o.hand === 'left' },
-  server: { name: 'a big server', match: o => o.attrs.serve >= o.attrs.ret + 4 || ['Big Server', 'First-Strike Player'].includes(detectStyles(o.attrs, o.fav)[0].name) },
-  topspin: { name: 'a heavy-topspin grinder', match: o => planOf(o).spin === 'topspin' || famOf(detectStyles(o.attrs, o.fav)[0].name) === 'defend' },
-  net: { name: 'a net rusher', match: o => planOf(o).net === 'often' || famOf(detectStyles(o.attrs, o.fav)[0].name) === 'net' },
-  flat: { name: 'a flat hitter', match: o => planOf(o).spin === 'flat' || famOf(detectStyles(o.attrs, o.fav)[0].name) === 'attack' },
+  server: { name: 'a big server', match: o => o.attrs.serve >= o.attrs.ret + 4 || ['Serve-Dominant', 'Serve +1 Attacker', 'First-Strike Attacker'].includes(styleOf(o).name) || (traitOf(o) || {}).name === 'Powerful Serve' },
+  topspin: { name: 'a heavy-topspin grinder', match: o => planOf(o).spin === 'topspin' || famOf(styleOf(o).name) === 'defend' },
+  net: { name: 'a net rusher', match: o => planOf(o).net === 'often' || famOf(styleOf(o).name) === 'net' },
+  flat: { name: 'a flat hitter', match: o => planOf(o).spin === 'flat' || famOf(styleOf(o).name) === 'attack' },
 };
 // Prices follow the level: cheap at ITF events, steep at the Slams.
 const PREP_MULT = { M15: 0.25, M25: 0.3, CH75: 0.8, CH125: 1, ATP250: 2, ATP500: 2.5, M1000: 3.2, GS: 4 };

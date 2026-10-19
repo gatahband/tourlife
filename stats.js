@@ -242,9 +242,9 @@ function openIdeas() {
     for (const k of idea.stats) applyGain(a, k, gain);
     return a;
   };
-  const stylesNow = detectStyles(player.attrs, player.fav);
+  const stylesNow = detectStyles(player.attrs, player.fav, planOf(player));
   const styleTag = idea => {
-    const after = detectStyles(afterIdea(idea), player.fav);
+    const after = detectStyles(afterIdea(idea), player.fav, planOf(player));
     if (after[0].name !== stylesNow[0].name) return `<div class="istyle warn">⚠️ Changes your style: ${stylesNow[0].name} → <b>${after[0].name}</b></div>`;
     const before = Object.fromEntries(stylesNow.map(x => [x.name, x.score]));
     const gainer = after.map(x => ({ name: x.name, d: x.score - before[x.name] })).sort((a, b) => b.d - a.d)[0];
@@ -254,7 +254,7 @@ function openIdeas() {
   const buildHtml = () => {
     const idea = pick && IDEAS.find(x => x.id === pick);
     const after = idea ? afterIdea(idea) : player.attrs;
-    const sAfter = detectStyles(after, player.fav);
+    const sAfter = detectStyles(after, player.fav, planOf(player));
     const ovr0 = overall(player), ovr1 = overall({ ...player, attrs: after });
     const rows = ATTRS.map(([k, label]) => {
       const up = idea && idea.stats.includes(k);
@@ -291,7 +291,7 @@ function openIdeas() {
     `<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
     `<h2 class="itop">Choose your adjustment</h2>` +
     `<p class="hint center">Pick one idea to work into your game. Every stat it trains improves by <b>${(gain * 100).toFixed(2)}%</b>, for good: ${(base * 100).toFixed(2)}% from the match + ${((rec.watchBonus || 0) * 100).toFixed(2)}% for watching ${games} full game${games === 1 ? '' : 's'}` +
-    `${rec.fullWatch ? ', <b>tripled for watching the whole match</b>' : games < WATCH_GAMES ? ` (watch ${WATCH_GAMES} full games for the full +2%; the whole match triples it)` : ' (watch the whole match to triple it)'}.</p>` +
+    `${rec.fullWatch ? ', <b>tripled for watching the whole match</b>' : games < WATCH_GAMES ? ` (watch ${WATCH_GAMES} full games for the full bonus; the whole match triples it)` : ' (watch the whole match to triple it)'}.</p>` +
     `<div id="ideaCards" class="icards"></div>` +
     `<button type="button" class="btn" id="ideaGo" disabled>Pick a card</button>` +
     `<div id="ideaBuild" class="ibuild"></div>`,

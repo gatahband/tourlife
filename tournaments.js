@@ -236,12 +236,13 @@ function renderTournaments(player) {
     $('units').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   };
   // Playstyle card: tap to open the full build (same meters as the creator).
-  const ranked = detectStyles(player.attrs, player.fav);
-  $('cStyle').textContent = ranked[0].name;
+  const ranked = detectStyles(player.attrs, player.fav, planOf(player));
+  const trait = traitOf(player);
+  $('cStyle').textContent = ranked[0].name + (trait ? ` · ${trait.name}` : '');
   // The first bar in your build: your overall rating (out of the 99 maximum).
   $('hOvrVal').textContent = `${overall(player).toFixed(1)} OVR`;
   $('hTopFill').style.width = `${clamp(overall(player) / 99 * 100, 2, 100).toFixed(1)}%`;
-  $('hTopDesc').textContent = ranked[0].desc;
+  $('hTopDesc').textContent = ranked[0].desc + (trait ? ` ${trait.name}: ${trait.desc}` : '');
   $('hAttrs').innerHTML = ATTRS.map(([k, label]) => {
     const v = player.attrs[k] ?? 50;
     return `<div class="attr"><div class="lbl">${label}<b>${v.toFixed(2)}</b></div><div class="abar"><div style="width:${clamp(v, 0, 100)}%"></div></div></div>`;
@@ -386,7 +387,7 @@ function eventPreview(ev, mode, canEnter) {
   if (ev.surface === p.worst) notes.push('🔴 Your worst surface.');
   const wx = evx.weather;
   if (wx && wx !== 'sunny' && wx !== 'indoor') {
-    const st = detectStyles(p.attrs, p.fav)[0].name, e = wxEdge(me, st, evx);
+    const st = styleOf(p).name, e = wxEdge(me, st, evx);
     notes.push(`${WEATHER[wx].icon} ${WEATHER[wx].name}: ${e > 0.002 ? 'suits' : e < -0.002 ? 'works against' : 'barely affects'} your ${st} game (${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}% on points).${WX_EFFECT[wx].heat > 1.2 ? ' Tiring heat.' : ''}`);
   }
   if (tour) notes.push('⭐ Real top-100 players in the draw.');
@@ -527,7 +528,7 @@ function afterPlayerMatch(entry) {
 // You vs them, centred, each with their playstyle and a line on what it means.
 function vsHeader(entry, oi) {
   const side = i => {
-    const e = entry.entrants[i], st = detectStyles(e.attrs, e.fav)[0];
+    const e = entry.entrants[i], st = styleOf(e);
     return `<div class="vsside"><div class="vsname">${nameCell(entry, i)}</div><div class="vsstyle">${st.name}</div><small>${st.desc}</small></div>`;
   };
   return `<div class="vsbox">${side(0)}<div class="vsmid">vs</div>${side(oi)}</div>`;
@@ -575,7 +576,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
     `<button type="button" class="btn ghost" id="${planBtn}">Change My Plan</button></div>`;
 
   // Always on show: the three things that matter most. Everything else folds away with a one-line summary.
-  const myStyle = detectStyles(me.attrs, me.fav)[0].name, oppStyle = detectStyles(opp.attrs, opp.fav)[0].name;
+  const myStyle = styleOf(me).name, oppStyle = styleOf(opp).name;
   const short = t => t.length > 70 ? t.slice(0, 68).replace(/\s+\S*$/, '') + '…' : t;
   const facts = `<div class="keyfacts">` +
     `<div><span>💪</span><b>Strength</b><em>${r.strengths[0] || 'Nothing stands out'}</em></div>` +
@@ -717,10 +718,10 @@ function wrapUpMatch(entry) {
   // Matches tire you out: more so when they go three sets.
   const rec = entry.matches[entry.matches.length - 1];
   const p = current.player;
-  // Watching bonus: up to +2% on top of the adjustment, for the share of points you watched.
+  // Watching bonus: up to +0.6% on top of the adjustment, for the share of points you watched.
   if (rec) {
     rec.watched = entry.live.total ? Math.min(1, (entry.live.watched || 0) / entry.live.total) : 0;
-    // Watch credit: the full +2% for watching 3 whole games (a third of it per game); watch every point
+    // Watch credit: the full +0.6% for watching 3 whole games (a third of it per game); watch every point
     // of the match and the whole match's growth is tripled.
     rec.gamesWatched = entry.live.gamesWatched || 0;
     rec.fullWatch = !!entry.live.total && (entry.live.watched || 0) >= entry.live.total;
@@ -903,7 +904,7 @@ function openMatch() {
   advTier = ev.tier; // tour-level computer players choose their own advanced plan
   const oth = p => ps[ps[0] === p ? 1 : 0];
   const profile = p => ({ adv: advPlan(p.isPlayer ? { ...p, advLevel: teamLevel(current.career, 'coach') } : p, oth(p)), real: !!p.atpRank && !p.isPlayer, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
-    style: detectStyles(p.attrs, p.fav)[0].name });
+    style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   Court.scene(ev.surface, ev.indoor, ['You' + tag(ps[me]), shortName(ps[1 - me]) + tag(ps[1 - me])],
     [profile(ps[me]), profile(ps[1 - me])]);
   Court.setWeather(wxOf(ev), ev.weather === 'damp');
@@ -1522,9 +1523,10 @@ function openSetAdjust(entry) {
 
 const FOCUS_GAIN = 0.0043; // older matches
 // Each match's adjustment improves its stats by 0.75–1%, rolled once per match.
-const WATCH_BONUS = 0.02;
+const WATCH_BONUS = 0.006;
 const WATCH_GAMES = 3;
-const totalGain = rec => (matchGain(rec) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1);
+// A match you only simmed (under three games watched) teaches you far less than one you played.
+const totalGain = rec => (matchGain(rec) * ((rec.gamesWatched || 0) >= WATCH_GAMES ? 1 : 0.15) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1);
 const matchGain = rec => rec.gain || (rec.gain = Math.round((0.0075 + Math.random() * 0.0025) * 10000) / 10000);
 const attrLabel = k => ATTRS.find(([key]) => key === k)[1];
 
@@ -1576,7 +1578,7 @@ function saveReview() {
     applyGain(player.attrs, k, totalGain(rec));
     entry.entrants[0].attrs[k] = player.attrs[k];
   }
-  player.playstyle = detectStyles(player.attrs, player.fav)[0].name;
+  player.playstyle = styleOf(player).name;
   rec.adjustment = idea.id;
   entry.review = null;
   writeJSON(SAVE_KEY, player);

@@ -122,9 +122,9 @@ function travelDays(from, to) {
 const FREE_DAYS = [5, 4, 3, 2, 1, 0];
 
 // --- Training sessions -------------------------------------------------------
-// Training: each session improves its stats by 1–3.5% (rolled per day). Practising on site at next
+// Training: each session improves its stats by 0.4–1.3% (rolled per day). Practising on site at next
 // week's venue rolls twice and keeps the better one.
-const TRAIN_MIN = 0.01, TRAIN_MAX = 0.035;
+const TRAIN_MIN = 0.004, TRAIN_MAX = 0.013; // training sharpens you; matches are where you really grow
 const rollTrain = local => {
   const r = () => TRAIN_MIN + Math.random() * (TRAIN_MAX - TRAIN_MIN);
   return Math.round((local ? Math.max(r(), r()) : r()) * 10000) / 10000;

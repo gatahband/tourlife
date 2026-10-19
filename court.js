@@ -1174,7 +1174,7 @@ function createCourt() {
       // Wide balls drag the receiver out past the alley; short angles even further.
       x: clamp(bounce.x * 1.3 + (Math.abs(bounce.x) > 3.2 && Math.abs(bounce.y) < 8 ? Math.sign(bounce.x) * rand(0.8, 2.2) : 0), -DOUBLES - 2.6, DOUBLES + 2.6),
       // Let the ball come up off the bounce (no short-hops on rally balls): at least ~1.6 m past the bounce.
-      y: d * clamp(Math.abs(bounce.y) + Math.max(1.6, carry + early), 1.5, BASE + 6.5),
+      y: d * clamp(Math.abs(bounce.y) + Math.max(flight === 'slice' ? 1.8 : 2.3, carry + early), 1.5, BASE + 6.5),
     };
   }
 
@@ -1316,7 +1316,7 @@ function createCourt() {
         const base = inAir ? from : b;
         const sWant = (want.x - base.x) * hx + (want.y - base.y) * hy;
         let best = null;
-        const [s0, s1] = inAir ? [Math.max(1, L * 0.35), L - 0.2] : [goodDrop ? 0.3 : final || (next && next.bounceSmash) ? 0.5 : Math.min(1.4, sMax), sMax];
+        const [s0, s1] = inAir ? [Math.max(1, L * 0.35), L - 0.2] : [goodDrop ? 0.3 : final || (next && next.bounceSmash) ? 0.5 : Math.min(Math.max(2.0, 0.14 * v * surf().keep), sMax), sMax] /* rally balls: at least ~0.14 s off the bounce */;
         for (let sv = s0; sv <= s1; sv += 0.25) {
           const pnt = { x: base.x + hx * sv, y: base.y + hy * sv };
           if (Math.sign(pnt.y) !== dir(recv) || Math.abs(pnt.y) > BASE + 6.5 || Math.abs(pnt.x) > DOUBLES + 2.8) continue;
@@ -1423,7 +1423,7 @@ function createCourt() {
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
-        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin,
+        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin, lowBounce: ['slice', 'drop'].includes(call.flight) || shot.kind === 'drop',
       });
       // Where everyone ends up after this shot.
       cur[recv] = { x: lerp(r0.x, body.x, reach), y: lerp(r0.y, body.y, reach) };
@@ -1662,7 +1662,7 @@ function createCourt() {
             // A good drop: one soft hop, then a smaller one, then it dies.
             const h = s.goodDrop
               ? (u < 0.62 ? Math.sin(Math.PI * u / 0.62) * s.bounceH * 0.7 : Math.sin(Math.PI * (u - 0.62) / 0.38) * s.bounceH * 0.22)
-              : Math.sin(Math.PI * u * 0.7) * s.bounceH;
+              : Math.sin(Math.PI * u * 0.7) * (s.final || s.lowBounce ? s.bounceH : Math.max(s.bounceH, 1.15)); // rally balls sit up to waist height
             setBall({ x: lerp(s.bounce.x, s.postTo.x, u), y: lerp(s.bounce.y, s.postTo.y, u) }, h);
           }
           moveRecv(s, t, s.body, s.reach);

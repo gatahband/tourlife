@@ -53,12 +53,22 @@ function importSave(obj) {
     // A backup made on this device: no going back to replay matches.
     if (obj.savedOn && obj.savedOn === deviceId()) { alert(`This backup was made on this device and is behind where you are now (${when(here)}), so it can't be loaded. Matches can't be replayed from a backup.`); return; }
     // From another device: fine, but say that it's behind the copy here.
-    if (!confirm(`The copy of this career on this device is further along (${when(here)}) than the one you're loading (${when(there)}). Load the other device's copy anyway? It will replace the one here.`)) return;
+    if (!confirm(`The copy of this career on this device is further along (${when(here)}) than the one you're loading (${when(there)}). Load the other device's copy anyway? The copy here is kept in your saved careers as "(newer copy)" so you can switch back.`)) return;
     clearMark(obj);
   }
   // A full career keeps its id (loading your own backup replaces it); a player card always starts a new slot.
   const id = obj.kind === 'career' && obj.player.created || Date.now();
-  shelveLive();
+  // If the copy here is further along than the one coming in, never throw it away: keep it in your saved
+  // careers as its own entry, so you can switch back to it.
+  const live = readJSON(SAVE_KEY), liveC = readJSON(CAREER_KEY);
+  const keepNewer = live && live.created === id && liveC && careerProgress(liveC, readJSON(ENTRY_KEY)) > careerProgress(obj.career || {}, obj.entry);
+  if (keepNewer) {
+    const kid = Date.now();
+    const saves0 = loadSaves();
+    saves0.push({ id: kid, player: { ...live, created: kid, name: `${live.name} (newer copy)` }, career: liveC, entry: readJSON(ENTRY_KEY), savedAt: Date.now() });
+    writeJSON(SAVES_KEY, saves0);
+    for (const k of [SAVE_KEY, CAREER_KEY, ENTRY_KEY]) writeJSON(k, null);
+  } else shelveLive();
   const saves = loadSaves().filter(x => x.id !== id);
   writeJSON(SAVES_KEY, saves);
   writeJSON(SAVE_KEY, { ...obj.player, created: id });

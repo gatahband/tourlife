@@ -226,6 +226,7 @@ function renderTournaments(player) {
   player.plan = planOf(player);
   planEditor($('hPlan'), player.plan, () => savePlan(player));
   $('hStatsBtn').onclick = () => openPlayerStats();
+  $('shareBuild').onclick = () => shareBuild(player);
   $('units').innerHTML = [['mph', 'mph'], ['kmh', 'km/h']].map(([v, l]) =>
     `<button type="button" data-v="${v}" class="${speedUnit() === v ? 'on' : ''}">${l}</button>`).join('');
   $('units').onclick = e => {

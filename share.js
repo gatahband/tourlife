@@ -313,3 +313,56 @@ async function checkRealResults() {
   });
 }
 setTimeout(checkRealResults, 600);
+
+// --- Share my build -----------------------------------------------------------------------------
+// A picture card of your build (overall, level, playstyle, stats, style fit) to post or send.
+async function shareBuild(p) {
+  const W = 1080, H = 1440, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d'), F = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const ovr = overall(p), lv = levelOf(ovr), styles = detectStyles(p.attrs, p.fav), st = styles[0];
+  const bg = x.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0d1420'); bg.addColorStop(1, '#151b2a');
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  const grad = (x0, x1) => { const g = x.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, '#0a84ff'); g.addColorStop(0.5, '#bf5af2'); g.addColorStop(1, '#ff375f'); return g; };
+  const rr = (X, Y, w, h, r) => { x.beginPath(); x.roundRect ? x.roundRect(X, Y, w, h, r) : x.rect(X, Y, w, h); };
+  // Header: name, nation, overall badge, level.
+  x.fillStyle = '#f5f5f7'; x.font = `800 64px ${F}`; x.fillText(p.name, 80, 140);
+  x.fillStyle = '#8e8e93'; x.font = `500 32px ${F}`;
+  x.fillText(`${(nationInfo(p.nation) || [p.nation, '', p.nation])[2]} · ${p.hand === 'left' ? 'Left' : 'Right'}-handed · Age ${p.age || 18}`, 80, 190);
+  rr(80, 240, 220, 220, 44); x.fillStyle = grad(80, 300); x.fill();
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = `800 92px ${F}`; x.fillText(ovr.toFixed(1), 190, 360); x.font = `700 30px ${F}`; x.fillText('OVR', 190, 410);
+  x.textAlign = 'left'; x.fillStyle = '#f5f5f7'; x.font = `800 52px ${F}`; x.fillText(lv.name, 340, 320);
+  x.fillStyle = '#c7c7cc'; x.font = `500 30px ${F}`;
+  const wrap = (t, X, Y, w, lh) => { let line = ''; for (const word of t.split(' ')) { const tr = line ? line + ' ' + word : word; if (x.measureText(tr).width > w) { x.fillText(line, X, Y); Y += lh; line = word; } else line = tr; } x.fillText(line, X, Y); return Y; };
+  wrap(lv.note, 340, 370, 660, 40);
+  // Playstyle.
+  x.fillStyle = '#8e8e93'; x.font = `700 26px ${F}`; x.fillText('PLAYSTYLE', 80, 540);
+  x.fillStyle = '#ffd60a'; x.font = `800 50px ${F}`; x.fillText(st.name, 80, 600);
+  x.fillStyle = '#c7c7cc'; x.font = `500 28px ${F}`; wrap(st.desc, 80, 645, 920, 36);
+  // Seven stats.
+  let y = 740;
+  for (const [k, label] of ATTRS) {
+    const v = p.attrs[k];
+    x.fillStyle = '#f5f5f7'; x.font = `600 28px ${F}`; x.fillText(label, 80, y);
+    x.textAlign = 'right'; x.fillText(v.toFixed(1), 1000, y); x.textAlign = 'left';
+    rr(80, y + 12, 920, 14, 7); x.fillStyle = '#2a3140'; x.fill();
+    rr(80, y + 12, 920 * clamp(v / 99, 0.02, 1), 14, 7); x.fillStyle = grad(80, 1000); x.fill();
+    y += 62;
+  }
+  // Top style fits.
+  y += 20; x.fillStyle = '#8e8e93'; x.font = `700 26px ${F}`; x.fillText('HOW THE BUILD FITS EACH STYLE', 80, y); y += 40;
+  for (const s of styles.slice(0, 3)) {
+    x.fillStyle = '#c7c7cc'; x.font = `600 26px ${F}`; x.fillText(s.name, 80, y);
+    rr(420, y - 18, 480, 14, 7); x.fillStyle = '#2a3140'; x.fill();
+    rr(420, y - 18, 480 * clamp(s.score, 0.02, 1), 14, 7); x.fillStyle = grad(420, 900); x.fill();
+    x.fillStyle = '#c7c7cc'; x.textAlign = 'right'; x.fillText(`${Math.round(s.score * 100)}%`, 1000, y); x.textAlign = 'left'; y += 44;
+  }
+  x.fillStyle = '#0a84ff'; x.font = `800 32px ${F}`; x.textAlign = 'center'; x.fillText('🎾 TourLife', W / 2, H - 50); x.textAlign = 'left';
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const file = new File([blob], `${p.name.replace(/[^a-z0-9]+/gi, '-')}-build.png`, { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: `${p.name}'s TourLife build`, text: `${p.name}: ${ovr.toFixed(1)} OVR ${lv.name}, ${st.name}` }); return; } catch {}
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast('📸 Build saved', 'The picture is in your downloads.');
+}

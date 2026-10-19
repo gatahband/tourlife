@@ -1050,7 +1050,7 @@ function createCourt() {
     const side = Math.abs(hx) < 0.6 ? (Math.random() < 0.5 ? 1 : -1) : Math.sign(hx);
     const angleOdds = clamp((prof[shot.by].iq - 40) / 150, 0.04, 0.3);
     const r = Math.random();
-    if (r < angleOdds) return { x: -side * rand(3.2, 4.0), y: -d * rand(4.5, 7) };
+    if (r < angleOdds && adv.depth !== 'deep') return { x: -side * rand(3.2, 4.0), y: -d * rand(4.5, 7) }; // deep drivers don't play short angles
     if (r < angleOdds + 0.5) return { x: -side * rand(1.4, 3.9), y: -d * rand(yMin, yMax) };
     if (r < angleOdds + 0.75) return { x: side * rand(1.4, 3.9), y: -d * rand(yMin, yMax) };
     return { x: rand(-1.4, 1.4), y: -d * rand(yMin, yMax) };
@@ -1174,7 +1174,7 @@ function createCourt() {
       // Shot depth shows in the flight: moonballs loop high and kick up; deep drives skim low and fast.
       const dpt = (prof[hitter].adv || {}).depth, rallyBall = !isServe && (call.flight === 'topspin' || call.flight === 'flat') && !shot.popped;
       if (rallyBall && dpt === 'high') { const f0 = fl; fl = { ...f0, h: (...a) => f0.h(...a) * 1.7 + 0.5, mps: f0.mps * 0.78, bounce: f0.bounce * 1.25 }; if (Math.random() < 0.35) call.type = 'MOONBALL!'; }
-      if (rallyBall && dpt === 'deep') { const f0 = fl; fl = { ...f0, h: (...a) => f0.h(...a) * 0.85, mps: f0.mps * 1.12 }; if (Math.random() < 0.3) call.type = 'DEEP DRIVE!'; }
+      if (rallyBall && dpt === 'deep') { const f0 = fl; fl = { ...f0, h: (...a) => f0.h(...a) * 0.85, mps: f0.mps * 1.12 }; if (Math.random() < 0.3) { call.prevType = call.type; call.type = 'DEEP DRIVE!'; } }
       // Going for broke on a big point: the shot that ends it is all or nothing.
       if (final && pt.press || final && pt.bp !== null && pt.bp !== undefined) {
         const pr = (prof[hitter].adv || {}).pressure;
@@ -1336,6 +1336,8 @@ function createCourt() {
           || (pt.how === 'winner' && rally.length >= 8)) fx = 'zoom';
         highlight = fx;
       }
+      // Only call it a deep drive if it really lands deep (near the baseline).
+      if (call.type === 'DEEP DRIVE!' && (inAir || !bounce || Math.abs(bounce.y) < 9)) call.type = call.prevType || 'FLAT!';
       segs.push({
         t: 'shot', hitter, recv, call, final, kind: shot.kind, rush: rushIn, cordTick: !!shot.cordTick,
         // What the receiver is getting ready to hit (drives their wind-up during this flight).

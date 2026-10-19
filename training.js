@@ -131,6 +131,7 @@ function applyDay(drillId, gain = rollTrain(false)) {
   const before = overall(p);
   p.fatigue = clamp((p.fatigue || 0) + drillFatigue(d, c, p), 0, 100);
   gain *= burnout(c); // training week after week without playing counts for less
+  gain *= Math.max(0.1, 1 - (c.autopilot || 0) / 8); // and so does training while you're on autopilot in your matches
   for (const k of d.stats) applyGain(p.attrs, k, gain);
   dt.lastSession = d.stats.length ? { stats: d.stats, gain } : null;
   p.playstyle = styleOf(p).name;

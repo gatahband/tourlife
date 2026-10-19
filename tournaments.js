@@ -699,9 +699,14 @@ function autopilotNote() {
 // the better player. Watching three full games of the match earns full credit (no autopilot cost after that).
 const SIM_PEN = 0.04, STUCK_PEN = 0.02;
 const watchCredit = entry => (entry.live.gamesWatched || 0) >= WATCH_GAMES;
+// Autopilot streak: matches in a row you simmed without watching (career.autopilot). The longer it runs,
+// the flatter you play (up to −10% on points) and the less you learn, until you stop improving at all.
+const autopilotOf = () => (current.career && current.career.autopilot) || 0;
+const simPen = () => SIM_PEN + 0.01 * Math.min(6, autopilotOf());
+const autopilotGrowth = ap => Math.max(0, 1 - ap / 5);
 function autopilotPenalty(entry, watching) {
   const { m } = entry.live, me = m.a === 0 ? 0 : 1;
-  let pen = (watching || watchCredit(entry) ? 0 : SIM_PEN) + rustOf(current.career);
+  let pen = (watching || watchCredit(entry) ? 0 : simPen()) + rustOf(current.career);
   const last = m.sets[m.sets.length - 1];
   const lostLast = last && last.games[me] < last.games[1 - me];
   const changed = (entry.live.adjusts || []).some(a => a.after === m.sets.length);
@@ -726,6 +731,13 @@ function wrapUpMatch(entry) {
     rec.gamesWatched = entry.live.gamesWatched || 0;
     rec.fullWatch = !!entry.live.total && (entry.live.watched || 0) >= entry.live.total;
     rec.watchBonus = Math.round(WATCH_BONUS * Math.min(1, rec.gamesWatched / WATCH_GAMES) * 10000) / 10000;
+    // The autopilot streak going into this match (it shapes this match's growth), then update it:
+    // a watched match clears it, a mid-match plan change eases it, a pure sim adds to it.
+    const c = current.career;
+    rec.autopilot = c.autopilot || 0;
+    if (rec.gamesWatched >= WATCH_GAMES) c.autopilot = 0;
+    else if ((entry.live.adjusts || []).length || (entry.live.calls || []).some(x => x.id === 'plan')) c.autopilot = Math.max(0, (c.autopilot || 0) - 1);
+    else c.autopilot = (c.autopilot || 0) + 1;
   }
   p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4) * (hasPrep(entry, 'pcfit') ? 0.8 : 1), 0, 100);
   writeJSON(SAVE_KEY, p);
@@ -990,7 +1002,7 @@ async function playOneSet(animate = true) {
       let sim;
       if (shown < target) { const r = (L.calls || []).filter(c => c.id === 'pen' && c.step <= step).slice(-1)[0]; sim = r ? r.v : 0; }
       else {
-        sim = !Court.skip || watchCredit(entry) ? 0 : SIM_PEN;
+        sim = !Court.skip || watchCredit(entry) ? 0 : simPen();
         if (sim !== lastSim) { L.calls = [...(L.calls || []), { step, id: 'pen', v: sim }]; }
       }
       lastSim = sim;
@@ -1526,7 +1538,7 @@ const FOCUS_GAIN = 0.0043; // older matches
 const WATCH_BONUS = 0.006;
 const WATCH_GAMES = 3;
 // A match you only simmed (under three games watched) teaches you far less than one you played.
-const totalGain = rec => (matchGain(rec) * ((rec.gamesWatched || 0) >= WATCH_GAMES ? 1 : 0.15) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1);
+const totalGain = rec => (matchGain(rec) * ((rec.gamesWatched || 0) >= WATCH_GAMES ? 1 : 0.15 * autopilotGrowth(rec.autopilot || 0)) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1);
 const matchGain = rec => rec.gain || (rec.gain = Math.round((0.0075 + Math.random() * 0.0025) * 10000) / 10000);
 const attrLabel = k => ATTRS.find(([key]) => key === k)[1];
 

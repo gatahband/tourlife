@@ -20,7 +20,7 @@ const PARTNERS = {
   flat: { name: 'a flat hitter', match: o => planOf(o).spin === 'flat' || famOf(detectStyles(o.attrs, o.fav)[0].name) === 'attack' },
 };
 // Prices follow the level: cheap at ITF events, steep at the Slams.
-const PREP_MULT = { M15: 0.25, M25: 0.3, CH75: 0.8, CH125: 1, ATP250: 1.6, ATP500: 2, M1000: 2.6, GS: 3 };
+const PREP_MULT = { M15: 0.25, M25: 0.3, CH75: 0.8, CH125: 1, ATP250: 2, ATP500: 2.5, M1000: 3.2, GS: 4 };
 const prepCost = (item, tier) => Math.max(50, Math.round(item.cost * (PREP_MULT[tier] || 1) / 10) * 10);
 const prepOf = entry => (entry.prep = entry.prep || { items: [], partner: null });
 const hasPrep = (entry, id) => !!(entry && entry.prep && entry.prep.items.includes(id));

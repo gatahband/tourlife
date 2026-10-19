@@ -65,18 +65,30 @@ const recoveryBoost = c => teamOf(c, 'physio').recover || 0;
 
 // End of every week: pay your team (they leave if you can't), your sponsors pay you, and
 // coaching juniors at home brings in a little when you didn't play an event.
+// Staff wages follow your fame: cheap while you're unknown, steep once you're on the ATP Tour
+// (a Master coach runs about $8,000 a week in the top 50). The more help you buy, the more it costs.
+function staffMult(c) {
+  const r = currentRank(c) || 9999;
+  return r <= 50 ? 1.6 : r <= 100 ? 1.4 : r <= 200 ? 1.15 : r <= 500 ? 1 : 0.8;
+}
+const teamCost = (c, k, lv = ownLevel(c, k)) => Math.round(TEAM[k].levels[lv].cost * staffMult(c) / 50) * 50;
+const weeklyBill = c => Object.keys(TEAM).reduce((t, k) => t + (c.perks && c.perks[k] && c.perks[k].weeks > 0 ? 0 : teamCost(c, k)), 0);
+
 function weeklyMoney(c) {
   const pk = c.perks || {};
   for (const k of Object.keys(TEAM)) {
     // Covered by a free perk this week: nothing to pay.
     if (pk[k] && pk[k].weeks > 0) { pk[k].weeks--; continue; }
-    const t = TEAM[k].levels[ownLevel(c, k)];
-    if (!t.cost) continue;
-    if ((c.money ?? 0) >= t.cost) charge(c, t.cost, `${t.name} (weekly)`);
+    const t = TEAM[k].levels[ownLevel(c, k)], cost = teamCost(c, k);
+    if (!cost) continue;
+    if ((c.money ?? 0) >= cost) charge(c, cost, `${t.name} (weekly)`);
     else { c.team[k] = 0; c.notice = `You couldn't pay your ${t.name.toLowerCase()}, so they left.`; }
   }
   payDeals(c);
   maybeOffer(c);
+  // Running out of money: a heads-up while there's still time to downsize.
+  const bill = weeklyBill(c);
+  if (bill > 0 && c.money < bill * 3 && !c.notice) c.notice = `💸 Your team costs ${money(bill)} a week and you have ${money(c.money)} left: about ${Math.max(0, Math.floor(c.money / bill))} week${Math.floor(c.money / bill) === 1 ? '' : 's'} of wages. Win some prize money or downgrade your team (Home → Money & Team).`;
   if (pk.jet && pk.jet.weeks > 0) pk.jet.weeks--;
   // Weeks without an event: work as a hitting partner or coach juniors, wherever you are, so you
   // can always save up for the next trip.
@@ -394,13 +406,15 @@ function renderCareerBits(c, p) {
   $('gbHl').onclick = () => openHighlights();
   $('gbBadges').onclick = () => { const d = document.querySelector('.badgebox'); d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const last = (c.ledger || []).slice(-4).reverse();
+  const bill = weeklyBill(c), runway = bill ? Math.floor(c.money / bill) : null;
   $('hTeam').innerHTML = `<div class="moneyline"><b>${money(c.money)}</b><span>in the bank</span></div>` +
+    (bill ? `<p class="hint ${runway < 4 ? 'warnline' : ''}">Team wages: <b>${money(bill)}/week</b> · enough for ${runway} week${runway === 1 ? '' : 's'} without prize money.${staffMult(c) > 1 ? ' Staff charge more the higher you are ranked.' : ''}</p>` : '') +
     `<div class="team">${Object.entries(TEAM).map(([k, t]) => {
       const lv = teamLevel(c, k), cur = t.levels[lv], pk = c.perks && c.perks[k];
       const free = pk && pk.weeks > 0 && pk.level > ownLevel(c, k) ? pk : null;
-      return `<div class="teamrow"><span class="ticon">${t.icon}</span><div class="teammain"><b>${t.name}: ${cur.name}${free ? ` · free for ${free.weeks} more week${free.weeks === 1 ? '' : 's'} 🎁` : cur.cost ? ` · ${money(cur.cost)}/week` : ''}</b><small>${cur.desc}</small>` +
+      return `<div class="teamrow"><span class="ticon">${t.icon}</span><div class="teammain"><b>${t.name}: ${cur.name}${free ? ` · free for ${free.weeks} more week${free.weeks === 1 ? '' : 's'} 🎁` : teamCost(c, k, lv) ? ` · ${money(teamCost(c, k, lv))}/week` : ''}</b><small>${cur.desc}</small>` +
         `<div class="seg" style="grid-template-columns:repeat(${t.levels.length},1fr)" data-team="${k}">${t.levels.map((l, i) =>
-          `<button type="button" data-lv="${i}" class="${i === lv ? 'on' : ''}">${l.name.replace(/ (coach|team)$/, '')}${free && i === free.level ? '<small>Free 🎁</small>' : l.cost ? `<small>${money(l.cost)}</small>` : ''}</button>`).join('')}</div>` +
+          `<button type="button" data-lv="${i}" class="${i === lv ? 'on' : ''}">${l.name.replace(/ (coach|team)$/, '')}${free && i === free.level ? '<small>Free 🎁</small>' : l.cost ? `<small>${money(teamCost(c, k, i))}</small>` : ''}</button>`).join('')}</div>` +
         (free ? `<small class="hint">A season-goal reward. Tap another option to give it up and pick your own.</small>` : '') + `</div></div>`;
     }).join('')}` +
     `<label class="teamrow bizrow"><input type="checkbox" id="hBiz" ${c.business ? 'checked' : ''}><span class="ticon">✈️</span><div class="teammain"><b>Fly business class</b>` +

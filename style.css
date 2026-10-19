@@ -992,3 +992,12 @@ h2.ctr { text-align: center; }
 .settings .seg button { padding: 4px 10px; font-size: 12px; min-width: 0; }
 .adminlink { display: block; width: max-content; margin: 28px auto 4px; font-size: 11px; color: #3a4252; text-decoration: none; opacity: .7; }
 .adminlink:hover { color: var(--muted); }
+/* The pre-match game plan: its own box with the rainbow border so nobody skips it */
+.scard details[data-fold="d-plan"] {
+  margin-top: 16px; padding: 4px 14px; border: 2px solid transparent; border-radius: 16px;
+  background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(90deg, #0a84ff, #bf5af2, #ff375f) border-box;
+  box-shadow: 0 0 22px rgba(191, 90, 242, .18);
+}
+.scard details[data-fold="d-plan"] + * { margin-top: 0; }
+.scard details[data-fold="d-plan"] > summary .foldt { background: linear-gradient(90deg, #64d2ff, #bf5af2, #ff6482); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.scard details[data-fold="d-plan"] > summary .foldsum { color: var(--text); font-weight: 600; }

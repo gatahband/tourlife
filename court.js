@@ -242,7 +242,8 @@ function createCourt() {
     const ag = (prof[side].plan || {}).aggression, st = prof[side].style;
     // Defenders camp deep; first-strike players hug the baseline.
     const styleD = st === 'Defensive Grinder' || st === 'Counterpuncher' || st === 'Marathon Man' ? 1.2 : st === 'First-Strike Player' || st === 'Power Hitter' ? -0.4 : 0;
-    return BASE + (ag === 'patient' ? 2.2 : ag === 'aggressive' ? 0.3 : 1.0) + (surface === 'clay' ? 0.8 : 0) + styleD;
+    const dp = (prof[side].adv || {}).depth; // moonballers camp deeper; deep drivers hold the baseline
+    return BASE + (ag === 'patient' ? 2.2 : ag === 'aggressive' ? 0.3 : 1.0) + (surface === 'clay' ? 0.8 : 0) + styleD + (dp === 'high' ? 0.9 : dp === 'deep' ? -0.3 : 0);
   }
 
   // How far behind the baseline a player stands to return, from their plan. Only a server known for
@@ -1035,7 +1036,15 @@ function createCourt() {
   // Rally shot direction: mostly crosscourt, some down the line, some through the middle,
   // and short angles, which smarter players use more often.
   function rallyTarget(shot, from, yMin, yMax) {
-    const d = dir(shot.by), hx = from.x;
+    const d = dir(shot.by), hx = from.x, adv = prof[shot.by].adv || {};
+    // Shot depth: moonballs and deep drives both land near the baseline.
+    if (adv.depth === 'high') { yMin = Math.max(yMin, 8.5); yMax = Math.max(yMax, 11.3); }
+    if (adv.depth === 'deep') { yMin = Math.max(yMin, 9.8); yMax = Math.max(yMax, 11.6); }
+    // Target wing: most rally balls go to the chosen side of the receiver.
+    if ((adv.wing === 'fh' || adv.wing === 'bh') && Math.random() < 0.72) {
+      const recv = 1 - shot.by, wx = (adv.wing === 'fh' ? 1 : -1) * fhDir(recv);
+      return { x: wx * rand(1.3, 3.9), y: -d * rand(yMin, yMax) };
+    }
     const side = Math.abs(hx) < 0.6 ? (Math.random() < 0.5 ? 1 : -1) : Math.sign(hx);
     const angleOdds = clamp((prof[shot.by].iq - 40) / 150, 0.04, 0.3);
     const r = Math.random();
@@ -1155,7 +1164,16 @@ function createCourt() {
       // Second serves are kicked: a higher, longer bounce that pushes the returner back.
       const kick = isServe && faults > 0;
       if (kick) call.type += ' · KICK';
-      const fl = FLIGHT[shot.popped ? 'popped' : kick ? 'kick' : call.flight || 'topspin'];
+      let fl = FLIGHT[shot.popped ? 'popped' : kick ? 'kick' : call.flight || 'topspin'];
+      // Shot depth shows in the flight: moonballs loop high and kick up; deep drives skim low and fast.
+      const dpt = (prof[hitter].adv || {}).depth, rallyBall = !isServe && (call.flight === 'topspin' || call.flight === 'flat') && !shot.popped;
+      if (rallyBall && dpt === 'high') { const f0 = fl; fl = { ...f0, h: (...a) => f0.h(...a) * 1.7 + 0.5, mps: f0.mps * 0.78, bounce: f0.bounce * 1.25 }; if (Math.random() < 0.35) call.type = 'MOONBALL!'; }
+      if (rallyBall && dpt === 'deep') { const f0 = fl; fl = { ...f0, h: (...a) => f0.h(...a) * 0.85, mps: f0.mps * 1.12 }; if (Math.random() < 0.3) call.type = 'DEEP DRIVE!'; }
+      // Going for broke on a big point: the shot that ends it is all or nothing.
+      if (final && pt.press || final && pt.bp !== null && pt.bp !== undefined) {
+        const pr = (prof[hitter].adv || {}).pressure;
+        if (pr === 'broke' && rallyBall && shot.kind !== 'net' && shot.kind !== 'out') call.type = 'GOES FOR BROKE!';
+      }
       // Recover towards the middle at your preferred depth (less so when pulled far out).
       const home = homeDepth(hitter);
       const hGoal = rushIn ? { x: h0.x * 0.3, y: dir(hitter) * 6.2 }
@@ -1297,7 +1315,9 @@ function createCourt() {
       const reach = !final ? 1 : need < 0.01 ? 0 : Math.min(cap, runDist(met.ms / 1000) / need);
       // The hitter recovers only as far as they can before the ball comes back.
       const hD = dist(h0, hGoal);
-      if (hD > 0.01) { const k = Math.min(1, (shot.kind === 'approach' || rushIn ? runDist(tSec) : recoverDist(tSec)) / hD); hGoal.x = lerp(h0.x, hGoal.x, k); hGoal.y = lerp(h0.y, hGoal.y, k); }
+      // Energy: hustlers sprint back into position after every shot; conservers walk.
+      const pace = { hustle: 1.35, conserve: 0.72 }[(prof[hitter].adv || {}).energy] || 1;
+      if (hD > 0.01) { const k = Math.min(1, (shot.kind === 'approach' || rushIn ? runDist(tSec) : recoverDist(tSec) * pace) / hD); hGoal.x = lerp(h0.x, hGoal.x, k); hGoal.y = lerp(h0.y, hGoal.y, k); }
       // Highlights for GATAH VISION: big moments get a zoom, aces get a shake.
       let fx = null;
       if (final) {

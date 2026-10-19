@@ -51,7 +51,8 @@ function watchRealMatch(rec, opts = {}) {
   ReplayCourt.setOptions({ showType: true, showWing: true, ...readJSON(LABELS_KEY) });
   ReplayCourt.setAngle(ang === 'broadcast' ? null : ang);
   ReplayCourt.pauseCheck = () => paused;
-  const prof = p => ({ real: !!p.atpRank, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
+  advTier = rp.ev.tier;
+  const prof = p => ({ adv: advPlan(p, ps[ps[0] === p ? 1 : 0]), real: !!p.atpRank, hand: p.hand || 'right', backhand: p.backhand || 'two', iq: attr(p, 'iq'), net: p.attrs.net, plan: planOf(p),
     style: detectStyles(p.attrs, p.fav)[0].name });
   ReplayCourt.scene(rp.ev.surface, rp.ev.indoor, [name(me), name(op)], [prof(ps[me]), prof(ps[op])]);
 

@@ -613,7 +613,12 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const styleLen = [sp, rp].reduce((x, pl) => x * (pl.aggression === 'aggressive' ? 0.75 : pl.aggression === 'patient' ? 1.25 : 1)
     * (pl.spin === 'flat' ? 0.88 : pl.spin === 'topspin' ? 1.1 : 1), 1)
     * (rp.returnPos === 'deep' ? 1.1 : 1);
-  let len = 1 + Math.ceil(-Math.log(rng() || 0.01) * RALLY_MEAN[ev.surface] * styleLen * matchupRally(sty, w, ev, m) * (ev.weather ? wxOf(ev).rally : 1));
+  // Advanced plans shape the points too (not who wins them): moonballs and hustle make long rallies,
+  // deep driving and going for broke make short ones; safe big points become grinds.
+  const aw = advPlan(ps[w], ps[l]), al = advPlan(ps[l], ps[w]);
+  const advLen = [aw, al].reduce((x, a) => x * ({ high: 1.55, deep: 0.72 }[a.depth] || 1) * ({ hustle: 1.22, conserve: 0.85 }[a.energy] || 1)
+    * (clutch ? ({ broke: 0.5, safe: 1.6 }[a.pressure] || 1) : 1), 1);
+  let len = 1 + Math.ceil(-Math.log(rng() || 0.01) * RALLY_MEAN[ev.surface] * styleLen * matchupRally(sty, w, ev, m) * (ev.weather ? wxOf(ev).rally : 1) * advLen);
   // A first-strike server wins it on the serve +1.
   if (sty[w] === 'First-Strike Player' && w === s) len = Math.min(len, rng() < 0.7 ? 3 : 5);
   const W = ps[w].attrs, wp = planOf(ps[w]), lp = planOf(ps[l]);
@@ -621,12 +626,17 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   // Attackers beat defenders with winners; defenders beat attackers by making them miss.
   const cleanOdds = 0.35 + ((W.ground + W.net) / 2 - 50) * 0.004 + (wp.aggression === 'aggressive' ? 0.12 : wp.aggression === 'patient' ? -0.08 : 0)
     + (wp.spin === 'flat' ? 0.06 : wp.spin === 'topspin' ? -0.04 : 0) + (STYLE_CLEAN[sty[w]] || 0)
-    + (fw === 'attack' && fl === 'defend' ? 0.06 : 0) - (fw === 'defend' && fl === 'attack' ? 0.08 : 0);
+    + (fw === 'attack' && fl === 'defend' ? 0.06 : 0) - (fw === 'defend' && fl === 'attack' ? 0.08 : 0)
+    + ({ deep: 0.12, high: -0.14 }[aw.depth] || 0) + (al.energy === 'conserve' ? 0.1 : al.energy === 'hustle' ? -0.08 : 0)
+    + (clutch ? ({ broke: 0.22, safe: -0.14 }[aw.pressure] || 0) : 0);
   const clean = rng() < clamp(cleanOdds, 0.12, 0.75);
   const ueOdds = 0.6 - (ps[l].attrs.ground - 50) * 0.003 - (attr(ps[l], 'iq') - 50) * 0.003
     + (lp.aggression === 'aggressive' ? 0.15 : lp.aggression === 'patient' ? -0.12 : 0)
     + (lp.spin === 'flat' ? 0.06 : lp.spin === 'topspin' ? -0.03 : 0)
-    + (fl === 'attack' && fw === 'defend' ? 0.14 : 0) - (fl === 'defend' ? 0.08 : 0) + (ev.weather ? wxOf(ev).ue : 0);
+    + (fl === 'attack' && fw === 'defend' ? 0.14 : 0) - (fl === 'defend' ? 0.08 : 0) + (ev.weather ? wxOf(ev).ue : 0)
+    + ({ high: -0.2, deep: 0.08 }[al.depth] || 0) + (clutch ? ({ broke: 0.25, safe: -0.2 }[al.pressure] || 0) : 0)
+    // Pressure on the weak wing draws the errors.
+    + (aw.wing !== 'neutral' ? 0.25 * wingGap(ps[l]) * (aw.wing === 'bh' ? 1 : -1) : 0);
   pt.how = clean ? 'winner' : rng() < clamp(ueOdds, 0.2, 0.9) ? 'ue' : 'fe';
   const last = clean ? w : l;
   if (hit(len - 1) !== last) len++;

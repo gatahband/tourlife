@@ -100,6 +100,8 @@ const REAL_TRAIT_SHAPE = { 'Powerful Serve': { bias: [3, 0, 0, 0, 0, 0, 0], plan
 // The top two are in a league of their own; everyone else is rated by ranking on a steep curve
 // (No. 2 about 93, top 10 about 87–90, No. 50 about 79, No. 100 about 74). Real players can go past
 // the 95 cap that applies to your own stats.
+// Former world No. 1s on tour: legends. They read your plan faster than you read theirs.
+const LEGENDS = new Set(['Jannik Sinner', 'Carlos Alcaraz', 'Novak Djokovic', 'Daniil Medvedev']);
 const REAL_OVR = { 'Jannik Sinner': 99, 'Carlos Alcaraz': 99 };
 const REAL_CURVE = [[2, 93], [5, 90], [10, 87], [20, 84], [50, 79], [100, 74], [120, 72]];
 function realLevel(rank, name) {
@@ -128,7 +130,7 @@ function realPlayer([rank, name, nation, hand, age, style]) {
     age, attrs, atp: true, atpRank: rank, temperament: ['stoic', 'fiery', 'robotic', 'stoic'][nameHash(name) % 4],
     fav, worst: fav === 'clay' ? 'grass' : 'clay', curve: 'peak', formSd: 0.018,
     plan: { ...DEFAULT_PLAN, ...st.plan, ...ts.plan }, seed: null,
-    realStyle: style, realTrait: trait || null, provisional: REAL_PROVISIONAL.has(name) || undefined,
+    legend: LEGENDS.has(name) || undefined, realStyle: style, realTrait: trait || null, provisional: REAL_PROVISIONAL.has(name) || undefined,
   };
 }
 

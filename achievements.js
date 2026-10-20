@@ -6,6 +6,8 @@ const BADGES = [
   { id: 'bagel', icon: '🥯', name: 'Bagel Baker', desc: 'Win a set 6-0.', match: r => r.sets.some(s => s.games[0] === 6 && s.games[1] === 0) },
   { id: 'marathon', icon: '⏱️', name: 'Marathon Man', desc: 'Win a match in a final-set tiebreak.', match: r => r.won && (r.sets.length === 3 || r.sets.length === 5) && !!r.sets[r.sets.length - 1].tb },
   { id: 'giant', icon: '🗡️', name: 'Giant Killer', desc: 'Beat the No. 1 or No. 2 seed.', match: r => r.won && r.opponent && r.opponent.seed && r.opponent.seed <= 2 },
+  { id: 'legend_face', icon: '👑', name: 'Facing Greatness', desc: 'Play a match against a legend (a former world No. 1).', match: r => r.opponent && isLegend(r.opponent) },
+  { id: 'legend_beat', icon: '🐐', name: 'Legend Slayer', desc: 'Beat a legend (a former world No. 1).', match: r => r.won && r.opponent && isLegend(r.opponent) },
   { id: 'rival', icon: '⚔️', name: 'Settling Scores', desc: 'Beat one of your rivals.', match: (r, c) => r.won && r.opponent && r.opponent.id && isRival(c, r.opponent.id) },
   { id: 'clutch', icon: '🧊', name: 'Ice in the Veins', desc: 'Win 3 big-point calls in one match.', match: r => r.calls && r.calls.won >= 3 },
   { id: 'student', icon: '🎓', name: 'Student of the Game', desc: 'Watch a whole match.', match: r => (r.watched || 0) >= 0.98 },

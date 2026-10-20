@@ -364,6 +364,10 @@ function quirkHits(A, B) {
 // How often players adjust to an opponent's plan, by level: rarely at the ITFs, constantly at the top.
 const ADAPT_RATE = { M15: 0.4, M25: 0.5, CH75: 0.85, CH125: 1, ATP250: 1.2, ATP500: 1.3, M1000: 1.45, GS: 1.5 };
 const adaptRate = () => ADAPT_RATE[advTier] || 1;
+// Legends (former world No. 1s) adjust far more often, and are much harder to adjust to. A textbook plan
+// is read almost at once; only an original plan holds up.
+const isLegend = p => !!(p && p.atpRank && typeof LEGENDS !== 'undefined' && LEGENDS.has(p.name));
+const legendAdapt = (ps, who, target) => (isLegend(ps[who]) ? 3 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) ? 0.35 : 1);
 // What the adjuster changes depends on the plan they're facing (its most distinctive setting).
 function adaptTo(m, ps, who, target, set) {
   const pl = planOf(ps[target]), ad = advPlan(ps[target], ps[who]);
@@ -378,7 +382,8 @@ function adaptTo(m, ps, who, target, set) {
     pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
   ].filter(Boolean);
   const pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
-  m.exec[target] -= 0.25 + attr(ps[who], 'iq') / 200;
+  m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) ? 0.45 : 1);
+  if (isLegend(ps[who]) && m.exec[who] !== undefined) m.exec[who] = Math.min(1.6, m.exec[who] + 0.15); // a legend's answer also sharpens their own game
   if (pick.key === 'wing') { m.adj = m.adj || {}; m.adj[ps[who].name] = { wing: ad.wing }; }
   m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set }];
   m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
@@ -959,7 +964,11 @@ function* setGen(m, ps, ev, rng = Math.random) {
     // At tour level, a player falling behind mid-set may adjust right away.
     const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
     if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
-      && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0))) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+      && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0)) * legendAdapt(ps, trail, 1 - trail)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+    // A legend checks your plan early in every set, ahead or behind.
+    const lg = isLegend(ps[0]) ? 0 : isLegend(ps[1]) ? 1 : -1;
+    if (lg >= 0 && (h0 + h1 === 2 || h0 + h1 === 5) && m.exec && hasPlan(ps[1 - lg]) && m.exec[1 - lg] > 0.3
+      && rng() < 0.4 * (1 + 1.2 * (ps[1 - lg].textbook || 0))) adaptTo(m, ps, lg, 1 - lg, m.sets.length + 1);
   }
   const set = { games: [...m.games], tb };
   // A lead of 3+ games (or a break-up 5-3) that got away.
@@ -971,7 +980,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
   // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
   // and the higher the level, the more often it happens.
   const winner = 1 - loser;
-  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate() * (1 + 0.6 * (ps[winner].textbook || 0))) adaptTo(m, ps, loser, winner, m.sets.length + 1);
+  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate() * (1 + 0.6 * (ps[winner].textbook || 0)) * legendAdapt(ps, loser, winner)) adaptTo(m, ps, loser, winner, m.sets.length + 1);
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
   if (won[0] === setsToWin(m)) m.winner = 0;
   if (won[1] === setsToWin(m)) m.winner = 1;

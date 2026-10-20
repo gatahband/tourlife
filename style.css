@@ -1057,3 +1057,10 @@ h2.ctr { text-align: center; }
 .ovrpop .ovrexp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 @media (max-width: 560px) { .ovrpop .ovrexp { grid-template-columns: 1fr; } }
 .hfatigue { margin: 4px 0 14px; padding: 10px 12px; background: var(--field); border-radius: 12px; }
+
+/* Legends (former world No. 1s) */
+.sname .legend { font-style: normal; font-size: 14px; font-weight: 800; color: #1a1300; background: linear-gradient(90deg, #f5d36b, #e0a82e); padding: 3px 10px; border-radius: 999px; vertical-align: middle; margin-left: 6px; letter-spacing: .02em; }
+.legendnote { margin: 8px 0 14px; padding: 10px 14px; border: 1px solid #e0a82e; border-radius: 12px; background: rgba(224,168,46,.08); color: #f5d36b; font-size: 14px; line-height: 1.4; }
+.realname.legend { color: #f5d36b; font-weight: 800; }
+/* Changeover / big-point buttons: icon and text sit together in the middle of the button. */
+.cbopts > button { grid-template-columns: auto auto; justify-content: center; justify-items: center; text-align: center; }

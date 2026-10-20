@@ -640,7 +640,8 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const mo = moraleData ? `${moraleWord(moraleData.edge, moraleData.cap)[0]} · ${moraleData.edge >= 0 ? '+' : '−'}${(Math.abs(moraleData.edge) * 100).toFixed(1)}% on points` : '';
   const scouted = hasPrep(current.entry, 'scout'), qn = quirksOf(opp).length;
   const wx = ev.weather && WEATHER[ev.weather] ? `${wxLabel(ev)} · ` : '';
-  return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}</h2></div>` +
+  return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}${isLegend(opp) ? ' <em class="legend">👑 Legend</em>' : ''}</h2></div>` +
+    (isLegend(opp) ? `<p class="legendnote">A former world No. 1. Legends adjust to your plan far faster than you can adjust to theirs. A textbook plan won't last a set; bring one of your own. Beating a legend is worth a lot of experience.</p>` : '') +
     h2hLine(c, opp) + facts + prepTags +
     (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +
     fold('d-cond', '🌤️ Conditions & Matchup', `${wx}${myStyle} vs ${oppStyle}`, weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
@@ -1282,7 +1283,7 @@ function liveBoard(prior, games, labels, server) {
 function playerLabel(ps, i, me) {
   const p = ps[i];
   if (i === me) return `${flagOf(p.nation)} You`;
-  return `${p.seed ? `<span class="seed">${p.seed}</span>` : ''}${flagOf(p.nation)} ${p.atpRank ? `<span class="realname">${esc(p.name)}</span>` : esc(p.name)}`;
+  return `${p.seed ? `<span class="seed">${p.seed}</span>` : ''}${flagOf(p.nation)} ${p.atpRank ? `<span class="realname${isLegend(p) ? ' legend' : ''}">${isLegend(p) ? '👑 ' : ''}${esc(p.name)}</span>` : esc(p.name)}`;
 }
 
 function concludeMatch() {
@@ -1640,7 +1641,9 @@ const FOCUS_GAIN = 0.0043; // older matches
 const WATCH_BONUS = 0.006;
 const WATCH_GAMES = 3;
 // A match you only simmed (under three games watched) teaches you far less than one you played.
-const totalGain = rec => (matchGain(rec) * ((rec.gamesWatched || 0) >= WATCH_GAMES ? 1 : 0.15 * autopilotGrowth(rec.autopilot || 0)) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1);
+const totalGain = rec => (matchGain(rec) * ((rec.gamesWatched || 0) >= WATCH_GAMES ? 1 : 0.15 * autopilotGrowth(rec.autopilot || 0)) + (rec.watchBonus || 0)) * (rec.fullWatch ? 3 : 1) * legendXp(rec);
+// Playing a legend teaches you a lot; beating one, far more.
+const legendXp = rec => rec.opponent && isLegend(rec.opponent) ? (rec.won ? 2.5 : 1.3) : 1;
 const matchGain = rec => rec.gain || (rec.gain = Math.round((0.0075 + Math.random() * 0.0025) * 10000) / 10000);
 const attrLabel = k => ATTRS.find(([key]) => key === k)[1];
 

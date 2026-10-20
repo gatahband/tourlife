@@ -910,7 +910,7 @@ h2.ctr { text-align: center; }
 .offerx span:first-child { width: 100%; text-align: center; }
 .hwatch { flex-shrink: 0; margin-left: 8px; background: var(--accent); color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
 .rwbtn { display: inline-block; width: auto; margin: 0 0 0 8px; padding: 4px 10px; font-size: 12px; }
-.adwatch { display: block; width: 100%; margin-top: 6px; padding: 5px; font-size: 12px; }
+.adwatch, .adlive { display: block; width: 100%; margin-top: 6px; padding: 5px; font-size: 12px; }
 .adhide { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 14px 0 0; font-size: 14px; }
 #rwStage:fullscreen { background: #0b0d11; padding: 16px; overflow: auto; display: flex; flex-direction: column; justify-content: center; }
 #rwStage:fullscreen .court { max-width: none; }
@@ -1087,3 +1087,5 @@ h2.ctr { text-align: center; }
 .rvmeta { color: #98989f; font-size: 12px; margin-top: 2px; }
 .rvscore { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: #f5f5f7; white-space: nowrap; }
 .rvscore.up { color: var(--good); } .rvscore.down { color: var(--bad); }
+.adlive.gold { background: linear-gradient(90deg, #f5d36b, #e0a82e); color: #1a1300; font-weight: 800; }
+#adNext { margin-bottom: 8px; } #adNext b { color: inherit; }

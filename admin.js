@@ -414,30 +414,43 @@ function realMatchRec(m, side, ps, round) {
   };
 }
 
-// Plays every unplayed match in the current round, then sets up the next one.
-function playAdminRound(ev) {
-  const r = ev.rounds.length - 1, round = ev.rounds[r];
-  for (const slot of round) {
-    if (slot.winner !== undefined) continue;
-    // Played from a saved seed, with a snapshot of both players and the event: a player's game can replay
-    // the exact same match point by point on court ("Watch").
-    const seed = (Math.random() * 4294967296) >>> 0, rng = seeded(seed);
-    const ps = [ev.entrants[slot.a], ev.entrants[slot.b]];
-    const snap = { seed, ps: JSON.parse(JSON.stringify(ps)), ev: { tier: ev.tier, surface: ev.surface, indoor: !!ev.indoor, weather: ev.weather || null, nation: ev.nation, city: ev.name } };
-    const m = newMatch(slot.a, slot.b, rng, true);
-    playMatch(m, ps, ev, rng);
-    slot.recs = [0, 1].map(i => ps[i].real ? { ...realMatchRec(m, i, ps, ROUND_CODE[round.length * 2] || 'R32'), replay: { ...snap, side: i } } : null);
-    slot.replay = { ...snap, side: 0 }; // every match can be watched from the admin bracket
-    slot.winner = m.winner === 0 ? slot.a : slot.b;
-    slot.score = scoreLine(m, m.winner);
-    slot.stats = [0, 1].map(i => ({ aces: m.stats[i].aces, df: m.stats[i].df, winners: m.stats[i].winners, ue: m.stats[i].ue,
-      bp: `${m.stats[i].bpWon}/${m.stats[i].bpChances}`, pts: m.stats[i].points }));
+// Matches are played one at a time, live. Starting a match fixes its seed and a snapshot of both players
+// (so closing and reopening shows the very same match, with no re-rolls); the result is only saved when
+// the match has been watched to the end. Computer-only matches can be simmed instantly.
+function startSlot(ev, slot) {
+  if (!slot.live) {
+    const seed = (Math.random() * 4294967296) >>> 0;
+    slot.live = { seed, ps: JSON.parse(JSON.stringify([ev.entrants[slot.a], ev.entrants[slot.b]])),
+      ev: { tier: ev.tier, surface: ev.surface, indoor: !!ev.indoor, weather: ev.weather || null, nation: ev.nation, city: ev.name },
+      bestOf: ev.tier === 'GS' && !ev.exhibition ? 5 : 3 };
   }
-  if (round.length > 1) {
-    const next = [];
-    for (let i = 0; i < round.length; i += 2) next.push({ a: round[i].winner, b: round[i + 1].winner });
-    ev.rounds.push(next);
-  }
+  return slot.live;
+}
+// Records the result of a started match: exactly the match the replay engine plays from its seed.
+function finishSlot(ev, slot, roundLen) {
+  const snap = startSlot(ev, slot), { m, ps } = replayMatch(snap);
+  slot.recs = [0, 1].map(i => ps[i].real ? { ...realMatchRec(m, i, ps, ROUND_CODE[roundLen * 2] || 'R32'), replay: { ...snap, side: i } } : null);
+  slot.replay = { ...snap, side: 0 };
+  slot.winner = m.winner === 0 ? slot.a : slot.b;
+  slot.score = scoreLine(m, m.winner);
+  slot.stats = [0, 1].map(i => ({ aces: m.stats[i].aces, df: m.stats[i].df, winners: m.stats[i].winners, ue: m.stats[i].ue,
+    bp: `${m.stats[i].bpWon}/${m.stats[i].bpChances}`, pts: m.stats[i].points }));
+  delete slot.live;
+  advanceRound(ev);
+}
+// When every match in the round has a result, draw up the next round.
+function advanceRound(ev) {
+  const round = ev.rounds[ev.rounds.length - 1];
+  if (round.length < 2 || round.some(s => s.winner === undefined)) return;
+  const next = [];
+  for (let i = 0; i < round.length; i += 2) next.push({ a: round[i].winner, b: round[i + 1].winner });
+  ev.rounds.push(next);
+}
+const hasReal = (ev, s) => ev.entrants[s.a].real || ev.entrants[s.b].real;
+// Sims only the matches with no real player in them (in the current round).
+function simCpuMatches(ev) {
+  const round = ev.rounds[ev.rounds.length - 1], len = round.length;
+  for (const s of round) if (s.winner === undefined && !hasReal(ev, s)) finishSlot(ev, s, len);
 }
 
 const adminDone = ev => { const last = ev.rounds[ev.rounds.length - 1]; return last.length === 1 && last[0].winner !== undefined; };
@@ -474,40 +487,49 @@ function renderAdDraw(id) {
   const last = ev.rounds[ev.rounds.length - 1];
   const done = last.length === 1 && last[0].winner !== undefined;
   const nextName = roundName(last.length * 2);
-  // Streaming mode: results stay hidden in the bracket until you've watched that match.
-  const hide = !!readJSON('tourlife.adHide');
-  const shown = s => s.winner !== undefined && (!hide || s.watched);
+  const shown = s => s.winner !== undefined;
   const who = i => {
     const e = ev.entrants[i];
     return `${e.seed ? `<i>${e.seed}</i>` : ''}${flagOf(e.nation)} ${e.real ? `<b>⭐ ${esc(e.name)}</b>` : esc(e.name)}`;
   };
   const champ = done ? ev.entrants[last[0].winner] : null;
+  // Next match to play live: real players first, then everything else in draw order.
+  const pending = done ? [] : last.map((s, k) => ({ s, k })).filter(({ s }) => s.winner === undefined);
+  const nextUpK = (pending.find(({ s }) => hasReal(ev, s)) || pending[0] || {}).k, nextUp = nextUpK !== undefined ? last[nextUpK] : null;
+  const cpuLeft = pending.filter(({ s }) => !hasReal(ev, s)).length;
   const realLeft = done ? [] : last.flatMap(s => [s.a, s.b]).filter(i => ev.entrants[i].real && last.find(s => (s.a === i || s.b === i)).winner === undefined);
   $('adBody').innerHTML = `<section class="card"><h2>${esc(ev.name)}</h2>` +
     `<p class="hint">${tierLabel(ev.tier)} · ${surfaceLabel(ev.surface)}${ev.indoor ? ' · Indoor' : ''} · ${ev.size} players · ⭐ = real player</p>` +
     (champ ? `<div class="adchamp">🏆 ${flagOf(champ.nation)} ${esc(champ.name)}${champ.real ? ` <small>(${esc(champ.owner || 'real player')})</small>` : ''}</div>` :
-      (ev.exhibition ? `<button type="button" class="btn huge" id="adRound">▶ Play the match</button><span id="adAllR"></span>` :
-      `<div class="shrow"><button type="button" class="btn" id="adRound">Play the ${nextName}</button>` +
-      `<button type="button" class="btn ghost" id="adAllR">Play to the end</button></div>`) +
+      (nextUp ? `<button type="button" class="btn huge" id="adNext">▶ Play Live: ${who(nextUp.a)} vs ${who(nextUp.b)}</button>` : '') +
+      (cpuLeft ? `<button type="button" class="btn ghost" id="adCpu">⚡ Sim the ${cpuLeft} Computer-Only Match${cpuLeft === 1 ? '' : 'es'}</button>` : '') +
+      `<p class="hint">${nextName}: matches are played live one at a time, and the score is only revealed when the match ends.</p>` +
       (realLeft.length ? `<p class="hint">Real players still in: ${realLeft.map(i => esc(ev.entrants[i].name)).join(', ')}</p>` : '')) +
     `</section><div class="adbracket">${ev.rounds.map((round, r) =>
       `<div class="adround"><h4>${roundName(round.length * 2)}</h4><div class="adms">${round.map((s, k) =>
         `<div class="admatch${s.winner !== undefined ? ' click' : ''}" data-m="${r}-${k}">` +
           `<div class="${shown(s) && s.winner === s.a ? 'won' : shown(s) ? 'lost' : ''}">${who(s.a)}</div>` +
           `<div class="${shown(s) && s.winner === s.b ? 'won' : shown(s) ? 'lost' : ''}">${who(s.b)}</div>` +
-          (s.score && shown(s) ? `<small>${s.score}</small>` : s.winner !== undefined ? '<small>🙈 result hidden</small>' : '') +
-          (s.replay ? `<button type="button" class="btn small adwatch" data-w="${r}-${k}">▶ Watch${s.watched ? ' again' : ''}</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
-    `<label class="chk adhide"><input type="checkbox" id="adHide" ${hide ? 'checked' : ''}> 🙈 Hide results until watched (for streaming)</label>` +
+          (s.score && shown(s) ? `<small>${s.score}</small>` : '') +
+          (s.winner === undefined && r === ev.rounds.length - 1 ? `<button type="button" class="btn small adlive${hasReal(ev, s) ? ' gold' : ''}" data-l="${k}">▶ ${s.live ? 'Resume' : 'Play Live'}</button>` : '') +
+          (s.replay ? `<button type="button" class="btn small ghost adwatch" data-w="${r}-${k}">▶ Watch Again</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
     `<button type="button" class="link" id="adBackList">All tournaments</button>`;
+  // Play a match live: the score is saved only once it has been watched to the end. Then offer the next one.
+  const live = k => {
+    const round = ev.rounds[ev.rounds.length - 1], s = round[k], len = round.length;
+    const snap = startSlot(ev, s); saveAdminEvent(ev);
+    let finished = false;
+    const nextK = () => { const rr = ev.rounds[ev.rounds.length - 1], p = rr.map((x, i) => ({ x, i })).filter(({ x }) => x.winner === undefined);
+      return (p.find(({ x }) => hasReal(ev, x)) || p[0] || {}).i; };
+    watchRealMatch({ replay: { ...snap, side: 0 }, round: roundName(len * 2), event: ev.name },
+      { neutral: true, onDone: () => { finished = true; finishSlot(ev, s, len); saveAdminEvent(ev); },
+        onNext: () => { const n = nextK(); if (finished && n !== undefined) live(n); else renderAdDraw(id); }, onClose: () => renderAdDraw(id) });
+  };
   if (!done) {
-    $('adRound').onclick = () => { playAdminRound(ev); saveAdminEvent(ev); renderAdDraw(id); };
-    $('adAllR').onclick = () => {
-      while (!(ev.rounds[ev.rounds.length - 1].length === 1 && ev.rounds[ev.rounds.length - 1][0].winner !== undefined)) playAdminRound(ev);
-      saveAdminEvent(ev); renderAdDraw(id);
-    };
+    if ($('adNext')) $('adNext').onclick = () => live(nextUpK);
+    if ($('adCpu')) $('adCpu').onclick = () => { simCpuMatches(ev); saveAdminEvent(ev); renderAdDraw(id); };
   }
   $('adBackList').onclick = () => renderAdmin();
-  $('adHide').onchange = e => { writeJSON('tourlife.adHide', e.target.checked); renderAdDraw(id); };
   // Watch a match, then (optionally) roll straight on to the next one in the bracket.
   const order = ev.rounds.flatMap((round, r) => round.map((s, k) => [r, k])).filter(([r, k]) => ev.rounds[r][k].replay);
   const watch = (r, k) => {
@@ -517,11 +539,12 @@ function renderAdDraw(id) {
         onNext: nxt ? () => watch(...nxt) : null, onClose: () => renderAdDraw(id) });
   };
   $('adBody').querySelector('.adbracket').onclick = e => {
+    const lv = e.target.closest('.adlive');
+    if (lv) { live(+lv.dataset.l); return; }
     const w = e.target.closest('.adwatch');
     if (w) { const [r, k] = w.dataset.w.split('-').map(Number); watch(r, k); return; }
     const b = e.target.closest('.admatch.click');
     if (!b) return;
-    if (hide && !ev.rounds[b.dataset.m.split('-')[0]][b.dataset.m.split('-')[1]].watched) return;
     const [r, k] = b.dataset.m.split('-').map(Number), s = ev.rounds[r][k];
     const W = ev.entrants[s.winner], L = ev.entrants[s.winner === s.a ? s.b : s.a];
     const st = s.stats || [{}, {}], wi = s.winner === s.a ? 0 : 1, li = 1 - wi;

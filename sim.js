@@ -999,14 +999,14 @@ async function playSetLive(m, ps, ev, before, rng = Math.random) {
 const rel = (p, k) => attr(p, k) - ATTR_KEYS.reduce((a, x) => a + attr(p, x), 0) / ATTR_KEYS.length;
 const CALLS = {
   serve: [
-    { id: 'big', icon: '💥', title: 'Go big down the T', plan: { serve: 'big' }, edge: (A, B) => 0.004 * rel(A, 'serve') - 0.002 * rel(B, 'ret') },
-    { id: 'safe', icon: '🎯', title: 'Make the first serve, then build', plan: { serve: 'safe' }, edge: (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground') },
-    { id: 'snv', icon: '🏃', title: 'Serve and volley', plan: { net: 'often' }, edge: (A, B) => 0.004 * rel(A, 'net') - 0.002 * rel(B, 'ret') },
+    { id: 'big', icon: '💥', title: 'Go Big Down The T', plan: { serve: 'big' }, edge: (A, B) => 0.004 * rel(A, 'serve') - 0.002 * rel(B, 'ret') },
+    { id: 'safe', icon: '🎯', title: 'Make The First Serve, Then Build', plan: { serve: 'safe' }, edge: (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground') },
+    { id: 'snv', icon: '🏃', title: 'Serve And Volley', plan: { net: 'often' }, edge: (A, B) => 0.004 * rel(A, 'net') - 0.002 * rel(B, 'ret') },
   ],
   ret: [
-    { id: 'attack', icon: '⚡', title: 'Step in and attack', plan: { returnPos: 'inside' }, edge: (A, B) => 0.004 * rel(A, 'ret') - 0.002 * rel(B, 'serve') },
-    { id: 'deep', icon: '🧱', title: 'Stand back, make them play', plan: { returnPos: 'deep', aggression: 'patient' }, edge: (A, B) => 0.003 * rel(A, 'stam') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground') },
-    { id: 'chip', icon: '🪶', title: 'Chip and charge', plan: { net: 'often' }, edge: (A, B) => 0.004 * rel(A, 'net') + 0.001 * rel(A, 'ret') - 0.002 * rel(B, 'ground') },
+    { id: 'attack', icon: '⚡', title: 'Step In And Attack', plan: { returnPos: 'inside' }, edge: (A, B) => 0.004 * rel(A, 'ret') - 0.002 * rel(B, 'serve') },
+    { id: 'deep', icon: '🧱', title: 'Stand Back, Make Them Play', plan: { returnPos: 'deep', aggression: 'patient' }, edge: (A, B) => 0.003 * rel(A, 'stam') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground') },
+    { id: 'chip', icon: '🪶', title: 'Chip And Charge', plan: { net: 'often' }, edge: (A, B) => 0.004 * rel(A, 'net') + 0.001 * rel(A, 'ret') - 0.002 * rel(B, 'ground') },
   ],
 };
 

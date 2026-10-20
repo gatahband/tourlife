@@ -347,6 +347,26 @@ function openImport() {
 
 const myPid = p => String(p.created || `${p.name}|${p.nation}`);
 
+// Adjustments the tournament admin made to this player (stats only). A safety backup is saved first.
+function applyCorrections(data, p) {
+  const c = loadCareer(), seen = c.corrSeen || [];
+  const mine = (data.corrections || []).filter(x => x.pid === myPid(p) && !seen.includes(x.id));
+  if (!mine.length) return;
+  backupLive('before an admin adjustment');
+  const last = mine[mine.length - 1];
+  p.attrs = { ...p.attrs, ...last.attrs };
+  p.playstyle = styleOf(p).name;
+  writeJSON(SAVE_KEY, p);
+  if (current.player) current.player.attrs = { ...p.attrs };
+  const e = readJSON(ENTRY_KEY);
+  if (e && e.entrants && e.entrants[0]) { e.entrants[0].attrs = { ...p.attrs }; writeJSON(ENTRY_KEY, e); if (current.entry) current.entry.entrants[0].attrs = { ...p.attrs }; }
+  c.corrSeen = [...seen, ...mine.map(x => x.id)];
+  writeJSON(CAREER_KEY, c);
+  if (current.career) current.career.corrSeen = c.corrSeen;
+  if (!$('home').hidden) renderTournaments(current.player || p);
+  setTimeout(() => toast('📝 Player Adjusted', `${last.note || 'The tournament admin adjusted your player.'} New rating: ${overall(p).toFixed(1)} OVR.`), 800);
+}
+
 async function checkRealResults() {
   const p = readJSON(SAVE_KEY);
   if (!p || location.hash === '#admin') return;
@@ -356,6 +376,7 @@ async function checkRealResults() {
     if (!res.ok) return;
     data = await res.json();
   } catch { return; }
+  applyCorrections(data, p);
   const c = loadCareer();
   c.realSeen = c.realSeen || [];
   const fresh = [];

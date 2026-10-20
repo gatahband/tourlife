@@ -230,6 +230,7 @@ function renderAdPlayers() {
         `<small>${esc(x.contact || 'no name given')} · ${s.rank ? `#${s.rank}` : 'Unranked'} · ${s.wins ?? 0}–${s.losses ?? 0}${s.titles ? ` · 🏆 ${s.titles}` : ''}</small>` +
         (suspicious(x).length ? `<small class="sus">⚠️ Looks edited: ${suspicious(x).join('; ')}</small>` : '') + `</span>` +
         `<b class="adovr">${overall(p).toFixed(1)}</b>` +
+        `<button type="button" class="btn small ghost" data-adj="${esc(x.id)}">✏️ Adjust</button>` +
         `<button type="button" class="x inline" data-rm="${esc(x.id)}" aria-label="Remove">×</button></div>`;
     }).join('')}</div>` : '<p class="hint">No players yet.</p>') + `</section>`;
   const report = r => { $('adLoadMsg').textContent = r.total ? `Found ${r.total}: ${r.added} new, ${r.updated} updated${r.bad ? `, ${r.bad} unreadable` : ''}.` : 'No player codes found in that.'; };
@@ -243,9 +244,55 @@ function renderAdPlayers() {
   $('adCsv').onchange = async e => { const f = e.target.files[0]; if (!f) return; const r = await addPlayersFrom(await f.text()); renderAdmin(); report(r); };
   $('adPasteGo').onclick = async () => { const r = await addPlayersFrom($('adPaste').value); renderAdmin(); report(r); };
   $('adBody').querySelector('.adlist')?.addEventListener('click', e => {
+    const a = e.target.closest('[data-adj]');
+    if (a) { openAdjust(a.dataset.adj); return; }
     const b = e.target.closest('[data-rm]');
     if (b && confirm('Remove this player?')) { writeJSON(ADMIN_PLAYERS, adminPlayers().filter(x => x.id !== b.dataset.rm)); renderAdmin(); }
   });
+}
+
+// --- Adjusting a player (fair play) ---------------------------------------------------------
+// The admin can take back progress: stats only, never their record, titles or money. The change goes into
+// this list, is published with the results, and the player's own game applies it the next time it opens
+// (after saving a safety backup). Every adjustment can be undone.
+const ADMIN_CORR = 'tourlife.adCorrections';
+const adminCorr = () => readJSON(ADMIN_CORR) || [];
+function openAdjust(id, msg = '') {
+  const x = adminPlayers().find(y => y.id === id);
+  if (!x) return;
+  const p = x.player, ovr = overall(p), mine = adminCorr().filter(c => c.pid === id);
+  const lower = by => Object.fromEntries(ATTR_KEYS.map(k => [k, Math.round(Math.max(40, (p.attrs[k] ?? 50) - by) * 10) / 10]));
+  const opts = [5, 10, 20].map(by => ({ by, attrs: lower(by) })).concat([{ by: 'start', attrs: Object.fromEntries(ATTR_KEYS.map(k => [k, Math.min(p.attrs[k] ?? 50, 50)])) }]);
+  const ovrOf = attrs => overall({ ...p, attrs });
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">✏️ Adjust ${esc(p.name)}</h2>` +
+    `<p class="big center">Right now: <b>${ovr.toFixed(1)} OVR</b></p>` +
+    `<p class="hint center">Only their stats change. Their record, titles, ranking and money stay the same. Their game saves a backup first, and you can undo this any time.</p>` +
+    `<label class="lbl" for="adjWhy">Message they'll see</label><input id="adjWhy" class="inp big" maxlength="120" value="Your player was adjusted by the tournament admin for fair play.">` +
+    `<div class="adjopts">${opts.map((o, i) => `<button type="button" class="btn ghost" data-o="${i}"><b>${o.by === 'start' ? 'Back To A Starting Player' : `Take Back ${o.by} OVR`}</b><small>${ovr.toFixed(1)} → ${ovrOf(o.attrs).toFixed(1)} OVR</small></button>`).join('')}</div>` +
+    (mine.length ? `<button type="button" class="btn ghost" id="adjUndo">↩ Undo The Last Adjustment (back to ${ovrOf(mine[mine.length - 1].from).toFixed(1)} OVR)</button>` : '') +
+    `<p class="big center" id="adjMsg">${msg}</p>`);
+  $('mx').onclick = closeModal;
+  const push = async (attrs, from, note) => {
+    const list = adminPlayers(), y = list.find(z => z.id === id);
+    y.player = { ...y.player, attrs: { ...attrs } };
+    writeJSON(ADMIN_PLAYERS, list);
+    writeJSON(ADMIN_CORR, [...adminCorr(), { id: `${id}-${Date.now()}`, pid: id, name: p.name, attrs: { ...attrs }, from: { ...from }, note, at: Date.now() }]);
+    let sent = '';
+    try { if (nfConf().token || nfConf().gh) { await publishLive(); sent = ' Sent to their game: they get it next time they open TourLife.'; } } catch (e) { sent = ` Saved, but sending failed (${e.message}). Press "Send results to players" to try again.`; }
+    if (!sent) sent = ' Press "Send results to players" on the Tournaments tab to send it to their game.';
+    renderAdmin();
+    openAdjust(id, `✅ Done.${sent}`);
+  };
+  $('sheet').querySelectorAll('[data-o]').forEach(b => { b.onclick = () => {
+    const o = opts[+b.dataset.o];
+    if (!confirm(`Change ${p.name} from ${ovr.toFixed(1)} to ${ovrOf(o.attrs).toFixed(1)} OVR?`)) return;
+    b.disabled = true; push(o.attrs, p.attrs, $('adjWhy').value.trim());
+  }; });
+  if ($('adjUndo')) $('adjUndo').onclick = () => {
+    const last = mine[mine.length - 1];
+    if (!confirm(`Undo the last adjustment for ${p.name}?`)) return;
+    push(last.from, p.attrs, 'The tournament admin undid an earlier adjustment to your player.');
+  };
 }
 
 // --- Tournaments ---------------------------------------------------------------------
@@ -526,7 +573,7 @@ function publishResults() {
     return { id: `real-${ev.id}`, name: ev.name, tier: ev.tier, exhibition: !!ev.exhibition, surface: ev.surface, indoor: ev.indoor, nation: ev.nation, size: ev.size,
       champion: ev.entrants[last.winner].name, results };
   });
-  return { updated: Date.now(), events };
+  return { updated: Date.now(), events, corrections: adminCorr() };
 }
 
 function saveAdminEvent(ev) {

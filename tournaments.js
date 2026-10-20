@@ -875,6 +875,7 @@ function renderDraw() {
     const opp = pm.a === 0 ? pm.b : pm.a;
     act.innerHTML = `<p class="hint">Next: ${roundLabel(entry)}${inQual(entry) ? ` · qualifying: win ${entry.qual.need - entry.qual.round} more to reach the main draw` : ''}</p>` +
       vsHeader(entry, opp) +
+      (entry.live || dayEvent(entry) ? '' : `<div class="drawfat">${fatigueBar(current.player.fatigue || 0)}</div>`) +
       (entry.live ? '' : dayEventHtml(entry)) +
       (entry.live ? '' : prepHtml(entry, entry.entrants[opp])) +
       (entry.live ? '' : prematchHtml(entry, opp)) +

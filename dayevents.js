@@ -42,7 +42,8 @@ function dayEventHtml(entry) {
   const fx = o => [o.fat ? `${o.fat < 0 ? '−' : '+'}${Math.abs(o.fat)} fatigue` : '', o.cost ? money(dayCost(entry, o)) : '', o.edge ? 'An edge in this match' : ''].filter(Boolean).join(' · ');
   return `<div class="dayev"><div class="dayevhead"><span>${de.icon}</span><b>${de.title}</b></div><p>${de.text}</p>` +
     (pick ? `<p class="dayevdone">✓ ${de.opts.find(o => o.id === pick).label}</p>`
-      : `<div class="dayevopts">${de.opts.map(o => `<button type="button" data-dayev="${o.id}" ${o.cost && c.money < dayCost(entry, o) ? 'disabled' : ''}><b>${o.label}</b><small>${o.note}</small><em>${fx(o)}</em></button>`).join('')}</div>`) + `</div>`;
+      : `<div class="dayevopts">${de.opts.map(o => `<button type="button" data-dayev="${o.id}" ${o.cost && c.money < dayCost(entry, o) ? 'disabled' : ''}><b>${o.label}</b><small>${o.note}</small><em>${fx(o)}</em></button>`).join('')}</div>`) +
+    `<div class="dayevfat">${fatigueBar(current.player.fatigue || 0)}</div></div>`;
 }
 function bindDayEvent(entry, rerender) {
   document.querySelectorAll('[data-dayev]').forEach(b => { b.onclick = () => {

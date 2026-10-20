@@ -1187,3 +1187,18 @@ h2.ctr { text-align: center; }
 .spplan { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .spplan span { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
 .sphead { margin: 8px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .spcol ul { margin: 0; padding-left: 16px; font-size: 13px; } .spcol li i { font-style: normal; color: var(--muted); font-size: 11px; margin-right: 4px; }
+
+.dayevfat, .drawfat { margin-top: 12px; } .drawfat { margin-bottom: 12px; }
+
+/* Title Case for every UI label, button, chip and heading, site-wide (sentences in hints and stories are left alone). */
+button:not(.x):not(.fsbtn), .btn, .chip, .seg button, h2, h3, h4, .itop, .foldt, .lbl, label.chk,
+.keyfacts b, .keyfacts em, .strait, .tag2, .ptable th, .ptable td, .preptags span, .sbox h4, .sh4,
+.dayevopts b, .dayevopts small, .dayevopts em, .dayevhead b, .dayevdone, .spplan span, .sptrait, .sphead,
+.cbopts b, .cbopts small, .recpill, .scouthead > span, .tour-card b, .toast b, .fbar span, .fbar b,
+.prepitem b, .pchip, .vsbox .vsstyle, .stcard small, .mu-tab th, .rvmeta, .ordq, .newtag, .cbtitle, .cbsub,
+.ovrlv, .obstyle b, .obstyle span, .tbhead b, .tbhead span, .tbrow > span, .ranknote b, .courtinfo span {
+  text-transform: capitalize;
+}
+/* Player names keep their real spelling (e.g. "van de Zandschulp", "de Minaur"). */
+.sname, .sname *, .realname, .vsname, .rvnames, .mu-p b, .stcard b, .itop .pname { text-transform: none; }
+.foldsum, .hint.center.howfeel, .sub-label { text-transform: capitalize; }

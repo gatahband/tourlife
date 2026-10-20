@@ -376,7 +376,7 @@ setTimeout(checkRealResults, 600);
 // --- Share my build -----------------------------------------------------------------------------
 // A picture card of your build (overall, level, playstyle, stats, style fit) to post or send.
 async function shareBuild(p) {
-  const W = 1080, H = 1440, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const W = 1080, H = 1720, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const x = cv.getContext('2d'), F = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const ovr = overall(p), lv = levelOf(ovr), styles = detectStyles(p.attrs, p.fav, planOf(p)), st = styleOf(p);
   const bg = x.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0d1420'); bg.addColorStop(1, '#151b2a');
@@ -415,6 +415,17 @@ async function shareBuild(p) {
     rr(420, y - 18, 480 * clamp(s.score, 0.02, 1), 14, 7); x.fillStyle = grad(420, 900); x.fill();
     x.fillStyle = '#c7c7cc'; x.textAlign = 'right'; x.fillText(`${Math.round(s.score * 100)}%`, 1000, y); x.textAlign = 'left'; y += 44;
   }
+  // This season's six numbers.
+  const ss = typeof seasonNumbers === 'function' ? seasonNumbers(current.career || loadCareer()) : null;
+  y += 26; x.fillStyle = '#8e8e93'; x.font = `700 26px ${F}`; x.textAlign = 'left';
+  x.fillText(`SEASON ${seasonOfWeek((current.career || loadCareer()).week)} STATS${ss ? ` · ${ss.wins}–${ss.matches - ss.wins}` : ''}`, 80, y); y += 24;
+  if (ss) SEASON_STATS.forEach(([k, label, kind], i) => {
+    const cx = 80 + (i % 3) * 310, cy = y + Math.floor(i / 3) * 120;
+    rr(cx, cy, 290, 104, 18); x.fillStyle = '#1f2633'; x.fill();
+    x.fillStyle = '#f5f5f7'; x.font = `800 44px ${F}`; x.fillText(fmtStat(ss[k], kind), cx + 20, cy + 56);
+    x.fillStyle = '#8e8e93'; x.font = `600 20px ${F}`; x.fillText(label.toUpperCase(), cx + 20, cy + 88);
+  });
+  else { x.fillStyle = '#8e8e93'; x.font = `500 26px ${F}`; x.fillText('No matches yet this season.', 80, y + 40); }
   x.fillStyle = '#0a84ff'; x.font = `800 32px ${F}`; x.textAlign = 'center'; x.fillText('🎾 TourLife', W / 2, H - 50); x.textAlign = 'left';
   const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
   const file = new File([blob], `${p.name.replace(/[^a-z0-9]+/gi, '-')}-build.png`, { type: 'image/png' });

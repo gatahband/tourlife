@@ -1044,3 +1044,15 @@ h2.ctr { text-align: center; }
 .newtag { display: inline-block; background: #ffd60a; color: #1c1c1e; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 99px; padding: 2px 10px; margin-bottom: 6px; }
 .pcrow { flex-wrap: wrap; } .pcseg { flex-wrap: nowrap; margin-left: auto; } .pcseg button { padding: 4px 6px; }
 @media (max-width: 700px) { .pcgrid { grid-template-columns: 1fr; } }
+/* Season stats on the top card, and title chances on hover */
+.sstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sstats > div { background: var(--field); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.sstats b { font-size: 24px; font-weight: 800; } .sstats span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+@media (max-width: 560px) { .sstats { grid-template-columns: 1fr 1fr; } .sstats b { font-size: 20px; } }
+.ovrinfo { position: relative; outline: none; }
+.ovrlv { cursor: help; } .lvhint { font-style: normal; font-size: 13px; color: var(--muted); font-weight: 500; }
+.ovrpop { display: none; position: absolute; z-index: 20; left: 0; top: calc(100% + 6px); width: min(620px, 86vw); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+.ovrinfo:hover .ovrpop, .ovrinfo:focus-within .ovrpop { display: block; }
+.ovrpop > b { display: block; font-size: 13px; margin-bottom: 8px; } .ovrpop > small { display: block; color: var(--muted); margin-top: 6px; }
+.ovrpop .ovrexp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+@media (max-width: 560px) { .ovrpop .ovrexp { grid-template-columns: 1fr; } }

@@ -188,6 +188,14 @@ function saveOdds(key, val) {
   writeJSON(ODDS_CACHE, cache);
 }
 
+// This season's six numbers, under your build.
+function seasonStatsHtml(c) {
+  const st = seasonNumbers(c), season = seasonOfWeek(c.week);
+  return `<h3 class="ssec">Season ${season} Stats${st ? ` · ${st.wins}–${st.matches - st.wins}` : ''}</h3>` +
+    (st ? `<div class="sstats">${SEASON_STATS.map(([k, label, kind]) => `<div><b>${fmtStat(st[k], kind)}</b><span>${label}</span></div>`).join('')}</div>`
+      : '<p class="hint center">Play your first match of the season to see your numbers here.</p>');
+}
+
 function renderOvr(p) {
   const ovr = overall(p), lv = levelOf(ovr), c = current.career;
   const prog = lv.next ? clamp((ovr - lv.min) / (lv.next.min - lv.min), 0, 1) : 1;
@@ -210,17 +218,18 @@ function renderOvr(p) {
   if (build && $('hOvr').contains(build)) $('hBuildHolder').appendChild(build);
   $('hOvr').innerHTML =
     `<div class="ovrtop"><div class="ovrnum"><b>${ovr.toFixed(1)}</b><span>OVR</span></div>` +
-    `<div class="ovrinfo"><b>${lv.name}</b><small>${lv.note}</small>` +
+    // Hover (or tap) the level for your title chances at the levels you can play.
+    `<div class="ovrinfo" tabindex="0"><b class="ovrlv">${lv.name} <i class="lvhint">ⓘ</i></b><small>${lv.note}</small>` +
+    `<div class="ovrpop"><b>Your chances at the levels you can play</b><div class="ovrexp">${levels.map(cell).join('')}</div><small>Simulated per event, on hard courts in good conditions.</small></div>` +
     (lv.next ? `<div class="ovrprog"><i style="width:${prog * 100}%"></i></div><small>${(lv.next.min - ovr).toFixed(1)} to ${lv.next.name} (${lv.next.min})</small>` : '') +
     `</div></div>` +
     // Your build at a glance: playstyle and the seven stats.
     `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show my build <i class="foldchev" aria-hidden="true"></i></em></div>` +
     `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary><div class="buildslot" id="hBuildSlot"></div></details>` +
-    `<h3 class="ssec">Your chances at the levels you can play</h3>` +
-    `<div class="ovrexp">${levels.map(cell).join('')}</div>` +
+    seasonStatsHtml(c) +
     fatigueBar(p.fatigue || 0) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
-    `<p class="hint">Simulated title and quarter-final chances per event at each level you can enter now (on hard courts, in good conditions). Surfaces, weather, your plan and form swing them.</p>`;
+    '';
   if (build) $('hBuildSlot').appendChild(build);
   $('hOvr').querySelector('.buildfold').ontoggle = e => { const m = e.target.querySelector('.obmore'); if (m) m.firstChild.textContent = e.target.open ? 'Hide my build ' : 'Show my build '; };
   if (foldOpen('h-build')) $('hOvr').querySelector('.obmore').firstChild.textContent = 'Hide my build ';

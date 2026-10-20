@@ -552,6 +552,30 @@ function adaptNotice(m, ps, me) {
   return lv > 0 ? `🧑‍🏫 Your coach: "Something changed. ${esc(shortName(ps[1 - me]))} has adjusted to your plan, and it isn't working like before."` : '';
 }
 
+// This season's numbers (every match played this season): win rate, dominance ratio, hold %, break %,
+// return points won % and total points won %. Returns null before the first match.
+function seasonNumbers(c, season = seasonOfWeek(c.week)) {
+  const recs = [...c.history.filter(h => seasonOfWeek(h.week) === season).flatMap(h => h.matches || []),
+    ...((current.entry && seasonOfWeek(c.week) === season && current.entry.matches) || [])].filter(r => r.stats && r.oppStats);
+  if (!recs.length) return null;
+  let w = 0, pts = 0, oppPts = 0, sp = 0, spw = 0, rp = 0, rpw = 0, sg = 0, held = 0, rg = 0, brk = 0;
+  for (const r of recs) {
+    const Y = r.stats, T = r.oppStats;
+    if (r.won) w++;
+    pts += Y.points || 0; oppPts += T.points || 0;
+    sp += Y.servePts || 0; spw += (Y.firstWon || 0) + (Y.secondWon || 0);
+    rp += T.servePts || 0; rpw += (T.servePts || 0) - (T.firstWon || 0) - (T.secondWon || 0);
+    sg += Y.svcGames || 0; held += Y.svcHeld || 0; rg += T.svcGames || 0; brk += (T.svcGames || 0) - (T.svcHeld || 0);
+  }
+  const pc = (a, b) => (b ? a / b : 0);
+  const rpwPct = pc(rpw, rp), spLost = 1 - pc(spw, sp);
+  return { matches: recs.length, wins: w, winRate: pc(w, recs.length), dominance: spLost ? rpwPct / spLost : 0,
+    hold: pc(held, sg), brk: pc(brk, rg), returnWon: rpwPct, pointsWon: pc(pts, pts + oppPts) };
+}
+const SEASON_STATS = [['winRate', 'Win Rate', 'pct'], ['dominance', 'Dominance Ratio', 'ratio'], ['hold', 'Hold %', 'pct'],
+  ['brk', 'Break %', 'pct'], ['returnWon', 'Return Pts Won', 'pct'], ['pointsWon', 'Total Pts Won', 'pct']];
+const fmtStat = (v, kind) => kind === 'ratio' ? v.toFixed(2) : `${(v * 100).toFixed(1)}%`;
+
 // One-line summaries on Home's fold-out sections.
 function homeSums(c, p) {
   const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };

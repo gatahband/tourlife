@@ -1112,3 +1112,7 @@ h2.ctr { text-align: center; }
 
 .dlwatch { display: inline-block; width: auto; margin: 6px 0 0; padding: 3px 10px; font-size: 12px; }
 .dlwatch.legend { border-color: #e0a82e; color: #f5d36b; }
+
+/* View picker centred along the top of the court. */
+.ov.ovleft { left: 50%; transform: translateX(-50%); max-width: none; }
+@media (max-width: 560px) { .ov.ovleft { left: 8px; transform: none; } }

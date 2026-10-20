@@ -508,7 +508,13 @@ function enterEvent(ev, acclimated = false, mode = 'main') {
 // --- Tournament flow -------------------------------------------------------
 
 // Events now come from the season calendar and are stored on the entry; older entries used the fixed list.
-const eventOf = entry => entry.event || EVENTS.find(e => e.id === entry.id);
+// The event as it is today: the weather moves on with each round (qualifying days count too).
+const eventOf = entry => {
+  const e = entry.event || EVENTS.find(x => x.id === entry.id);
+  if (!e || e.indoor || !entry.rounds) return e;
+  const day = entry.qual ? (entry.qual.done ? entry.qual.need : entry.qual.round) : 0;
+  return { ...e, weather: dayWeather(e, day + (entry.qual && !entry.qual.done ? 0 : entry.rounds.length - 1)) };
+};
 const roundIndex = entry => entry.rounds.length - 1;
 
 const inQual = entry => !!entry.qual && !entry.qual.done;

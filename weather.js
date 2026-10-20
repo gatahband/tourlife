@@ -51,6 +51,19 @@ const WET = new Set(['GBR', 'NED', 'BEL', 'DEN', 'NOR', 'SWE', 'FIN', 'GER', 'FR
 const TROPICAL = new Set(['MEX', 'COL', 'BRA', 'IND', 'NGA', 'EGY', 'MAR', 'TUN']); // never cold
 const WINDY = new Set(['AUS', 'GBR', 'NED', 'DEN', 'USA', 'CHI', 'ARG', 'POR', 'RSA']);
 
+// Conditions change during the week: each day (round) keeps yesterday's weather about half the time,
+// otherwise it's rolled again from the venue's climate. Day 0 is the forecast the event opens with.
+function dayWeather(ev, day) {
+  if (!ev || ev.indoor) return 'indoor';
+  let w = ev.weather || weatherFor(ev);
+  for (let d = 1; d <= day; d++) {
+    let h = 2166136261;
+    for (const ch of `${ev.id || ev.city}#${d}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    if (h % 100 >= 50) w = weatherFor({ ...ev, id: `${ev.id || ev.city}#${d}` });
+  }
+  return w;
+}
+
 function weatherFor(ev) {
   if (!ev || ev.indoor) return 'indoor';
   // The week comes from the event id ("s1w23-...").

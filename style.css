@@ -175,7 +175,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 520px) { .btn-row.three { grid-template-columns: 1fr 1fr; } .btn-row.three .speed { grid-column: span 2; } }
 
 .choose { text-align: center; margin: 4px 0 12px; }
-.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
 .mode {
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
   background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--text);

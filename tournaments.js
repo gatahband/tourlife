@@ -655,7 +655,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const wx = ev.weather && WEATHER[ev.weather] ? `${wxLabel(ev)} · ` : '';
   return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}${isLegend(opp) ? ' <em class="legend">👑 Legend</em>' : ''}</h2></div>` +
     (isLegend(opp) ? `<p class="legendnote">A former world No. 1. Legends adjust to your plan far faster than you can adjust to theirs. A textbook plan won't last a set; bring one of your own. Beating a legend is worth a lot of experience.</p>` : '') +
-    h2hLine(c, opp) + facts + prepTags +
+    h2hLine(c, opp) + facts + rivalPrepHtml(c, opp, { ...DEFAULT_PLAN, ...plan, ...(typeof advPlan === 'function' ? advPlan({ ...me, isPlayer: true, advLevel: teamLevel(c, 'coach'), plan: { ...DEFAULT_PLAN, ...plan } }) : {}) }) + prepTags +
     (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +
     fold('d-cond', '🌤️ Conditions & Matchup', `${wx}${myStyle} vs ${oppStyle}`, weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
     fold('d-know', '🔍 Know Your Opponent', `${r.strengths.length} strength${r.strengths.length === 1 ? '' : 's'} · ${r.weaknesses.length} weakness${r.weaknesses.length === 1 ? '' : 'es'}${scouted ? ` · ${qn} hidden` : ''}`, know) +
@@ -869,13 +869,14 @@ function renderDraw() {
     const opp = pm.a === 0 ? pm.b : pm.a;
     act.innerHTML = `<p class="hint">Next: ${roundLabel(entry)}${inQual(entry) ? ` · qualifying: win ${entry.qual.need - entry.qual.round} more to reach the main draw` : ''}</p>` +
       vsHeader(entry, opp) +
+      (entry.live ? '' : dayEventHtml(entry)) +
       (entry.live ? '' : prepHtml(entry, entry.entrants[opp])) +
       (entry.live ? '' : prematchHtml(entry, opp)) +
       (entry.live ? '' : checkInHtml(current.player)) +
       `<button type="button" class="btn" id="dPlay">${entry.live ? 'Resume Match' : 'Play Match'}</button>` +
       (entry.live ? '' : `<div class="center"><button type="button" class="link" id="dWithdraw">Withdraw from the tournament</button></div>`);
     $('dPlay').onclick = () => openMatch();
-    if (!entry.live) { bindPrematch(entry, opp, renderDraw); bindPrep(entry, renderDraw); }
+    if (!entry.live) { bindPrematch(entry, opp, renderDraw); bindPrep(entry, renderDraw); bindDayEvent(entry, renderDraw); }
     if ($('dWithdraw')) $('dWithdraw').onclick = () => {
       if (confirm(`Withdraw from ${eventOf(entry).city}? You keep the points and prize money you've earned so far, and your opponent gets a walkover.`)) withdraw(entry);
     };
@@ -1036,9 +1037,12 @@ async function playOneSet(animate = true) {
     ps[me].attrs[dip] = ps[me].attrs[dip] * 0.985;
   }
   ps[me].fitCamp = !!(pr.items && pr.items.includes('pcfit'));
-  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge; ps[me].prepClutch = pe.clutch; } // this week's preparation
+  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge + dayEdge(entry); ps[me].prepClutch = pe.clutch; } // this week's preparation
   ps[me].advLevel = teamLevel(current.career, 'coach');
   showPlanOnCourt(ps[me]);
+  // An opponent you beat recently comes prepared for what beat them, unless you've changed it.
+  { const b = rivalPrep(current.career, ps[op]), mine = { ...planOf(ps[me]), ...advPlan(ps[me], ps[op]) };
+    ps[op].prepared = b && mine[b.key] === b.val ? b : null; }
   // Copying the coach's plan word for word is textbook, and smart opponents read textbook plans faster.
   if (hasTeam(current.career, 'coach')) {
     const cp = coachPlan(ps[op], ev, ps[me]), mine = planOf(ps[me]), lv = ps[me].advLevel;
@@ -1095,7 +1099,7 @@ async function playOneSet(animate = true) {
       }
       if (info.bp !== null || info.press) {
         if (shown < target) {
-          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan' && c.id !== 'pen'), call = rc && CALLS[info.s === me ? 'serve' : 'ret'].find(c => c.id === rc.id);
+          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan' && c.id !== 'pen'), call = rc && callById(info.s === me ? 'serve' : 'ret', rc.id);
           if (rc && rc.id === 'off') anim.noCalls = true;
           if (call) makeCall(m, ps, me, call);
         } else { anim.step = step; await bigPoint(info, ps, me); }
@@ -1148,7 +1152,7 @@ function bigPoint(info, ps, me) {
   if (Court.skip || anim.finishAfter) return Promise.resolve();
   Court.banner(text);
   if (anim.noCalls) return Promise.resolve();
-  const serving = info.s === me, calls = CALLS[serving ? 'serve' : 'ret'];
+  const serving = info.s === me, calls = callsFor(ps[me], serving ? 'serve' : 'ret');
   const pct = e => `${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}%`;
   const box = $('mCallBox');
   box.innerHTML = `<div class="cbtitle">${text}</div><div class="cbsub">${serving ? "You're Serving" : "You're Returning"} · Make A Call</div>` +

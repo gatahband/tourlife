@@ -265,6 +265,8 @@ function initForm(m, ps, rng) {
   // A textbook (coach-copied) plan is what the other camp prepared for: it comes off less well from the
   // start, more so the higher the level.
   ps.forEach((p, i) => { if (p.textbook) m.exec[i] *= 1 - 0.3 * p.textbook * Math.min(1.5, ADAPT_RATE[advTier] || 1); });
+  // Opponents who prepared for the plan that beat them last time (only against you).
+  ps.forEach((p, i) => { if (p.prepared && ps[1 - i].isPlayer) { m.exec[1 - i] -= 0.3; m.moments.push({ set: 1, who: i, kind: 'adapt', label: `came prepared: ${p.prepared.counter}`, at: 0 }); } });
   // Each player's playstyle for this match: it shapes how their points are played (see servePoint).
   m.styles = ps.map(p => typeof styleOf === 'function' ? styleOf(p).name : null);
   m.traits = ps.map(p => typeof traitOf === 'function' ? (traitOf(p) || {}).name || null : null);
@@ -1021,6 +1023,50 @@ const CALLS = {
     { id: 'chip', icon: '🪶', title: 'Chip And Charge', plan: { net: 'often' }, edge: (A, B) => 0.004 * rel(A, 'net') + 0.001 * rel(A, 'ret') - 0.002 * rel(B, 'ground') },
   ],
 };
+
+// Each family of playstyles has its own three calls on serve and on return: a big server and a
+// grinder don't solve a break point the same way. Edges still come from your stats against theirs.
+const CALL_FAMILY = { 'Serve-Dominant': 'serve', 'Serve +1 Attacker': 'serve', 'First-Strike Attacker': 'attack', 'Aggressive Baseliner': 'attack',
+  'Flat Attacker': 'attack', 'Heavy-Topspin Attacker': 'attack', 'Solid Baseliner': 'grind', Counterpuncher: 'grind', 'Defensive Grinder': 'grind',
+  'Heavy-Topspin Baseliner': 'grind', 'Net Attacker': 'net', 'Serve-and-Volley': 'net', 'All-Court': 'craft', 'Variety / Slice-Heavy': 'craft', 'Creative Shotmaker': 'craft' };
+const [cBig, cSafe, cSnv] = CALLS.serve, [cAttack, cDeep, cChip] = CALLS.ret;
+const CALL = (id, icon, title, plan, edge) => ({ id, icon, title, plan, edge });
+const FAMILY_CALLS = {
+  serve: {
+    serve: [cBig, CALL('body', '🎯', 'Body Serve, Jam Them', { serve: 'big' }, (A, B) => 0.003 * rel(A, 'serve') + 0.002 * rel(A, 'iq') - 0.002 * rel(B, 'ret')),
+      CALL('wide1', '↗️', 'Out Wide, Hit The Open Court', { serve: 'balanced', aggression: 'aggressive' }, (A, B) => 0.003 * rel(A, 'serve') + 0.002 * rel(A, 'ground') - 0.002 * rel(B, 'stam'))],
+    ret: [CALL('block', '🧱', 'Block It Back Deep', { returnPos: 'deep' }, (A, B) => 0.003 * rel(A, 'ret') + 0.001 * rel(A, 'iq') - 0.002 * rel(B, 'serve')), cAttack,
+      CALL('cut', '💥', 'Take A Big Cut', { returnPos: 'inside', aggression: 'aggressive' }, (A, B) => 0.004 * rel(A, 'serve') + 0.001 * rel(A, 'ret') - 0.002 * rel(B, 'serve'))],
+  },
+  attack: {
+    serve: [CALL('plus1', '🎾', 'Serve, Then Forehand', { serve: 'balanced', aggression: 'aggressive' }, (A, B) => 0.004 * rel(A, 'ground') - 0.002 * rel(B, 'ret')), cBig,
+      CALL('kick', '🌀', 'Kick Serve To The Backhand', { serve: 'safe', spin: 'topspin' }, (A, B) => 0.003 * rel(A, 'serve') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ret'))],
+    ret: [cAttack, CALL('dtl', '⚡', 'Rip It Down The Line', { returnPos: 'inside', spin: 'flat' }, (A, B) => 0.004 * rel(A, 'ground') - 0.002 * rel(B, 'serve')),
+      CALL('neut', '⚖️', 'Neutralize, Then Dictate', { returnPos: 'normal', aggression: 'balanced' }, (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground'))],
+  },
+  grind: {
+    serve: [cSafe, CALL('run', '🏃', 'Make Them Run', { serve: 'safe', aggression: 'patient' }, (A, B) => 0.003 * rel(A, 'stam') + 0.002 * rel(A, 'ground') - 0.0015 * rel(B, 'stam')),
+      CALL('kick2', '🌀', 'Heavy Kick, Start The Rally', { serve: 'safe', spin: 'topspin' }, (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'mental') - 0.0015 * rel(B, 'ret'))],
+    ret: [cDeep, CALL('extend', '🔁', 'Make Them Hit One More', { aggression: 'patient', returnPos: 'deep' }, (A, B) => 0.004 * rel(A, 'stam') - 0.002 * rel(B, 'ground')),
+      CALL('moon', '🌙', 'Moonball Deep', { spin: 'topspin', aggression: 'patient' }, (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'mental') - 0.002 * rel(B, 'ground'))],
+  },
+  net: {
+    serve: [cSnv, CALL('bodyin', '🎯', 'Body Serve, Close In', { serve: 'big', net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'serve') - 0.002 * rel(B, 'ret')), cSafe],
+    ret: [cChip, CALL('slicein', '🪶', 'Low Slice, Then Close', { net: 'often', spin: 'mixed' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground')), cAttack],
+  },
+  craft: {
+    serve: [CALL('surprise', '🎭', 'Surprise Serve And Volley', { net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'iq') - 0.002 * rel(B, 'ret')),
+      CALL('pace', '🔀', 'Change The Pace', { serve: 'balanced', aggression: 'balanced', drops: 'often' }, (A, B) => 0.004 * rel(A, 'iq') - 0.002 * rel(B, 'iq')), cSafe],
+    ret: [cChip, CALL('dropret', '🤏', 'Throw In A Drop', { drops: 'often', returnPos: 'normal' }, (A, B) => 0.004 * rel(A, 'iq') - 0.002 * rel(B, 'stam')), cDeep],
+  },
+};
+// The three calls this player gets on serve or return.
+function callsFor(p, side) {
+  const st = typeof styleOf === 'function' ? styleOf(p).name : null, fam = FAMILY_CALLS[CALL_FAMILY[st]];
+  return fam ? fam[side] : CALLS[side];
+}
+// Any call by id (replays of a set look calls up this way).
+const callById = (side, id) => [CALLS[side], ...Object.values(FAMILY_CALLS).map(f => f[side])].flat().find(c => c.id === id);
 
 // The edge a call would give side i right now (shown on the buttons, then applied).
 function callEdge(m, ps, i, call) {

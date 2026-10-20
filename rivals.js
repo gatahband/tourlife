@@ -21,6 +21,40 @@ function poolAdd(c, o, week) {
   }
 }
 
+// What stood out in the plan that beat someone, and how they'd prepare for it next time.
+const BEAT_KEYS = [
+  ['wing', 'bh', 'attacking the backhand', 'standing further back to cover the backhand', 'Target Wing'],
+  ['wing', 'fh', 'attacking the forehand', 'running around to protect the forehand', 'Target Wing'],
+  ['aggression', 'aggressive', 'attacking from the baseline', 'blocking everything back deep and waiting for errors', 'Rally Style'],
+  ['serve', 'big', 'big serving', 'standing deeper to return', 'First Serve'],
+  ['net', 'often', 'coming to the net', 'hitting lower passes and more lobs', 'Net Approaches'],
+  ['spin', 'flat', 'flat hitting', 'slicing low so flat balls have nothing to hit through', 'Spin'],
+  ['drops', 'often', 'drop shots', 'staying closer to the baseline to read the drop', 'Drop Shots'],
+  ['aggression', 'patient', 'patient rallying', 'attacking earlier in the rally', 'Rally Style'],
+  ['spin', 'topspin', 'heavy topspin', 'taking the high balls early, on the rise', 'Spin'],
+  ['returnPos', 'inside', 'stepping in on returns', 'serving into the body to jam the return', 'Return Position'],
+  ['returnPos', 'deep', 'returning from deep', 'serving wide and coming forward', 'Return Position'],
+];
+function beatKey(plan, adv) {
+  const k = BEAT_KEYS.find(([key, val]) => (adv || key !== 'wing') && plan[key] === val);
+  return k && { key: k[0], val: k[1], did: k[2], counter: k[3], label: k[4] };
+}
+// A player you beat in the last year comes prepared for what beat them.
+function rivalPrep(c, opp) {
+  const h = opp && opp.id && h2hOf(c)[opp.id];
+  return h && h.beat && c.week - h.beat.week <= 52 ? h.beat : null;
+}
+// The scouting report's line about it: more detail with a better coach.
+function rivalPrepHtml(c, opp, plan) {
+  const b = rivalPrep(c, opp);
+  if (!b) return '';
+  const lv = hasTeam(c, 'coach') ? teamLevel(c, 'coach') : 0, still = (plan || {})[b.key] === b.val;
+  return `<p class="rivalprep">🔁 Last time you beat them ${b.did}. Expect them to be ready for it.` +
+    (lv >= 2 ? ` Your coach: they've been working on ${b.counter}.` : '') +
+    (lv >= 4 ? ` Change your ${b.label} and their homework is wasted.` : '') +
+    ` <b class="${still ? 'down' : 'up'}">${still ? 'Your plan still does this.' : '✓ Your plan has changed it.'}</b></p>`;
+}
+
 const isRival = (c, id) => { const h = h2hOf(c)[id]; return !!h && h.w + h.l >= 3 && h.close >= 2; };
 
 // After you play someone: update the head-to-head. Returns { h, newRival }.
@@ -32,6 +66,8 @@ function h2hRecord(c, opp, rec, ev) {
   if (rec.won) h.w++; else h.l++;
   if (rec.sets.length === 3 || rec.sets.some(s => s.tb)) h.close++;
   h.last = { week: c.week, won: rec.won, score: rec.score, city: ev.city, round: rec.round };
+  // They remember how you beat them, and prepare for it next time (see rivalPrep).
+  if (rec.won) { const k = beatKey(rec.plan || {}, teamLevel(c, 'coach') >= 4); h.beat = k ? { week: c.week, ...k } : null; }
   poolAdd(c, opp, c.week);
   return { h: { ...h }, newRival: !was && isRival(c, opp.id) };
 }

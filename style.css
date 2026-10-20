@@ -1116,3 +1116,10 @@ h2.ctr { text-align: center; }
 /* View picker centred along the top of the court. */
 .ov.ovleft { left: 50%; transform: translateX(-50%); max-width: none; }
 @media (max-width: 560px) { .ov.ovleft { left: 8px; transform: none; } }
+
+.ordfam { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0; }
+.ordfam > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.ordfam > summary::-webkit-details-marker { display: none; }
+.ordfam > summary b { font-size: 16px; } .ordfam > summary b::after { content: ' ▾'; color: var(--accent); }
+.ordfam[open] > summary b::after { content: ' ▴'; }
+.ordfam > summary small { color: var(--muted); font-size: 12px; }

@@ -149,7 +149,7 @@ const FEATURES = [
     'Keep playing, take your coach\'s advice or a counter, or adjust your plan right there on court.',
     'Tap "Don\'t Stop At Changeovers This Match" if you\'d rather play straight through.'] },
   { id: 'study', when: c => typeof studyUnlocked === 'function' && studyUnlocked(c), icon: '📚', title: 'Study Room Unlocked', slides: [
-    "You've made it to the ATP Tour. The Study Room is open: find it on Home under Join Real Tournaments.",
+    "You've made it to the ATP Tour. The Study Room is open: tap 🎬 Study Room at the top right of Home.",
     'Pick any two real ATP players, a surface, the conditions and the match length, then watch them play each other.',
     'Each player uses their real playstyle and game plan, so you can see how their points are built and how they adjust to each other.'] },
   { id: 'pc', when: c => c.badges && c.badges.elite, icon: '🏛️', title: 'Performance Center Unlocked', slides: [

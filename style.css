@@ -1167,3 +1167,23 @@ h2.ctr { text-align: center; }
 .stcard b { font-size: 16px; } .stcard small { color: var(--muted); font-size: 12px; }
 .stcard p { margin: 4px 0 0; font-size: 13px; } .stcard .up { color: var(--good); } .stcard .down { color: var(--bad); }
 .stovr { font-size: 20px; font-weight: 800; color: #ffd60a; } .stovr i { font-style: normal; font-size: 11px; color: var(--muted); }
+
+/* Study Room link: small, top right, opposite the Home button */
+#home, #draw, #train { position: relative; }
+.studylink { position: absolute; top: 10px; right: max(16px, env(safe-area-inset-right, 0px)); z-index: 5; background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; cursor: pointer; }
+.studylink:hover { border-color: var(--accent); }
+#home > header { padding-right: 130px; }
+@media (max-width: 560px) { .studylink { font-size: 12px; padding: 5px 10px; } #home > header { padding-right: 112px; } }
+/* Playstyle panel under the court */
+.stylepanel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.stylepanel:empty { display: none; }
+@media (max-width: 560px) { .stylepanel { grid-template-columns: 1fr; } }
+.spcol { background: var(--field); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+.spcol > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+.spcol > summary::-webkit-details-marker { display: none; }
+.spcol > summary b::after { content: ' ▾'; color: var(--accent); font-size: 12px; } .spcol[open] > summary b::after { content: ' ▴'; }
+.spcol > summary small { color: var(--muted); font-size: 12px; }
+.sptrait { margin: 6px 0 0; font-size: 12px; color: #ffd60a; }
+.spplan { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .spplan span { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.sphead { margin: 8px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.spcol ul { margin: 0; padding-left: 16px; font-size: 13px; } .spcol li i { font-style: normal; color: var(--muted); font-size: 11px; margin-right: 4px; }

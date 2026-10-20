@@ -162,6 +162,7 @@ function showScreen(name) {
   if (name !== 'match') leaveFullscreen();
   for (const id of ['creator', 'home', 'draw', 'match', 'review', 'train', 'admin']) $(id).hidden = id !== name;
   window.scrollTo(0, 0);
+  if (typeof renderStudyBtn === 'function' && current.career) renderStudyBtn(current.career);
   if (typeof screenTips === 'function' && name !== 'admin') screenTips(name);
 }
 
@@ -1745,6 +1746,10 @@ const HL_ICON = { zoom: '⭐', shake: '⚡' };
 // "Ace — Moreno" → "Ace · Moreno": how the point was won, under the score on each point chip.
 const shortHow = t => { const [how, who] = String(t).split(' — '); return who ? `${how} · ${who}` : how; };
 function renderPoints() {
+  { const live = current.entry && current.entry.live, sp = $('mStyles');
+    if (sp && live && live.m) { const ps = matchPlayers(current.entry, live.m), me = live.m.a === 0 ? 0 : 1;
+      sp.innerHTML = stylePanelHtml([ps[me], ps[1 - me]], { moments: (live.m.moments || []).map(mo => ({ ...mo, who: mo.who === me ? 0 : 1 })) }, ['You', shortName(ps[1 - me])]);
+      bindStylePanel(sp); } }
   const box = $('mPoints');
   box.hidden = false; // the point-by-point list shows in every view
   const list = anim.replays || [];

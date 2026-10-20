@@ -8,11 +8,10 @@ function studyUnlocked(c) {
   const e = current.entry, ev = e && typeof eventOf === 'function' ? eventOf(e) : null;
   return !!(ev && ATP_TIERS.includes(ev.tier));
 }
+// The small "🎬 Study Room" link at the top right of Home, the draw and free days (opposite the Home button).
 function renderStudyBtn(c) {
-  const b = $('studyBtn');
-  if (!b) return;
-  b.hidden = !studyUnlocked(c);
-  b.onclick = () => openStudy();
+  const on = studyUnlocked(c);
+  document.querySelectorAll('[data-study]').forEach(b => { b.hidden = !on; b.onclick = () => openStudy(); });
 }
 
 const studyState = { a: 0, b: 1, surface: 'hard', weather: 'sunny', bestOf: 3 };

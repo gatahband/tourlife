@@ -38,7 +38,7 @@ function watchRealMatch(rec, opts = {}) {
     `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="seg" id="rwSpeed" style="grid-template-columns:repeat(3,1fr)">${[1, 2, 4].map(x => `<button type="button" data-s="${x}" class="${x === speed ? 'on' : ''}">${x}×</button>`).join('')}</div></div>` +
-    `<canvas id="rwCourt" class="court"></canvas><div id="rwCall" class="call"></div>` +
+    `<canvas id="rwCourt" class="court"></canvas><div id="rwCall" class="call"></div><div id="rwStyles" class="stylepanel"></div>` +
     `<div class="btn-row three"><button type="button" class="btn ghost" id="rwPause">❚❚ Pause</button>` +
     `<button type="button" class="btn ghost" id="rwGame">⏭ Next game</button><button type="button" class="btn ghost" id="rwSet">⏩ Next set</button></div>` +
     (opts.onNext ? `<button type="button" class="btn" id="rwNext" hidden>Next match ›</button>` : '') + `</div>`,
@@ -102,6 +102,8 @@ function watchRealMatch(rec, opts = {}) {
         await ReplayCourt.playPoint({ ...pt, review: false, w: view(pt.w), net: mapBy(pt.net), drop: mapBy(pt.drop), netcord: mapBy(pt.netcord),
           call: pt.call && { ...pt.call, side: view(pt.call.side) } }, { server: view(pt.s), deuce: inGame % 2 === 0 }, speed);
         board(done, pt.games, [L[me], L[op]], view(pt.s));
+        { const si0 = si, j0 = j, sp = $('rwStyles'); if (sp) { sp.innerHTML = stylePanelHtml([ps[me], ps[op]], { moments: m.moments.map(mo => ({ ...mo, who: mo.who === me ? 0 : 1 })) },
+          [name(me), name(op)], mo => mo.set < si0 + 1 || (mo.set === si0 + 1 && (mo.at ?? 0) <= j0)); bindStylePanel(sp); } }
         if (pt.end) {
           inGame = 0;
           if (skipTo === 'game') skipTo = null;
@@ -118,4 +120,26 @@ function watchRealMatch(rec, opts = {}) {
     if (opts.onDone) opts.onDone();
     if ($('rwNext')) $('rwNext').hidden = false;
   })();
+}
+
+// Under the court while a match plays: each player's playstyle, game plan and the adjustments they've made so far,
+// side by side, each folded away until tapped. upto(mo) says whether a match moment has happened yet.
+const stylePanelOpen = {};
+function stylePanelHtml(ps, m, names, upto = () => true) {
+  const col = i => {
+    const p = ps[i], st = typeof styleOf === 'function' ? styleOf(p) : { name: '' };
+    const rs = p.atpRank && typeof REAL_SCOUT !== 'undefined' ? REAL_SCOUT[p.name] : null;
+    const adj = (m.moments || []).filter(mo => (mo.kind === 'adapt' || mo.kind === 'orders') && mo.who === i && upto(mo));
+    const key = p.name || String(i);
+    return `<details class="spcol" data-k="${esc(key)}" ${stylePanelOpen[key] ? 'open' : ''}><summary><b>${esc(names[i])}</b>` +
+      `<small>${esc(st.name)}${adj.length ? ` · ${adj.length} adjustment${adj.length === 1 ? '' : 's'}` : ''}</small></summary>` +
+      (rs ? `<p class="sptrait">${esc(rs.trait)}</p>` : '') +
+      `<div class="spplan">${planSummary({ ...DEFAULT_PLAN, ...planOf(p) }).split(' · ').map(x => `<span>${esc(x)}</span>`).join('')}</div>` +
+      `<p class="sphead">Adjustments</p>` +
+      (adj.length ? `<ul>${adj.map(mo => `<li><i>Set ${mo.set}</i> ${esc(mo.label)}</li>`).join('')}</ul>` : '<p class="hint">None yet.</p>') + `</details>`;
+  };
+  return col(0) + col(1);
+}
+function bindStylePanel(el) {
+  el.querySelectorAll('details.spcol').forEach(d => { d.ontoggle = () => { stylePanelOpen[d.dataset.k] = d.open; }; });
 }

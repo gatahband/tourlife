@@ -1202,3 +1202,21 @@ button:not(.x):not(.fsbtn), .btn, .chip, .seg button, h2, h3, h4, .itop, .foldt,
 /* Player names keep their real spelling (e.g. "van de Zandschulp", "de Minaur"). */
 .sname, .sname *, .realname, .vsname, .rvnames, .mu-p b, .stcard b, .itop .pname { text-transform: none; }
 .foldsum, .hint.center.howfeel, .sub-label { text-transform: capitalize; }
+
+/* Court controls (final layout): views centred along the top; Gatah Vision perspectives down the left;
+   speeds, then Shot / FH-BH, down the right. */
+.ov.ovtopc { top: 8px; left: 50%; right: auto; transform: translateX(-50%); width: auto; justify-content: center; }
+.ov.ovtopc #mView { display: flex; flex-direction: row; gap: 1px; padding: 2px; width: auto; }
+.ov.ovtopc #mView button { padding: 4px 10px; font-size: 12px; }
+.ov.ovleft, .ov.ovright { top: 52px; width: auto; max-width: none; left: 8px; right: auto; transform: none; flex-direction: column; align-items: stretch; }
+.ov.ovright { left: auto; right: 8px; top: 8px; align-items: flex-end; }
+.ov .seg.vert { flex-direction: column; flex-wrap: nowrap; width: auto; min-width: 84px; }
+.ov .seg.vert button, .ovright .seg.vert button { text-align: left; padding: 4px 10px; font-size: 12px; }
+.ovright .seg.vert button { text-align: right; }
+.seg.vert .segsep { width: auto; height: 1px; margin: 3px 4px; align-self: stretch; }
+.ov .labels.vert { flex-direction: column; align-items: flex-start; gap: 4px; padding: 5px 10px; }
+@media (max-width: 560px) {
+  .ov.ovtopc #mView button { padding: 3px 7px; font-size: 11px; }
+  .ov.ovleft { top: 44px; } .ov .seg.vert { min-width: 70px; } .ov .seg.vert button { font-size: 11px; padding: 3px 7px; }
+}
+@media (max-width: 560px) { .ov.ovright { top: 44px; } }

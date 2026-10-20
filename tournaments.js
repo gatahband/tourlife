@@ -1146,6 +1146,7 @@ async function playOneSet(animate = true) {
     Court.skip = false;
     leaveFullscreen(); // the set break (or the result) needs you
   }
+  Court.setBreak(true); // empty court between sets and after the match (rain shows then, if it's wet)
   renderMatch();
 }
 

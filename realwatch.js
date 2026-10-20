@@ -112,6 +112,7 @@ function watchRealMatch(rec, opts = {}) {
         if (!ReplayCourt.skip) await new Promise(r => setTimeout(r, (pt.end ? 1100 : 500) / speed));
       }
       done.push(m.sets[si]);
+      if (!closed) ReplayCourt.setBreak(true); // empty court at the set break (and after the match)
       if (skipTo === 'set') skipTo = null;
       board(done, null, null, -1);
     }

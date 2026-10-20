@@ -371,7 +371,7 @@ function createCourt() {
     drawMarks();
 
     // Far things first. The net sits at its own depth in the end-on cameras.
-    const items = [0, 1].filter(side => !(fps && side === fpsSide())).map(side => ({ d: depth(pos[side]), f: () => drawPlayer(side) }));
+    const items = [0, 1].filter(side => !breakTime && !(fps && side === fpsSide())).map(side => ({ d: depth(pos[side]), f: () => drawPlayer(side) }));
     if (ball.on) items.push({ d: fps ? camSpace(ball.x, ball.y, ball.h).d : depth(ball) - 0.01, f: drawBall });
     if (c === 'broadcast' || c === 'reverse' || fps) items.push({ d: fps ? camSpace(0, 0, 0.5).d : depth({ x: 0, y: 0 }), f: drawNet });
     else drawNet();
@@ -383,6 +383,8 @@ function createCourt() {
   // Light drizzle for rainy-weather events: fine, slanted streaks at a few depths (nearer ones longer,
   // brighter and faster), a soft cool haze over the court. Driven by the court clock, so pause freezes it.
   let rain = false, rainLoop = null;
+  // Between sets and after the match: players leave the court; in rainy conditions the rain shows then (never during points).
+  let breakTime = false;
   const DROPS = Array.from({ length: 140 }, (_, i) => {
     const h = Math.imul(i + 1, 2654435761) >>> 0;
     const depth = ((h >>> 8) % 100) / 100; // 0 far … 1 near
@@ -487,8 +489,8 @@ function createCourt() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawWeather();
     if (!infoEl) { drawConditions(); drawPlan(); }
-    if (!banner && !review && !rain) { ctx.restore(); return; }
-    if (rain) drawRain();
+    if (!banner && !review && !(rain && breakTime)) { ctx.restore(); return; }
+    if (rain && breakTime) drawRain();
     if (banner) {
       const age = clock() - banner.t0, life = banner.big ? 1400 : 1600;
       if (age > life) banner = null;
@@ -1181,6 +1183,8 @@ function createCourt() {
   function landing(shot, from, deuce, recvPos) {
     const d = dir(shot.by);
     // Lobs vary: most go deep, some fall short (and get punished).
+    // A winning lob goes right over the player at the net and lands deep behind them.
+    if (shot.lob && (shot.kind === 'pass' || shot.kind === 'winner') && recvPos) return { x: clamp(recvPos.x + rand(-0.8, 0.8), -3.8, 3.8), y: -d * rand(9.8, 11.5) };
     if (shot.lob) return { x: rand(-3.6, 3.6), y: -d * (Math.random() < 0.3 ? rand(6.5, 9) : rand(9.5, 11.6)) };
     if (shot.post) return { x: Math.sign(from.x) * rand(2.6, 3.9), y: -d * rand(5, 10) };
     switch (shot.kind) {
@@ -1756,6 +1760,7 @@ function createCourt() {
 
   // Plans and plays a live point. Returns the rally shape with its script attached (for replays).
   async function playPoint(pt, info, speed) {
+    breakTime = false;
     const script = plan(pt, info);
     const real = view === 'gatah';
     const rally = await play(script, { speed, real, cinematic: real, slow: real ? liveSlow / (speed || 1) : 1 }); // GATAH VISION: real pace × your speed
@@ -1771,6 +1776,7 @@ function createCourt() {
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = { text, t0: clock() }; draw(); },
     setPlan(text) { planText = text || ''; fillInfo(); draw(); },
+    setBreak(on) { breakTime = !!on; ball.on = ball.on && !on; draw(); },
     setInfoEl(el) { infoEl = el; fillInfo(); draw(); },
     setWeather(w, rainy = false, cond = {}) {
       wx = w ? { pace: w.pace || 1, bounce: w.bounce || 1 } : { pace: 1, bounce: 1 };

@@ -1056,3 +1056,4 @@ h2.ctr { text-align: center; }
 .ovrpop > b { display: block; font-size: 13px; margin-bottom: 8px; } .ovrpop > small { display: block; color: var(--muted); margin-top: 6px; }
 .ovrpop .ovrexp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 @media (max-width: 560px) { .ovrpop .ovrexp { grid-template-columns: 1fr; } }
+.hfatigue { margin: 4px 0 14px; padding: 10px 12px; background: var(--field); border-radius: 12px; }

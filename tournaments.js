@@ -310,6 +310,8 @@ function renderTournaments(player) {
   if (renderCareerBits(c, player)) return;
   if (!c.seed) { c.seed = Math.floor(Math.random() * 1e6) + 1; writeJSON(CAREER_KEY, c); }
   const box = $('events');
+  // How tired you are, right above the week's events (check it before you pick or enter one).
+  $('hFatigue').innerHTML = fatigueBar(player.fatigue || 0);
   // Mid-week downtime (after a tournament): carry on with the training days.
   if (c.downtime && !current.entry) {
     $('eventsTitle').textContent = `Week ${weekInSeason(c.week)} · ${monthOf(c.week)} — Rest of the week`;

@@ -227,7 +227,6 @@ function renderOvr(p) {
     `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show my build <i class="foldchev" aria-hidden="true"></i></em></div>` +
     `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary><div class="buildslot" id="hBuildSlot"></div></details>` +
     seasonStatsHtml(c) +
-    fatigueBar(p.fatigue || 0) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     '';
   if (build) $('hBuildSlot').appendChild(build);

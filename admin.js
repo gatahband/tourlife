@@ -19,7 +19,7 @@ async function sha256(text) {
 function openAdmin() {
   showScreen('admin');
   if (sessionStorage.getItem('tourlife.admin') === 'ok') return renderAdmin();
-  $('admin').innerHTML = `<div class="card adlock"><h2>Admin</h2>` +
+  $('admin').innerHTML = `<div class="card tllock"><h2>Admin</h2>` +
     `<input type="password" id="adPass" class="inp big" placeholder="Password" autocomplete="current-password">` +
     `<button type="button" class="btn" id="adGo">Unlock</button><p class="hint" id="adMsg">This page is for the site owner.</p>` +
     `<button type="button" class="link" id="adLeave">‹ Back to the game</button></div>`;
@@ -36,10 +36,10 @@ function openAdmin() {
 function renderAdmin() {
   const n = adminPlayers().length;
   $('admin').innerHTML = `<header><h1>Admin</h1><p class="sub">Your real players and tournaments.</p></header>` +
-    `<div class="seg two adtabs"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
+    `<div class="seg two tltabs"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
     `<button type="button" data-t="players" class="${adminTab === 'players' ? 'on' : ''}">Players (${n})</button></div>` +
     `<div id="adBody"></div><button type="button" class="link" id="adExit">Back to the game</button>`;
-  $('admin').querySelector('.adtabs').onclick = e => {
+  $('admin').querySelector('.tltabs').onclick = e => {
     const b = e.target.closest('[data-t]');
     if (b) { adminTab = b.dataset.t; renderAdmin(); }
   };
@@ -224,12 +224,12 @@ function renderAdPlayers() {
     (connected ? `<button type="button" class="link" id="nfForget">Disconnect from Netlify</button>` : '') + `</details>` +
     `<p class="hint" id="adLoadMsg"></p></section>` +
     `<section class="card"><h2>${list.length} player${list.length === 1 ? '' : 's'}</h2>` +
-    (list.length ? `<div class="adlist">${list.map(x => {
+    (list.length ? `<div class="tllist">${list.map(x => {
       const p = x.player, s = x.summary || {};
-      return `<div class="adrow"><span class="adname"><b>${flagOf(p.nation)} ${esc(p.name)}</b>` +
+      return `<div class="tlrow"><span class="tlname"><b>${flagOf(p.nation)} ${esc(p.name)}</b>` +
         `<small>${esc(x.contact || 'no name given')} · ${s.rank ? `#${s.rank}` : 'Unranked'} · ${s.wins ?? 0}–${s.losses ?? 0}${s.titles ? ` · 🏆 ${s.titles}` : ''}</small>` +
         (suspicious(x).length ? `<small class="sus">⚠️ Looks edited: ${suspicious(x).join('; ')}</small>` : '') + `</span>` +
-        `<b class="adovr">${overall(p).toFixed(1)}</b>` +
+        `<b class="tlovr">${overall(p).toFixed(1)}</b>` +
         `<button type="button" class="btn small ghost" data-adj="${esc(x.id)}">✏️ Adjust</button>` +
         `<button type="button" class="x inline" data-rm="${esc(x.id)}" aria-label="Remove">×</button></div>`;
     }).join('')}</div>` : '<p class="hint">No players yet.</p>') + `</section>`;
@@ -243,7 +243,7 @@ function renderAdPlayers() {
   if ($('nfForget')) $('nfForget').onclick = () => { if (confirm('Disconnect this page from Netlify?')) { writeJSON(NF_KEY, null); renderAdmin(); } };
   $('adCsv').onchange = async e => { const f = e.target.files[0]; if (!f) return; const r = await addPlayersFrom(await f.text()); renderAdmin(); report(r); };
   $('adPasteGo').onclick = async () => { const r = await addPlayersFrom($('adPaste').value); renderAdmin(); report(r); };
-  $('adBody').querySelector('.adlist')?.addEventListener('click', e => {
+  $('adBody').querySelector('.tllist')?.addEventListener('click', e => {
     const a = e.target.closest('[data-adj]');
     if (a) { openAdjust(a.dataset.adj); return; }
     const b = e.target.closest('[data-rm]');
@@ -268,7 +268,7 @@ function openAdjust(id, msg = '') {
     `<p class="big center">Right now: <b>${ovr.toFixed(1)} OVR</b></p>` +
     `<p class="hint center">Only their stats change. Their record, titles, ranking and money stay the same. Their game saves a backup first, and you can undo this any time.</p>` +
     `<label class="lbl" for="adjWhy">Message they'll see</label><input id="adjWhy" class="inp big" maxlength="120" value="Your player was adjusted by the tournament admin for fair play.">` +
-    `<div class="adjopts">${opts.map((o, i) => `<button type="button" class="btn ghost" data-o="${i}"><b>${o.by === 'start' ? 'Back To A Starting Player' : `Take Back ${o.by} OVR`}</b><small>${ovr.toFixed(1)} → ${ovrOf(o.attrs).toFixed(1)} OVR</small></button>`).join('')}</div>` +
+    `<div class="tljopts">${opts.map((o, i) => `<button type="button" class="btn ghost" data-o="${i}"><b>${o.by === 'start' ? 'Back To A Starting Player' : `Take Back ${o.by} OVR`}</b><small>${ovr.toFixed(1)} → ${ovrOf(o.attrs).toFixed(1)} OVR</small></button>`).join('')}</div>` +
     (mine.length ? `<button type="button" class="btn ghost" id="adjUndo">↩ Undo The Last Adjustment (back to ${ovrOf(mine[mine.length - 1].from).toFixed(1)} OVR)</button>` : '') +
     `<p class="big center" id="adjMsg">${msg}</p>`);
   $('mx').onclick = closeModal;
@@ -317,12 +317,12 @@ function renderAdEvents() {
       `<button type="button" class="link" id="adPubFile">Save the results file instead</button>` +
       `<p class="hint" id="adPubMsg"></p></section>` : '') +
     `<section class="card"><h2>Your tournaments</h2>` +
-    (evs.length ? `<div class="adlist">${evs.map(ev => {
+    (evs.length ? `<div class="tllist">${evs.map(ev => {
       const champ = ev.rounds.length && ev.rounds[ev.rounds.length - 1].length === 1 && ev.rounds[ev.rounds.length - 1][0].winner;
       const status = champ !== undefined && champ !== false ? `🏆 ${esc(ev.entrants[champ].name)}` : ev.rounds[0][0].winner === undefined ? 'Not started' : 'In progress';
-      return `<div class="adrow click" data-open="${ev.id}"><span class="adname"><b>${esc(ev.name)}</b>` +
+      return `<div class="tlrow click" data-open="${ev.id}"><span class="tlname"><b>${esc(ev.name)}</b>` +
         `<small>${ev.exhibition ? 'One-on-one' : tierLabel(ev.tier)} · ${surfaceLabel(ev.surface)}${ev.indoor ? ' indoor' : ''}${ev.exhibition ? '' : ` · ${ev.size} players · ${ev.entrants.filter(e => e.real).length} real`}</small></span>` +
-        `<small class="adstat">${status}</small><button type="button" class="x inline" data-del="${ev.id}" aria-label="Delete">×</button></div>`;
+        `<small class="tlstat">${status}</small><button type="button" class="x inline" data-del="${ev.id}" aria-label="Delete">×</button></div>`;
     }).join('')}</div>` : '<p class="hint">None yet. Make one with the button above.</p>') + `</section>`;
   $('adNew').onclick = () => renderAdNew();
   $('adExh').onclick = () => renderAdExh();
@@ -336,7 +336,7 @@ function renderAdEvents() {
     download('results.json', JSON.stringify(publishResults()));
     $('adPubMsg').innerHTML = '✅ Saved <b>results.json</b> to your Downloads.';
   };
-  $('adBody').querySelector('.adlist')?.addEventListener('click', e => {
+  $('adBody').querySelector('.tllist')?.addEventListener('click', e => {
     const d = e.target.closest('[data-del]'), o = e.target.closest('[data-open]');
     if (d) { if (confirm('Delete this tournament?')) { writeJSON(ADMIN_EVENTS, adminEvents().filter(x => x.id !== +d.dataset.del)); renderAdmin(); } return; }
     if (o) renderAdDraw(+o.dataset.open);
@@ -348,8 +348,8 @@ function renderAdNew(st = { tier: null, surface: 'hard', indoor: false, size: 32
   const box = $('adBody');
   if (!st.tier) {
     box.innerHTML = `<section class="card"><h2>1 · Pick the level</h2>` + AD_GROUPS.map(([g, tiers]) =>
-      `<h4 class="adgroup">${g}</h4><div class="adtiers">${tiers.map(t =>
-        `<button type="button" class="adtier" data-tier="${t}"><b>${TIERS[t].label}</b><small>Field OVR ~${TIERS[t].level}</small></button>`).join('')}</div>`).join('') +
+      `<h4 class="tlgroup">${g}</h4><div class="tltiers">${tiers.map(t =>
+        `<button type="button" class="tltier" data-tier="${t}"><b>${TIERS[t].label}</b><small>Field OVR ~${TIERS[t].level}</small></button>`).join('')}</div>`).join('') +
       `</section><button type="button" class="link" id="adCancel">Cancel</button>`;
     box.onclick = e => { const b = e.target.closest('[data-tier]'); if (b) { box.onclick = null; renderAdNew({ ...st, tier: b.dataset.tier, name: AD_NAMES[b.dataset.tier] }); } };
     $('adCancel').onclick = () => { box.onclick = null; renderAdmin(); };
@@ -365,15 +365,15 @@ function renderAdNew(st = { tier: null, surface: 'hard', indoor: false, size: 32
   box.innerHTML = `<section class="card"><h2>2 · Details · ${TIERS[st.tier].label} <button type="button" class="link inline" id="adBackTier">change</button></h2>` +
     `<label class="lbl">Name</label><input id="adName" class="inp" maxlength="40" value="${esc(st.name)}">` +
     `<label class="lbl">Surface</label>${seg('surface', [['hard', 'Hard'], ['clay', 'Clay'], ['grass', 'Grass']])}` +
-    `<label class="chk adchk"><input type="checkbox" id="adIndoor" ${st.indoor ? 'checked' : ''}> Indoor</label>` +
+    `<label class="chk tlchk"><input type="checkbox" id="adIndoor" ${st.indoor ? 'checked' : ''}> Indoor</label>` +
     `<label class="lbl">Draw size</label>${seg('size', [[8, '8'], [16, '16'], [32, '32']])}</section>` +
     `<section class="card"><h2>3 · Real players (${picked} picked)</h2>` +
     (players.length ? `<div class="shrow"><button type="button" class="link" id="adAll">All</button><button type="button" class="link" id="adNone">None</button></div>` +
-      `<div class="adlist">${players.map(x => {
+      `<div class="tllist">${players.map(x => {
         const o = overall(x.player), [cls, txt] = fit(o);
-        return `<label class="adrow click"><input type="checkbox" data-pick="${esc(x.id)}" ${st.picked.includes(x.id) ? 'checked' : ''}>` +
-          `<span class="adname"><b>${flagOf(x.player.nation)} ${esc(x.player.name)}${suspicious(x).length ? ' ⚠️' : ''}</b><small>${esc(x.contact || '')}</small></span>` +
-          `<b class="adovr">${o.toFixed(1)}</b><small class="adfit ${cls}">${txt}</small></label>`;
+        return `<label class="tlrow click"><input type="checkbox" data-pick="${esc(x.id)}" ${st.picked.includes(x.id) ? 'checked' : ''}>` +
+          `<span class="tlname"><b>${flagOf(x.player.nation)} ${esc(x.player.name)}${suspicious(x).length ? ' ⚠️' : ''}</b><small>${esc(x.contact || '')}</small></span>` +
+          `<b class="tlovr">${o.toFixed(1)}</b><small class="tlfit ${cls}">${txt}</small></label>`;
       }).join('')}</div>` : '<p class="hint">No players loaded yet. Add them in the Players tab.</p>') +
     `<p class="hint">${picked > st.size ? `Too many for a ${st.size} draw: the top ${st.size} by OVR get in.` : `${st.size - Math.min(picked, st.size)} spots filled by computer players at ${TIERS[st.tier].label} level.`} Seeds go by OVR.</p></section>` +
     `<button type="button" class="btn huge" id="adCreate">Make the draw</button><button type="button" class="link" id="adCancel">Cancel</button>`;
@@ -599,20 +599,20 @@ function renderAdDraw(id) {
   const realLeft = done ? [] : last.flatMap(s => [s.a, s.b]).filter(i => ev.entrants[i].real && last.find(s => (s.a === i || s.b === i)).winner === undefined);
   $('adBody').innerHTML = `<section class="card"><h2>${esc(ev.name)}</h2>` +
     `<p class="hint">${tierLabel(ev.tier)} · ${surfaceLabel(ev.surface)}${ev.indoor ? ' · Indoor' : ''} · ${ev.size} players · ⭐ = real player</p>` +
-    (champ ? `<div class="adchamp">🏆 ${flagOf(champ.nation)} ${esc(champ.name)}${champ.real ? ` <small>(${esc(champ.owner || 'real player')})</small>` : ''}</div>` :
+    (champ ? `<div class="tlchamp">🏆 ${flagOf(champ.nation)} ${esc(champ.name)}${champ.real ? ` <small>(${esc(champ.owner || 'real player')})</small>` : ''}</div>` :
       (nextUp ? `<button type="button" class="btn huge" id="adNext">▶ Play Live: ${who(nextUp.a)} vs ${who(nextUp.b)}</button>` +
         `<button type="button" class="btn ghost" id="adTape">📊 Tale Of The Tape</button>` : '') +
       (cpuLeft ? `<button type="button" class="btn ghost" id="adCpu">⚡ Sim the ${cpuLeft} Computer-Only Match${cpuLeft === 1 ? '' : 'es'}</button>` : '') +
       `<p class="hint">${nextName}: matches are played live one at a time, and the score is only revealed when the match ends.</p>` +
       (realLeft.length ? `<p class="hint">Real players still in: ${realLeft.map(i => esc(ev.entrants[i].name)).join(', ')}</p>` : '')) +
-    `</section><div class="adbracket">${ev.rounds.map((round, r) =>
-      `<div class="adround"><h4>${roundName(round.length * 2)}</h4><div class="adms">${round.map((s, k) =>
-        `<div class="admatch${s.winner !== undefined ? ' click' : ''}" data-m="${r}-${k}">` +
+    `</section><div class="tlbracket">${ev.rounds.map((round, r) =>
+      `<div class="tlround"><h4>${roundName(round.length * 2)}</h4><div class="tlms">${round.map((s, k) =>
+        `<div class="tlmatch${s.winner !== undefined ? ' click' : ''}" data-m="${r}-${k}">` +
           `<div class="${shown(s) && s.winner === s.a ? 'won' : shown(s) ? 'lost' : ''}">${who(s.a)}</div>` +
           `<div class="${shown(s) && s.winner === s.b ? 'won' : shown(s) ? 'lost' : ''}">${who(s.b)}</div>` +
           (s.score && shown(s) ? `<small>${s.score}</small>` : '') +
-          (s.winner === undefined && r === ev.rounds.length - 1 ? `<button type="button" class="btn small ghost adtape" data-t="${k}">📊 Matchup</button><button type="button" class="btn small adlive${hasReal(ev, s) ? ' gold' : ''}" data-l="${k}">▶ ${s.live ? 'Resume' : 'Play Live'}</button>` : '') +
-          (s.replay ? `<button type="button" class="btn small ghost adwatch" data-w="${r}-${k}">▶ Watch Again</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
+          (s.winner === undefined && r === ev.rounds.length - 1 ? `<button type="button" class="btn small ghost tltape" data-t="${k}">📊 Matchup</button><button type="button" class="btn small tllive${hasReal(ev, s) ? ' gold' : ''}" data-l="${k}">▶ ${s.live ? 'Resume' : 'Play Live'}</button>` : '') +
+          (s.replay ? `<button type="button" class="btn small ghost tlwatch" data-w="${r}-${k}">▶ Watch Again</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
     `<button type="button" class="link" id="adBackList">All tournaments</button>`;
   // Play a match live: the score is saved only once it has been watched to the end. Then offer the next one.
   const live = k => {
@@ -639,14 +639,14 @@ function renderAdDraw(id) {
       { neutral: true, onDone: () => { s.watched = true; saveAdminEvent(ev); },
         onNext: nxt ? () => watch(...nxt) : null, onClose: () => renderAdDraw(id) });
   };
-  $('adBody').querySelector('.adbracket').onclick = e => {
-    const lv = e.target.closest('.adlive');
+  $('adBody').querySelector('.tlbracket').onclick = e => {
+    const lv = e.target.closest('.tllive');
     if (lv) { live(+lv.dataset.l); return; }
-    const tp = e.target.closest('.adtape');
+    const tp = e.target.closest('.tltape');
     if (tp) { const k = +tp.dataset.t; openMatchup(ev, ev.rounds[ev.rounds.length - 1][k], () => live(k)); return; }
-    const w = e.target.closest('.adwatch');
+    const w = e.target.closest('.tlwatch');
     if (w) { const [r, k] = w.dataset.w.split('-').map(Number); watch(r, k); return; }
-    const b = e.target.closest('.admatch.click');
+    const b = e.target.closest('.tlmatch.click');
     if (!b) return;
     const [r, k] = b.dataset.m.split('-').map(Number), s = ev.rounds[r][k];
     const W = ev.entrants[s.winner], L = ev.entrants[s.winner === s.a ? s.b : s.a];
@@ -655,7 +655,7 @@ function renderAdDraw(id) {
     openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
       `<h2 class="itop">${roundName(ev.rounds[r].length * 2)}</h2>` +
       `<p class="big center"><b>${flagOf(W.nation)} ${esc(W.name)}</b> d. ${flagOf(L.nation)} ${esc(L.name)}<br>${s.score}</p>` +
-      `<table class="adstats"><tr><td><b>${esc(W.name)}</b></td><th></th><td><b>${esc(L.name)}</b></td></tr>` +
+      `<table class="tlstats"><tr><td><b>${esc(W.name)}</b></td><th></th><td><b>${esc(L.name)}</b></td></tr>` +
       row('Aces', 'aces') + row('Double faults', 'df') + row('Winners', 'winners') + row('Unforced errors', 'ue') + row('Break points won', 'bp') + row('Points won', 'pts') + `</table>`);
     $('mx').onclick = closeModal;
   };

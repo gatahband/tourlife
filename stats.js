@@ -162,11 +162,11 @@ function openMatchStats(item, tab = 'stats') {
     ? sections.map(([title, rows]) => `<h3 class="ssec">${title} Stats</h3>${rows.map(statRow).join('')}`).join('')
     : '<p class="hint">Full stats are only recorded for matches played after this update.</p>';
   const storyHtml = story.map(p => `<p>${p}</p>`).join('') +
-    (adj ? `<div class="adj"><h3 class="ssec">Adjustment you worked on</h3>` +
+    (adj ? `<div class="tladj"><h3 class="ssec">Adjustment you worked on</h3>` +
       `<b>${adj.title}</b><p class="hint">${adj.desc}</p>${adjWhy ? `<div class="why">${adjWhy}</div>` : ''}` +
       `<div class="chips">${adj.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${((rec.gain ? totalGain(rec) : FOCUS_GAIN) * 100).toFixed(2)}%</b></span>`).join('')}</div></div>`
       : rec.focus ? '' : '<p class="hint">No adjustment picked yet.</p>') +
-    (rec.plan ? `<div class="adj"><h3 class="ssec">Game plans</h3>` +
+    (rec.plan ? `<div class="tladj"><h3 class="ssec">Game plans</h3>` +
       `<p><b>You:</b> ${planSummary(rec.plan)}</p><p><b>${esc(shortName(o))}:</b> ${planSummary(rec.oppPlan)}</p></div>` : '');
 
   openModal(

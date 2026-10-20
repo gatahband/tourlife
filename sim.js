@@ -34,12 +34,12 @@ function opponentPlan(a, rng) {
 const TIERS = {
   M15:    { label: 'M15',        name: 'ITF M15',        level: 46, sd: 5, prize: '$15,000',  points: [0, 1, 2, 4, 8, 15],             main: null, qual: null, home: 0.55 },
   M25:    { label: 'M25',        name: 'ITF M25',        level: 50, sd: 5, prize: '$25,000',  points: [0, 1, 4, 8, 16, 25],            main: null, qual: null, home: 0.5 },
-  CH75:   { label: 'CH 75',      name: 'Challenger 75',  level: 56, sd: 4.5, prize: '$82,000',  points: [0, 6, 12, 22, 44, 75],       main: 450, qual: 650, home: 0.25, qRounds: 2, qPoints: 4 },
-  CH125:  { label: 'CH 125',     name: 'Challenger 125', level: 59, sd: 4.5, prize: '$160,000', points: [0, 8, 16, 35, 64, 125],      main: 300, qual: 450, home: 0.22, qRounds: 2, qPoints: 6 },
-  ATP250: { label: 'ATP 250',    name: 'ATP 250',        level: 64, sd: 4,   prize: '$650,000', points: [0, 25, 50, 100, 165, 250],   main: 110, qual: 200, home: 0.12, qRounds: 2, qPoints: 12 },
-  ATP500: { label: 'ATP 500',    name: 'ATP 500',        level: 67, sd: 4,   prize: '$2.1M',    points: [0, 50, 100, 200, 330, 500],  main: 70,  qual: 140, home: 0.1,  qRounds: 2, qPoints: 20 },
-  M1000:  { label: 'Masters',    name: 'Masters 1000',   level: 70, sd: 3.5, prize: '$8.9M',    points: [10, 100, 200, 400, 650, 1000], main: 50, qual: 110, home: 0.1, qRounds: 2, qPoints: 25 },
-  GS:     { label: 'Grand Slam', name: 'Grand Slam',     level: 70, sd: 3.5, prize: '$50M',     points: [50, 200, 400, 800, 1300, 2000], main: 104, qual: 230, home: 0.08, qRounds: 3, qPoints: 25 },
+  CH75:   { label: 'CH 75',      name: 'Challenger 75',  level: 57, sd: 4.5, prize: '$82,000',  points: [0, 6, 12, 22, 44, 75],       main: 450, qual: 650, home: 0.25, qRounds: 2, qPoints: 4 },
+  CH125:  { label: 'CH 125',     name: 'Challenger 125', level: 61, sd: 4.5, prize: '$160,000', points: [0, 8, 16, 35, 64, 125],      main: 300, qual: 450, home: 0.22, qRounds: 2, qPoints: 6 },
+  ATP250: { label: 'ATP 250',    name: 'ATP 250',        level: 71.5, sd: 4,   prize: '$650,000', points: [0, 25, 50, 100, 165, 250],   main: 110, qual: 200, home: 0.12, qRounds: 2, qPoints: 12 },
+  ATP500: { label: 'ATP 500',    name: 'ATP 500',        level: 74, sd: 4,   prize: '$2.1M',    points: [0, 50, 100, 200, 330, 500],  main: 70,  qual: 140, home: 0.1,  qRounds: 2, qPoints: 20 },
+  M1000:  { label: 'Masters',    name: 'Masters 1000',   level: 76.5, sd: 3.5, prize: '$8.9M',    points: [10, 100, 200, 400, 650, 1000], main: 50, qual: 110, home: 0.1, qRounds: 2, qPoints: 25 },
+  GS:     { label: 'Grand Slam', name: 'Grand Slam',     level: 78, sd: 3.5, prize: '$50M',     points: [50, 200, 400, 800, 1300, 2000], main: 104, qual: 230, home: 0.08, qRounds: 3, qPoints: 25 },
 };
 const TIER_ORDER = ['GS', 'M1000', 'ATP500', 'ATP250', 'CH125', 'CH75', 'M25', 'M15'];
 const TIER_LEVEL = Object.fromEntries(Object.entries(TIERS).map(([k, t]) => [k, { mean: t.level, sd: t.sd }]));
@@ -315,7 +315,9 @@ function matchupRally(sty, w, ev, m) {
   return k;
 }
 
-const rollExec = (p, rng = Math.random) => clamp(1 + gauss(rng) * (0.6 - (attr(p, 'iq') - 50) * 0.004), -0.4, 2);
+// How well your plan comes off today: usually close to as planned, sometimes a strong day, sometimes a flat
+// one, never a total backfire. Smarter players are more consistent.
+const rollExec = (p, rng = Math.random) => clamp(1 + gauss(rng) * (0.28 - (attr(p, 'iq') - 50) * 0.002), 0.4, 1.6);
 
 // Plan execution multiplier for side i (older saved matches have none).
 const ex = (m, i) => (m.exec ? m.exec[i] : 1);
@@ -870,7 +872,7 @@ function gameMood(m, ps, s, rng) {
   }
   // A big lead breeds complacency; far behind, there's nothing to lose.
   for (const i of [0, 1]) if (g[i] - g[1 - i] >= 3) { m.nerves[i] -= 0.02; m.nerves[1 - i] += 0.035; }
-  if (rng() < 0.05) {
+  if (rng() < 0.025) { // the odd unexplained swing (rarer: most swings now come from pressure, leads and fatigue)
     const i = rng() < 0.5 ? 0 : 1, up = rng() < 0.4 + (attr(ps[i], 'mental') - 50) / 100;
     m.mo = clamp((m.mo || 0) + (i === 0 ? 1 : -1) * (up ? 0.05 : -0.05), -MO_MAX, MO_MAX);
     m.moments.push({ set: m.sets.length + 1, who: i, kind: up ? 'surge' : 'dip', label: up ? 'found another gear' : 'went off the boil', at: m.points.length - 1,

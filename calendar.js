@@ -160,7 +160,9 @@ const LEVELS = [
   { min: 63, name: 'Challenger level',     note: 'Winning M25s and competing at Challengers. Climb the ranking to get in.' },
   { min: 68, name: 'Top-200 player',       note: 'Winning Challengers and knocking on the door of the ATP Tour.' },
   { min: 73, name: 'ATP Tour player',      note: 'A top-100 level: main draws at ATP events and Grand Slams.' },
-  { min: 79, name: 'Elite',                note: 'Top-20 level. Deep runs at the biggest events.' },
+  { min: 78, name: 'Top-50 player',        note: 'Winning rounds at ATP events, with the odd deep run at a Masters or Slam.' },
+  { min: 83, name: 'Elite',                note: 'Top-20 level. Deep runs at the biggest events.' },
+  { min: 89, name: 'World-class',          note: 'Top-5 level: a contender for every big title.' },
 ];
 
 function levelOf(ovr) {

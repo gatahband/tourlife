@@ -977,6 +977,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
   m.sets.push(set);
   const loser = set.games[0] > set.games[1] ? 1 : 0;
   trigger(m, ps, loser, 'setLost', rng);
+  if (typeof ordersAfterSetLost === 'function') ordersAfterSetLost(m, ps, loser); // real players' match orders
   // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
   // and the higher the level, the more often it happens.
   const winner = 1 - loser;

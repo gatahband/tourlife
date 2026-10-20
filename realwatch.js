@@ -34,6 +34,7 @@ function watchRealMatch(rec, opts = {}) {
     `<button type="button" class="btn small ghost rwfs" id="rwFs">⛶ Full screen</button><div id="rwStage">` +
     (same ? '' : `<p class="hint center warnline">This match was played on an older version, so the replay may differ a little from the real result.</p>`) +
     `<table class="board" id="rwBoard"></table>` +
+    (neutral && ps.some(p => p.ordersNote) ? `<div class="rworders">${ps.filter(p => p.ordersNote).map(p => `<div><b>📋 ${flagOf(p.nation)} ${esc(p.name)}</b> ${esc(p.ordersNote)}</div>`).join('')}</div>` : '') +
     `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
     `<div class="seg" id="rwSpeed" style="grid-template-columns:repeat(3,1fr)">${[1, 2, 4].map(x => `<button type="button" data-s="${x}" class="${x === speed ? 'on' : ''}">${x}×</button>`).join('')}</div></div>` +
@@ -86,6 +87,12 @@ function watchRealMatch(rec, opts = {}) {
     const done = [];
     for (let si = 0; si < sets.length && !closed; si++) {
       let inGame = 0;
+      // A player's match orders kicking in (e.g. "Change It Up" after losing a set).
+      for (const mo of m.moments.filter(x => x.kind === 'orders' && x.set === si + 1)) {
+        $('rwCall').textContent = `📋 ${shortName(ps[mo.who])}'s orders: ${mo.label}`;
+        ReplayCourt.banner('PLAN SWITCH!');
+        await new Promise(r => setTimeout(r, 2500));
+      }
       for (let j = 0; j < sets[si].length && !closed; j++) {
         const pt = sets[si][j];
         while (paused && !closed) await new Promise(r => setTimeout(r, 120));

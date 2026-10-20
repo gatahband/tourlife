@@ -363,7 +363,7 @@ function realEntrant(x) {
   const p = x.player;
   return { name: p.name, nation: p.nation, attrs: { ...p.attrs }, temperament: p.temperament, fav: p.fav, worst: p.worst,
     hand: p.hand || 'right', backhand: p.backhand || 'two', plan: planOf(p), formSd: 0.02, seed: null,
-    real: true, owner: x.contact || '', pid: x.id };
+    real: true, owner: x.contact || '', pid: x.id, orders: p.orders || null };
 }
 
 // Seed lines for an 8/16/32 draw (size/4 seeds); everyone else is drawn at random.
@@ -420,7 +420,9 @@ function realMatchRec(m, side, ps, round) {
 function startSlot(ev, slot) {
   if (!slot.live) {
     const seed = (Math.random() * 4294967296) >>> 0;
-    slot.live = { seed, ps: JSON.parse(JSON.stringify([ev.entrants[slot.a], ev.entrants[slot.b]])),
+    const ps = JSON.parse(JSON.stringify([ev.entrants[slot.a], ev.entrants[slot.b]]));
+    ps.forEach((p, i) => applyOrders(p, ps[1 - i])); // each real player's match orders for this opponent
+    slot.live = { seed, ps,
       ev: { tier: ev.tier, surface: ev.surface, indoor: !!ev.indoor, weather: ev.weather || null, nation: ev.nation, city: ev.name },
       bestOf: ev.tier === 'GS' && !ev.exhibition ? 5 : 3 };
   }

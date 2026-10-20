@@ -1101,3 +1101,11 @@ h2.ctr { text-align: center; }
 .ov .labels.vert input { width: 12px; height: 12px; margin: 0 3px 0 0; }
 .ov.ovright .fsbtn { font-size: 13px; padding: 2px 8px; }
 @media (max-width: 560px) { .ov.ovleft, .ov.ovright { width: auto; } .ov .seg.vert button { font-size: 10px; padding: 3px 6px; } }
+
+/* Match orders */
+.ordq { font-size: 16px; margin: 16px 0 6px; }
+.ordseg button { padding: 12px 6px; font-size: 14px; white-space: normal; line-height: 1.2; }
+.ordseg button.coach { color: #ffd60a; } .ordseg button.coach.on { color: #1a1300; background: #ffd60a; }
+@media (max-width: 560px) { .ordseg { grid-template-columns: 1fr 1fr !important; } }
+.rworders { margin: 6px 0 8px; padding: 8px 12px; border: 1px solid rgba(255,214,10,.4); border-radius: 10px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.rworders b { color: #ffd60a; margin-right: 6px; }

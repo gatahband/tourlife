@@ -233,8 +233,11 @@ function openShare() {
     `<p class="hint">So we know whose player it is. Add a phone or email if you want to hear about results.</p>` +
     `<button type="button" class="btn huge" id="shSend">${c.sentAt ? `Send ${esc(p.name)} again` : `Join with ${esc(p.name)}`}</button>` +
     `<p class="big center" id="shSendMsg">${c.sentAt ? `✅ ${esc(p.name)} joined on ${new Date(c.sentAt).toLocaleDateString()}. Sending again updates your player.` : ''}</p>` +
+    `<button type="button" class="btn ghost" id="shOrders">📋 My Match Orders${p.orders ? ' ✓' : ''}</button>` +
+    `<p class="hint center">Optional: tell your player how to play each type of opponent. Then send again.</p>` +
     `<p class="hint center">That's it. Keep playing as normal.</p>`);
   $('mx').onclick = closeModal;
+  $('shOrders').onclick = () => openOrders(openShare);
   $('shSend').onclick = async () => {
     const btn = $('shSend'), msg = $('shSendMsg'), who = $('shContact').value.trim();
     btn.disabled = true; btn.textContent = 'Sending…'; msg.textContent = '';

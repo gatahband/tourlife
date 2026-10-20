@@ -4,7 +4,18 @@ const ROUND_LONG = { Q1: 'first qualifying round', Q2: 'second qualifying round'
 const NEXT_ROUND = { Q1: 'next qualifying round', Q2: 'next qualifying round', Q3: 'main draw', R32: 'second round', R16: 'quarter-finals', QF: 'semi-finals', SF: 'final' };
 const ORDINAL = ['first', 'second', 'third'];
 
-const pickOne = list => list[Math.floor(Math.random() * list.length)];
+// Picks a line, avoiding the ones used most recently for the same kind of sentence (remembered on this device),
+// so match stories don't keep repeating themselves.
+function pickOne(list) {
+  if (list.length < 2) return list[0];
+  const key = String(list[0]).replace(/[^a-z]/gi, '').slice(0, 24);
+  let mem = {}; try { mem = JSON.parse(localStorage.getItem('tourlife.storyRecent') || '{}'); } catch {}
+  const recent = mem[key] || [], fresh = list.map((_, i) => i).filter(i => !recent.includes(i));
+  const i = (fresh.length ? fresh : list.map((_, j) => j))[Math.floor(Math.random() * (fresh.length || list.length))];
+  mem[key] = [i, ...recent].slice(0, Math.min(list.length - 1, 4));
+  try { localStorage.setItem('tourlife.storyRecent', JSON.stringify(mem)); } catch {}
+  return list[i];
+}
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const times = n => n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`;
@@ -46,19 +57,23 @@ function openingLine(rec, ev, o) {
 }
 
 function surfaceLine(rec, ev, player) {
+  // Only once per event (in the first match's story): the surface doesn't change between rounds.
+  const e = typeof current !== 'undefined' && current.entry;
+  if (e && e.matches && e.matches.indexOf(rec) > 0) return '';
   const name = SURFACE_NOUN[ev.surface];
   const verb = ev.surface === 'hard' ? 'are' : 'is';
   if (ev.surface === player.fav) return rec.won
-    ? pickOne([`${cap(name)} ${verb} your favourite surface, and it showed.`, `You looked at home on ${name}.`])
-    : `Even on your favourite ${name}, there was no way through.`;
+    ? pickOne([`${cap(name)} ${verb} your favourite surface, and it showed.`, `You looked at home on ${name}.`, `Your best surface did its part.`,
+      `Your game fits ${name}, and the opener proved it.`, `Comfortable footing from the first point.`, ''])
+    : pickOne([`Even on your favourite ${name}, there was no way through.`, `Your best surface couldn't save this one.`, `Not even familiar ${name} helped today.`]);
   if (ev.surface === player.worst) return rec.won
-    ? `${cap(name)} ${verb} your least favourite surface, which makes this one sweeter.`
-    : `${cap(name)} ${verb} your least favourite surface, and it told.`;
-  if (ev.indoor) return 'Under the roof there was no wind, so it came down to clean hitting.';
+    ? pickOne([`${cap(name)} ${verb} your least favourite surface, which makes this one sweeter.`, `A win on your weakest surface counts double.`, `You found a way on a surface that doesn't suit you.`])
+    : pickOne([`${cap(name)} ${verb} your least favourite surface, and it told.`, `Your weakest surface showed its teeth.`, `You never quite settled on ${name}.`]);
+  if (ev.indoor) return pickOne(['Under the roof there was no wind, so it came down to clean hitting.', 'Indoors, with perfect conditions, there were no excuses.', '']);
   return {
-    clay: pickOne(['The clay slowed everything down. Rallies were long and physical.', 'On the slow clay, every point had to be earned.']),
-    grass: pickOne(['On the fast grass, points were short and the serve mattered most.', 'The grass kept the ball low and the points quick.']),
-    hard: pickOne(['The hard court rewarded clean, aggressive hitting.', 'A true bounce on the hard court made for honest tennis.']),
+    clay: pickOne(['The clay slowed everything down. Rallies were long and physical.', 'On the slow clay, every point had to be earned.', 'The red dirt made it a test of legs and patience.', '']),
+    grass: pickOne(['On the fast grass, points were short and the serve mattered most.', 'The grass kept the ball low and the points quick.', 'Low bounces on grass rewarded first-strike tennis.', '']),
+    hard: pickOne(['The hard court rewarded clean, aggressive hitting.', 'A true bounce on the hard court made for honest tennis.', 'The hard court gave neither player anywhere to hide.', '']),
   }[ev.surface];
 }
 
@@ -66,12 +81,15 @@ function setsLine(rec, oppName) {
   const lines = [];
   const [s1, s2, s3] = rec.sets;
   const won = s => s.games[0] > s.games[1];
-  if (s1.tb) lines.push(won(s1) ? `You edged a first-set tiebreak ${s1.tb[0]}-${s1.tb[1]}.` : `You lost a first-set tiebreak ${s1.tb[0]}-${s1.tb[1]}.`);
+  const tb1 = s1.tb && `${s1.tb[0]}-${s1.tb[1]}`;
+  if (s1.tb) lines.push(won(s1) ? pickOne([`You edged a first-set tiebreak ${tb1}.`, `The first set went your way in a tiebreak, ${tb1}.`, `A ${tb1} tiebreak gave you the first set.`])
+    : pickOne([`You lost a first-set tiebreak ${tb1}.`, `The first set slipped away in a tiebreak, ${tb1}.`, `${oppName} nicked the first-set tiebreak ${s1.tb[1]}-${s1.tb[0]}.`]));
   else lines.push(won(s1) ? `You took the opener ${setScore(s1)}.` : `You dropped the opener ${setScore(s1)}.`);
 
   const lopsided = s => Math.max(...s.games) === 6 && Math.min(...s.games) <= 1;
   if (lopsided(s2)) lines.push(won(s2) ? `Then you raced through the second set ${setScore(s2)}.` : `The second set got away from you, ${setScore(s2)}.`);
-  else if (s2.tb) lines.push(`The second set went to a tiebreak, and ${won(s2) ? 'you held your nerve' : `${oppName} held his`}.`);
+  else if (s2.tb) lines.push(won(s2) ? pickOne(['The second set went to a tiebreak, and you held your nerve.', 'You came through a tense second-set tiebreak.', 'Another tiebreak in the second, and this time you were better.'])
+    : pickOne([`The second set went to a tiebreak, and ${oppName} held his.`, `${oppName} edged the second-set tiebreak.`, 'The second-set tiebreak went the other way.']));
   else lines.push(won(s2) ? `You won the second ${setScore(s2)}.` : `${oppName} took the second ${setScore(s2, 1)}.`);
 
   if (s3) {
@@ -86,14 +104,14 @@ function breakLine(rec, oppName) {
   const { bpWon: w, bpChances: c, bpSaved: sv, bpFaced: f } = rec.stats;
   let a;
   if (c === 0) a = `You never got a look at ${oppName}'s serve: no break points all match.`;
-  else if (w / c >= 0.5) a = `You were sharp on return, converting ${w} of ${c} break points.`;
+  else if (w / c >= 0.5) a = pickOne([`You were sharp on return, converting ${w} of ${c} break points.`, `${w} of ${c} break points converted: clinical.`, `When the chances came, you took them: ${w} of ${c}.`, `Your return games did damage, with ${w} breaks from ${c} chances.`]);
   else if (c >= 6 && w / c < 0.3) a = `You had chances but took just ${w} of ${c} break points${rec.won ? ', and it nearly cost you' : ''}.`;
   else if (w === 0) a = `You couldn't break, despite ${plural(c, 'chance')}.`;
   else a = `You broke ${times(w)} from ${plural(c, 'chance')}.`;
   let b;
   if (f === 0) b = "You didn't face a single break point.";
   else if (sv === f) b = f === 1 ? 'You saved the only break point you faced.' : `You saved all ${f} break points you faced.`;
-  else if (f >= 3) b = `You saved ${sv} of ${f} break points.`;
+  else if (f >= 3) b = pickOne([`You saved ${sv} of ${f} break points.`, `${sv} of ${f} break points saved on your serve.`, `Under pressure on serve, you saved ${sv} of ${f}.`, `${oppName} had ${f} looks at your serve; you saved ${sv}.`]);
   else b = `You were broken ${times(f - sv)}.`;
   return `${a} ${b}`;
 }
@@ -106,12 +124,13 @@ function extrasLine(rec, oppName) {
   if (rec.won && mine < theirs) lines.push(`You won fewer points (${mine} to ${theirs}) but won the ones that mattered.`);
   if (!rec.won && mine > theirs) lines.push(`You actually won more points (${mine} to ${theirs}). Tennis can be cruel.`);
   const dp = rec.stats.dropPlayed || 0, dw = rec.stats.dropWon || 0;
-  if (dp >= 2) lines.push(dw / dp >= 0.6 ? `Your drop shot was a weapon: ${dw} of ${dp} worked.`
+  if (dp >= 2) lines.push(dw / dp >= 0.6 ? pickOne([`Your drop shot was a weapon: ${dw} of ${dp} worked.`, `${dw} of ${dp} drop shots came off. Your touch was there.`, `The drop shot paid off, ${dw} times out of ${dp}.`])
     : dw / dp <= 0.35 ? `The drop shot let you down: only ${dw} of ${dp} came off.` : `You won ${dw} of ${dp} drop shots.`);
   const odp = rec.oppStats.dropPlayed || 0;
-  if (odp >= 3) lines.push(`${oppName} kept dragging you forward with ${odp} drop shots.`);
-  if (rec.stats.netcords) lines.push(`A net cord trickled over to win you a point${rec.stats.netcords > 1 ? ', more than once' : ''}.`);
-  if (rec.oppStats.netcords) lines.push(`${oppName} got a lucky net cord.`);
+  if (odp >= 3) lines.push(pickOne([`${oppName} kept dragging you forward with ${odp} drop shots.`, `${odp} drop shots from ${oppName} kept you running forward.`, `${oppName} leaned on the drop shot, ${odp} times in all.`, '']));
+  // Net cords are luck, not the story: mention them now and then.
+  if (rec.stats.netcords && Math.random() < 0.4) lines.push(pickOne([`A net cord trickled over to win you a point${rec.stats.netcords > 1 ? ', more than once' : ''}.`, 'The tape was kind to you at least once.']));
+  else if (rec.oppStats.netcords && Math.random() < 0.4) lines.push(pickOne([`${oppName} got a lucky net cord.`, `The net cord helped ${oppName} at least once.`]));
   if (rec.opponent.hand === 'left') lines.push(rec.won ? `You handled the lefty serve well.` : `The left-hander's serve out wide on the ad side was a problem all day.`);
   return lines.join(' ');
 }
@@ -125,7 +144,7 @@ const MIND = {
   },
   stoic: {
     dip: n => `Even the 🧊 ice cracked a little in the ${n} set after a dropped serve.`,
-    calm: '🧊 Ice-cool throughout. Nothing rattled you.',
+    calm: () => pickOne(['🧊 Ice-cool throughout. Nothing rattled you.', '🧊 Calm from start to finish.', '🧊 Never flustered, whatever the score.', '']),
   },
   moping: {
     dip: (n, label) => label.includes('slump')
@@ -152,7 +171,7 @@ function mindLine(rec, player, oppName) {
   const lines = [];
   if (dip && t.dip) lines.push(t.dip(ORDINAL[dip.set - 1], dip.label));
   if (surge && t.surge) lines.push(t.surge(ORDINAL[surge.set - 1]));
-  if (!dip && !surge) lines.push(t.calm);
+  if (!dip && !surge) lines.push(typeof t.calm === 'function' ? t.calm() : t.calm);
   const theirs = rec.moments.find(x => x.who === 'opponent' && x.kind !== 'adapt');
   if (theirs && theirs.text) lines.push(`In the ${ORDINAL[theirs.set - 1]} set, ${oppName} ${moodText(theirs, false)}.`);
   else if (theirs && OPP_MIND[theirs.label]) lines.push(OPP_MIND[theirs.label](oppName, ORDINAL[theirs.set - 1]));
@@ -184,15 +203,15 @@ function planLine(rec, oppName) {
   // Plans meeting answers.
   const adapt = rec.moments.find(x => x.kind === 'adapt');
   if (adapt) lines.unshift(adapt.who === 'opponent'
-    ? `After the ${ORDINAL[adapt.set - 2]} set, ${oppName} found answers to your game plan.`
-    : `After the ${ORDINAL[adapt.set - 2]} set, you found answers to ${oppName}'s game plan.`);
+    ? pickOne([`After the ${ORDINAL[adapt.set - 2]} set, ${oppName} found answers to your game plan.`, `${oppName} worked out your plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the ${ORDINAL[adapt.set - 1]} set, ${oppName} had read your game.`])
+    : pickOne([`After the ${ORDINAL[adapt.set - 2]} set, you found answers to ${oppName}'s game plan.`, `You worked out ${oppName}'s plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the ${ORDINAL[adapt.set - 1]} set, you had ${oppName} figured out.`]));
   return lines.filter(Boolean).slice(0, 2).join(' ');
 }
 
 function closingLine(rec) {
-  if (!rec.won) return pickOne(['Time to regroup and get back on the practice court.', 'Take the lessons and move on to the next one.']);
+  if (!rec.won) return pickOne(['Time to regroup and get back on the practice court.', 'Take the lessons and move on to the next one.', 'Back to work. There will be another week.', 'Shake it off. The tour moves fast.', '']);
   if (rec.round === 'F') return '🏆 The title is yours.';
-  return `Next up: the ${NEXT_ROUND[rec.round]}.`;
+  return pickOne([`Next up: the ${NEXT_ROUND[rec.round]}.`, `On to the ${NEXT_ROUND[rec.round]}.`, `The ${NEXT_ROUND[rec.round]} is next.`]);
 }
 
 // Returns paragraphs (HTML strings) for one match record.

@@ -652,11 +652,11 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const sty = m.styles || [];
   let w;
   // ITF-level average (serve 50): ~180 km/h first, ~145 km/h second. Elite servers (90) reach ~210+.
-  const kmh1 = Math.round(140 + A.attrs.serve * 0.8 + SP.kmh + gauss(rng) * 6 + (call && call.id === 'big' && call.side === s ? 8 : 0));
+  const kmh1 = Math.round(140 + A.attrs.serve * 0.8 + SP.kmh + gauss(rng) * 6 + (call && call.side === s && ['big', 'body'].includes(callFx(call).serve) ? 8 : 0));
   pt.kmh1 = kmh1;
   // A let (serve clips the tape and lands in) is replayed; it only shows on court.
   if (rng() < 0.006) pt.let = true;
-  if ((call && call.id === 'safe' && call.side === s) || rng() < a) { // "make the first serve" always lands it
+  if ((call && call.side === s && ['safe', 'kick'].includes(callFx(call).serve)) || rng() < a) { // "make the first serve" calls always land it
     st.firstIn++;
     st.sp1 += kmh1; st.sp1n++; st.spMax = Math.max(st.spMax, kmh1);
     w = rng() < w1 ? s : r;
@@ -703,8 +703,9 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   }
   // Tactics: a drop shot or a net approach replaces the normal rally outcome.
   // Serve-and-volley and chip-and-charge calls always come in.
-  const rush = call && (call.id === 'snv' && call.side === s || call.id === 'chip' && call.side === r) ? call.side : null;
-  const tactic = rush !== null ? tryNet(m, ps, ev, s, rng, rush) : tryDrop(m, ps, ev, s, rng) || tryNet(m, ps, ev, s, rng);
+  const fx = callFx(call);
+  const rush = call && (fx.rush === 'serve' && call.side === s || fx.rush === 'return' && call.side === r) ? call.side : null;
+  const tactic = rush !== null ? tryNet(m, ps, ev, s, rng, rush) : tryDrop(m, ps, ev, s, rng, fx.drop ? call.side : undefined) || tryNet(m, ps, ev, s, rng);
   if (tactic && tactic.retrieved) Object.assign(pt, tactic.pt);
   else if (tactic) {
     w = tactic.w;
@@ -840,9 +841,9 @@ function dropSuccess(m, D, O, ev) {
   return clamp(0.5 + touch * 0.006 - retrieval(m, O) * 0.0035 + DROP_SURFACE[ev.surface], 0.2, 0.8);
 }
 
-function tryDrop(m, ps, ev, s, rng) {
+function tryDrop(m, ps, ev, s, rng, forced) {
   const order = rng() < 0.5 ? [s, 1 - s] : [1 - s, s];
-  const by = order.find(i => rng() < dropRate(ps[i], ev));
+  const by = forced !== undefined ? forced : order.find(i => rng() < dropRate(ps[i], ev)); // a drop-shot call always plays it
   if (by === undefined) return null;
   const o = 1 - by;
   const st = m.stats[by];
@@ -1117,6 +1118,13 @@ const FAMILY_CALLS = {
     ret: [cChip, CALL('dropret', '🤏', 'Throw In A Drop', { drops: 'often', returnPos: 'normal' }, (A, B) => 0.004 * rel(A, 'iq') - 0.002 * rel(B, 'stam')), cDeep],
   },
 };
+// What each call actually does on its point (beyond the plan change and the edge): the serve it hits, whether
+// you rush the net, where you stand to return, a forced drop shot, or moonballs. Used by the engine and the court.
+const CALL_FX = { big: { serve: 'big' }, body: { serve: 'body' }, bodyin: { serve: 'body', rush: 'serve' }, wide1: { serve: 'wide' }, plus1: { serve: 'wide' },
+  safe: { serve: 'safe' }, run: { serve: 'safe' }, kick: { serve: 'kick' }, kick2: { serve: 'kick' }, snv: { rush: 'serve' }, surprise: { rush: 'serve' },
+  pace: { drop: true }, chip: { rush: 'return' }, slicein: { rush: 'return' }, attack: { ret: 'inside' }, dtl: { ret: 'inside' }, cut: { ret: 'inside' },
+  deep: { ret: 'deep' }, block: { ret: 'deep' }, extend: { ret: 'deep' }, moon: { moon: true }, dropret: { drop: true }, neut: {} };
+const callFx = c => (c && CALL_FX[c.id]) || {};
 // The three calls this player gets on serve or return.
 function callsFor(p, side) {
   const st = typeof styleOf === 'function' ? styleOf(p).name : null, fam = FAMILY_CALLS[CALL_FAMILY[st]];

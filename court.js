@@ -273,8 +273,9 @@ function createCourt() {
   // The current point's big-point call (set by plan), so positions follow it.
   let curCall = null;
   function returnDepth(side) {
-    if (curCall && curCall.side === side && curCall.id === 'attack') return BASE - 0.5;
-    if (curCall && curCall.side === side && curCall.id === 'deep') return BASE + 3.6;
+    const cfx = curCall && curCall.side === side && typeof CALL_FX !== 'undefined' ? CALL_FX[curCall.id] || {} : {};
+    if (cfx.ret === 'inside') return BASE - 0.5;
+    if (cfx.ret === 'deep') return BASE + 3.6;
     // Strong returners crowd the baseline; defenders give themselves time.
     const st = prof[side].style, styleR = prof[side].trait === 'Return-Oriented' ? -0.6 : st === 'Defensive Grinder' || st === 'Counterpuncher' ? 0.6 : 0;
     const rp = (prof[side].plan || {}).returnPos;
@@ -1150,6 +1151,8 @@ function createCourt() {
     }
     const ss = shotStyle(side);
     // Lobs: mostly a defensive shot (defenders a bit more), rare from neutral.
+    // A moonball call: high, heavy balls all point (some go up as lobs).
+    if (k === 'rally' && curCall && curCall.side === side && typeof CALL_FX !== 'undefined' && (CALL_FX[curCall.id] || {}).moon) { if (Math.random() < 0.3) { shot.lob = true; return out('LOB!'); } return out('TOPSPIN!'); }
     const lobOdds = c.defensive ? 0.12 * (defender ? 1.3 : 1) + (ss.lob || 0) : (surface === 'clay' ? 0.03 : 0.015) + (ss.lob || 0) / 3;
     if (k === 'rally' && Math.random() < lobOdds) { shot.lob = true; return out('LOB!'); }
     const sliceOdds = (wing === 'BH' ? (surface === 'grass' ? 0.38 : 0.2) : 0.04) + (c.defensive ? 0.2 : 0)
@@ -1193,7 +1196,10 @@ function createCourt() {
     switch (shot.kind) {
       case 'ace': case 'serve': {
         const side = (deuce ? -1 : 1) * d;
-        const wide = shot.kind === 'ace' ? (Math.random() < 0.5 ? 0.35 : 3.8) : rand(0.6, 3.6);
+        // A serve call aims it: into the body (at the returner) or out wide.
+        const aim = curCall && curCall.side === shot.by && typeof CALL_FX !== 'undefined' ? (CALL_FX[curCall.id] || {}).serve : null;
+        const wide = aim === 'body' && recvPos ? clamp(Math.abs(recvPos.x) + rand(-0.4, 0.3), 0.6, 3.4) : aim === 'wide' ? rand(3.3, 3.95)
+          : shot.kind === 'ace' ? (Math.random() < 0.5 ? 0.35 : 3.8) : rand(0.6, 3.6);
         return { x: side * wide, y: -d * rand(shot.kind === 'ace' ? 5.4 : 3, 6.1) };
       }
       case 'winner': case 'volley': {
@@ -1290,14 +1296,15 @@ function createCourt() {
       const call = nameShot(shot, myWing, faults ? pt.kmh2 : pt.kmh1,
         { defensive: defensive[hitter], oppAtNet: atNet(recv) && !isServe, cornered, overhead: shot.smash || shot.bounceSmash, chasingLob: chasingLob[hitter], chip, k: k - faults }, hitter);
       // Big-point calls show on the callout: the big serve, the chip, the serve-and-volley.
-      if (isServe && pt.call && pt.call.side === hitter && !faults && pt.call.id === 'big') call.type += ' · BIG SERVE';
+      { const sv = isServe && pt.call && pt.call.side === hitter && !faults && typeof CALL_FX !== 'undefined' ? (CALL_FX[pt.call.id] || {}).serve : null;
+        if (sv) call.type += { big: ' · BIG SERVE', body: ' · BODY SERVE', wide: ' · OUT WIDE', kick: ' · KICK SERVE', safe: ' · FIRST SERVE IN' }[sv] || ''; }
       // Serve-and-volley: the server follows the serve straight in.
       const rushIn = isServe && pt.net && pt.net.style === 'snv' && pt.net.by === hitter;
       if (rushIn) call.type += ' · S&V';
       if (shot.kind === 'drop' && !final && !shot.dug) shot.popped = true;
       if (shot.kind === 'underarm') fromH = 0.55;
       // Second serves are kicked: a higher, longer bounce that pushes the returner back.
-      const kick = isServe && faults > 0;
+      const kick = isServe && (faults > 0 || !!(pt.call && pt.call.side === hitter && typeof CALL_FX !== 'undefined' && (CALL_FX[pt.call.id] || {}).serve === 'kick'));
       if (kick) call.type += ' · KICK';
       let fl = FLIGHT[shot.popped ? 'popped' : kick ? 'kick' : call.flight || 'topspin'];
       // Shot depth shows in the flight: moonballs loop high and kick up; deep drives skim low and fast.

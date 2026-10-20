@@ -299,7 +299,7 @@ function renderTournaments(player) {
   }).join('');
   $('hStyles').innerHTML = ranked.map((s, i) => {
     const pct = Math.round(s.score * 100);
-    return `<li class="${i === 0 ? 'best' : ''}"><span>${s.name}</span><div class="bar"><div style="width:${pct}%"></div></div><span>${pct}%</span></li>`;
+    return `<li class="${i === 0 ? 'best' : ''}" tabindex="0"><span>${s.name}</span><div class="stip">${styleTip(s)}</div><div class="bar"><div style="width:${pct}%"></div></div><span>${pct}%</span></li>`;
   }).join('');
 
   renderOvr(player);

@@ -120,6 +120,17 @@ const STYLES = [
   { name: 'Creative Shotmaker',      w: [ 1, 0,-1, 2,-1,-1, 3], desc: 'Disguise, improvisation and the unexpected as everyday weapons.' },
 ];
 
+// Hover text for a playstyle: what it does, which stats build it, and how it plays by default.
+function styleTip(s) {
+  const st = STYLES.find(x => x.name === s.name) || s, lab = i => ATTRS[i][1];
+  const idx = st.w ? st.w.map((v, i) => [v, i]) : [];
+  const key = idx.filter(([v]) => v >= 2).sort((a, b) => b[0] - a[0]).map(([, i]) => lab(i));
+  const light = idx.filter(([v]) => v <= -1).sort((a, b) => a[0] - b[0]).map(([, i]) => lab(i));
+  const lean = [st.agg === 'aggressive' && 'aggressive', st.agg === 'patient' && 'patient', st.spin === 'flat' && 'flat hitting', st.spin === 'topspin' && 'heavy topspin'].filter(Boolean);
+  return `<b>${st.name}</b>${st.desc}` + (st.w ? `<em>Built on: ${key.join(', ') || 'a mix of everything'}</em>` : '<em>Built on: every stat evenly, with no big weakness</em>') +
+    (light.length ? `<em>Matters less: ${light.join(', ')}</em>` : '') + (lean.length ? `<em>Plays ${lean.join(', ')} by default</em>` : '');
+}
+
 const SURFACE_BONUS = {
   clay:  { 'Heavy-Topspin Baseliner': 0.15, 'Defensive Grinder': 0.05 },
   grass: { 'Serve-and-Volley': 0.1, 'Serve-Dominant': 0.05 },
@@ -237,7 +248,7 @@ function render() {
   $('topDesc').textContent = best.desc;
   $('styles').innerHTML = ranked.map((s, i) => {
     const pct = Math.round(s.score * 100);
-    return `<li class="${i === 0 ? 'best' : ''}"><span>${s.name}</span>` +
+    return `<li class="${i === 0 ? 'best' : ''}" tabindex="0"><span>${s.name}</span><div class="stip">${styleTip(s)}</div>` +
       `<div class="bar"><div style="width:${pct}%"></div></div><span>${pct}%</span></li>`;
   }).join('');
 }

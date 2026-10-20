@@ -42,7 +42,8 @@ const fullSave = () => { const p = readJSON(SAVE_KEY); return { v: 1, kind: 'car
 function playerCard() {
   const p = readJSON(SAVE_KEY), c = loadCareer();
   return { v: 1, kind: 'player', player: p, sig: fingerprint(p),
-    summary: { week: c.week, rank: currentRank(c), bestRank: c.bestRank || null, points: rankingPoints(c), wins: c.wins, losses: c.losses, titles: c.titles.length, ovr: +overall(p).toFixed(1) } };
+    summary: { week: c.week, rank: currentRank(c), bestRank: c.bestRank || null, points: rankingPoints(c), wins: c.wins, losses: c.losses, titles: c.titles.length, ovr: +overall(p).toFixed(1),
+      season: (() => { try { return seasonNumbers(c); } catch { return null; } })() } }; // for the admin's pre-match comparison
 }
 
 // Import: becomes a saved career and is loaded. A player card starts a fresh career with that player.

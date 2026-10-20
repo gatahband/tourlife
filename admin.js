@@ -414,6 +414,56 @@ function realMatchRec(m, side, ps, round) {
   };
 }
 
+// --- Pre-match comparison (for the stream) ---------------------------------------------------------
+// Both players side by side: head-to-head in admin events, this season's numbers, the record and the build.
+function adminH2H(ev, a, b) {
+  const key = e => e.pid || e.name, ka = key(a), kb = key(b);
+  let wa = 0, wb = 0;
+  for (const x of adminEvents()) for (const round of x.rounds) for (const s of round) {
+    if (s.winner === undefined) continue;
+    const A = x.entrants[s.a], B = x.entrants[s.b], W = x.entrants[s.winner];
+    if (![key(A), key(B)].includes(ka) || ![key(A), key(B)].includes(kb)) continue;
+    if (key(W) === ka) wa++; else wb++;
+  }
+  return [wa, wb];
+}
+function openMatchup(ev, slot, onPlay) {
+  const ps = [ev.entrants[slot.a], ev.entrants[slot.b]];
+  const sum = p => (p.pid && (adminPlayers().find(x => x.id === p.pid) || {}).summary) || null;
+  const S = ps.map(sum), N = S.map(s => (s && s.season) || null);
+  const [ha, hb] = adminH2H(ev, ps[0], ps[1]);
+  const cell = (vals, fmt, better = 'high') => {
+    const ok = vals.map(v => typeof v === 'number' && isFinite(v));
+    const lead = ok[0] && ok[1] && vals[0] !== vals[1] ? ((vals[0] > vals[1]) === (better === 'high') ? 0 : 1) : -1;
+    return vals.map((v, i) => `<td class="${lead === i ? 'lead' : ''}">${ok[i] ? fmt(v) : '–'}</td>`);
+  };
+  const row = (label, vals, fmt, better) => { const [l, r] = cell(vals, fmt, better); return `<tr>${l}<th>${label}</th>${r}</tr>`; };
+  const pct = v => `${(v * 100).toFixed(1)}%`;
+  const rec = s => s && s.season ? `${s.season.wins}–${s.season.matches - s.season.wins}` : '–';
+  const head = p => `<div class="mu-p"><div class="mu-flag">${flagOf(p.nation)}</div><b>${esc(p.name)}</b>` +
+    `<small>${p.real ? '⭐ Real player' : '🤖 Computer'} · ${esc(styleOf(p).name)}</small><span class="mu-ovr">${overall(p).toFixed(1)} <i>OVR</i></span></div>`;
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">📊 Tale Of The Tape</h2>` +
+    `<p class="hint center">${esc(ev.name)} · ${roundName(ev.rounds[ev.rounds.length - 1].length * 2)} · ${surfaceLabel(ev.surface)}${ev.indoor ? ' · Indoor' : ''}</p>` +
+    `<div class="mu-heads">${head(ps[0])}<div class="mu-vs">VS</div>${head(ps[1])}</div>` +
+    `<div class="mu-h2h">Head-To-Head <b>${ha}–${hb}</b>${ha + hb ? '' : ' <small>(first meeting)</small>'}</div>` +
+    `<table class="mu-tab"><tbody>` +
+    `<tr><td colspan="3" class="mu-sec">This Season</td></tr>` +
+    `<tr><td class="${S[0] && S[1] && S[0].season && S[1].season && S[0].season.winRate !== S[1].season.winRate ? (S[0].season.winRate > S[1].season.winRate ? 'lead' : '') : ''}">${rec(S[0])}</td><th>Record</th><td class="${S[0] && S[1] && S[0].season && S[1].season && S[0].season.winRate !== S[1].season.winRate ? (S[1].season.winRate > S[0].season.winRate ? 'lead' : '') : ''}">${rec(S[1])}</td></tr>` +
+    SEASON_STATS.map(([k, label, kind]) => row(label, N.map(n => n ? n[k] : null), v => fmtStat(v, kind))).join('') +
+    `<tr><td colspan="3" class="mu-sec">Career</td></tr>` +
+    row('Ranking', S.map(s => s && s.rank ? s.rank : null), v => `#${v}`, 'low') +
+    row('Best Ranking', S.map(s => s && s.bestRank ? s.bestRank : null), v => `#${v}`, 'low') +
+    row('Titles', S.map(s => s ? s.titles : null), v => v) +
+    row('Career Win Rate', S.map(s => s && s.wins + s.losses ? s.wins / (s.wins + s.losses) : null), pct) +
+    `<tr><td colspan="3" class="mu-sec">The Build</td></tr>` +
+    ATTRS.map(([k, label]) => row(label, ps.map(p => p.attrs[k]), v => v.toFixed(1))).join('') +
+    `</tbody></table>` +
+    (N.some(n => !n) && ps.some(p => p.real) ? `<p class="hint center">– means no numbers yet: computer players, or a player who sent their character before season stats were included.</p>` : '') +
+    (onPlay ? `<button type="button" class="btn huge" id="muPlay">▶ Play Live</button>` : ''), { wide: true });
+  $('mx').onclick = closeModal;
+  if ($('muPlay')) $('muPlay').onclick = () => { closeModal(); onPlay(); };
+}
+
 // Matches are played one at a time, live. Starting a match fixes its seed and a snapshot of both players
 // (so closing and reopening shows the very same match, with no re-rolls); the result is only saved when
 // the match has been watched to the end. Computer-only matches can be simmed instantly.
@@ -503,7 +553,8 @@ function renderAdDraw(id) {
   $('adBody').innerHTML = `<section class="card"><h2>${esc(ev.name)}</h2>` +
     `<p class="hint">${tierLabel(ev.tier)} · ${surfaceLabel(ev.surface)}${ev.indoor ? ' · Indoor' : ''} · ${ev.size} players · ⭐ = real player</p>` +
     (champ ? `<div class="adchamp">🏆 ${flagOf(champ.nation)} ${esc(champ.name)}${champ.real ? ` <small>(${esc(champ.owner || 'real player')})</small>` : ''}</div>` :
-      (nextUp ? `<button type="button" class="btn huge" id="adNext">▶ Play Live: ${who(nextUp.a)} vs ${who(nextUp.b)}</button>` : '') +
+      (nextUp ? `<button type="button" class="btn huge" id="adNext">▶ Play Live: ${who(nextUp.a)} vs ${who(nextUp.b)}</button>` +
+        `<button type="button" class="btn ghost" id="adTape">📊 Tale Of The Tape</button>` : '') +
       (cpuLeft ? `<button type="button" class="btn ghost" id="adCpu">⚡ Sim the ${cpuLeft} Computer-Only Match${cpuLeft === 1 ? '' : 'es'}</button>` : '') +
       `<p class="hint">${nextName}: matches are played live one at a time, and the score is only revealed when the match ends.</p>` +
       (realLeft.length ? `<p class="hint">Real players still in: ${realLeft.map(i => esc(ev.entrants[i].name)).join(', ')}</p>` : '')) +
@@ -513,7 +564,7 @@ function renderAdDraw(id) {
           `<div class="${shown(s) && s.winner === s.a ? 'won' : shown(s) ? 'lost' : ''}">${who(s.a)}</div>` +
           `<div class="${shown(s) && s.winner === s.b ? 'won' : shown(s) ? 'lost' : ''}">${who(s.b)}</div>` +
           (s.score && shown(s) ? `<small>${s.score}</small>` : '') +
-          (s.winner === undefined && r === ev.rounds.length - 1 ? `<button type="button" class="btn small adlive${hasReal(ev, s) ? ' gold' : ''}" data-l="${k}">▶ ${s.live ? 'Resume' : 'Play Live'}</button>` : '') +
+          (s.winner === undefined && r === ev.rounds.length - 1 ? `<button type="button" class="btn small ghost adtape" data-t="${k}">📊 Matchup</button><button type="button" class="btn small adlive${hasReal(ev, s) ? ' gold' : ''}" data-l="${k}">▶ ${s.live ? 'Resume' : 'Play Live'}</button>` : '') +
           (s.replay ? `<button type="button" class="btn small ghost adwatch" data-w="${r}-${k}">▶ Watch Again</button>` : '') + `</div>`).join('')}</div></div>`).join('')}</div>` +
     `<button type="button" class="link" id="adBackList">All tournaments</button>`;
   // Play a match live: the score is saved only once it has been watched to the end. Then offer the next one.
@@ -529,6 +580,7 @@ function renderAdDraw(id) {
   };
   if (!done) {
     if ($('adNext')) $('adNext').onclick = () => live(nextUpK);
+    if ($('adTape')) $('adTape').onclick = () => openMatchup(ev, last[nextUpK], () => live(nextUpK));
     if ($('adCpu')) $('adCpu').onclick = () => { simCpuMatches(ev); saveAdminEvent(ev); renderAdDraw(id); };
   }
   $('adBackList').onclick = () => renderAdmin();
@@ -543,6 +595,8 @@ function renderAdDraw(id) {
   $('adBody').querySelector('.adbracket').onclick = e => {
     const lv = e.target.closest('.adlive');
     if (lv) { live(+lv.dataset.l); return; }
+    const tp = e.target.closest('.adtape');
+    if (tp) { const k = +tp.dataset.t; openMatchup(ev, ev.rounds[ev.rounds.length - 1][k], () => live(k)); return; }
     const w = e.target.closest('.adwatch');
     if (w) { const [r, k] = w.dataset.w.split('-').map(Number); watch(r, k); return; }
     const b = e.target.closest('.admatch.click');

@@ -1139,3 +1139,17 @@ h2.ctr { text-align: center; }
 .dayevopts button { background: var(--card); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font: inherit; padding: 10px; cursor: pointer; text-align: center; display: grid; gap: 2px; }
 .dayevopts button:hover:not(:disabled) { border-color: var(--accent); } .dayevopts button:disabled { opacity: .45; cursor: not-allowed; }
 .dayevopts small { color: var(--muted); font-size: 12px; } .dayevopts em { font-style: normal; font-size: 11px; color: #64d2ff; }
+
+/* Tale of the tape (admin pre-match) */
+.adtape { display: block; width: 100%; margin-top: 6px; padding: 5px; font-size: 12px; }
+.mu-heads { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin: 10px 0; }
+.mu-p { text-align: center; display: grid; gap: 2px; min-width: 0; } .mu-p b { font-size: 18px; overflow-wrap: anywhere; }
+.mu-flag { font-size: 30px; } .mu-p small { color: var(--muted); font-size: 12px; }
+.mu-ovr { font-size: 22px; font-weight: 800; color: #ffd60a; } .mu-ovr i { font-style: normal; font-size: 11px; color: var(--muted); }
+.mu-vs { font-weight: 900; font-size: 20px; color: var(--muted); }
+.mu-h2h { text-align: center; margin: 4px 0 10px; font-size: 15px; } .mu-h2h b { font-size: 20px; margin-left: 6px; } .mu-h2h small { color: var(--muted); }
+.mu-tab { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.mu-tab td, .mu-tab th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; font-size: 14px; }
+.mu-tab th { color: var(--muted); font-weight: 600; font-size: 13px; width: 40%; }
+.mu-tab td.lead { color: var(--good); font-weight: 800; background: rgba(48,209,88,.08); }
+.mu-tab .mu-sec { text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ffd60a; padding-top: 14px; border-bottom: 0; }

@@ -148,6 +148,10 @@ const FEATURES = [
     'In ATP 250 and bigger main draws, a 75+ player gets changeovers: the match pauses after game 1 and then every two games.',
     'Keep playing, take your coach\'s advice or a counter, or adjust your plan right there on court.',
     'Tap "Don\'t Stop At Changeovers This Match" if you\'d rather play straight through.'] },
+  { id: 'study', when: c => typeof studyUnlocked === 'function' && studyUnlocked(c), icon: '📚', title: 'Study Room Unlocked', slides: [
+    "You've made it to the ATP Tour. The Study Room is open: find it on Home under Join Real Tournaments.",
+    'Pick any two real ATP players, a surface, the conditions and the match length, then watch them play each other.',
+    'Each player uses their real playstyle and game plan, so you can see how their points are built and how they adjust to each other.'] },
   { id: 'pc', when: c => c.badges && c.badges.elite, icon: '🏛️', title: 'Performance Center Unlocked', slides: [
     'You earned the Elite Program: the Performance Center is open, in the Prepare card on the draw screen.',
     'Premium preparation: an elite fitness camp, an intelligence package, a specialist sparring partner and technical breakthroughs. Big items take two of your three slots.',

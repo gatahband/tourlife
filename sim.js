@@ -36,10 +36,10 @@ const TIERS = {
   M25:    { label: 'M25',        name: 'ITF M25',        level: 50, sd: 5, prize: '$25,000',  points: [0, 1, 4, 8, 16, 25],            main: null, qual: null, home: 0.5 },
   CH75:   { label: 'CH 75',      name: 'Challenger 75',  level: 57, sd: 4.5, prize: '$82,000',  points: [0, 6, 12, 22, 44, 75],       main: 450, qual: 650, home: 0.25, qRounds: 2, qPoints: 4 },
   CH125:  { label: 'CH 125',     name: 'Challenger 125', level: 61, sd: 4.5, prize: '$160,000', points: [0, 8, 16, 35, 64, 125],      main: 300, qual: 450, home: 0.22, qRounds: 2, qPoints: 6 },
-  ATP250: { label: 'ATP 250',    name: 'ATP 250',        level: 71.5, sd: 4,   prize: '$650,000', points: [0, 25, 50, 100, 165, 250],   main: 110, qual: 200, home: 0.12, qRounds: 2, qPoints: 12 },
-  ATP500: { label: 'ATP 500',    name: 'ATP 500',        level: 74, sd: 4,   prize: '$2.1M',    points: [0, 50, 100, 200, 330, 500],  main: 70,  qual: 140, home: 0.1,  qRounds: 2, qPoints: 20 },
-  M1000:  { label: 'Masters',    name: 'Masters 1000',   level: 76.5, sd: 3.5, prize: '$8.9M',    points: [10, 100, 200, 400, 650, 1000], main: 50, qual: 110, home: 0.1, qRounds: 2, qPoints: 25 },
-  GS:     { label: 'Grand Slam', name: 'Grand Slam',     level: 78, sd: 3.5, prize: '$50M',     points: [50, 200, 400, 800, 1300, 2000], main: 104, qual: 230, home: 0.08, qRounds: 3, qPoints: 25 },
+  ATP250: { label: 'ATP 250',    name: 'ATP 250',        level: 73.5, sd: 4,   prize: '$650,000', points: [0, 25, 50, 100, 165, 250],   main: 110, qual: 200, home: 0.12, qRounds: 2, qPoints: 12 },
+  ATP500: { label: 'ATP 500',    name: 'ATP 500',        level: 76, sd: 4,   prize: '$2.1M',    points: [0, 50, 100, 200, 330, 500],  main: 70,  qual: 140, home: 0.1,  qRounds: 2, qPoints: 20 },
+  M1000:  { label: 'Masters',    name: 'Masters 1000',   level: 78.5, sd: 3.5, prize: '$8.9M',    points: [10, 100, 200, 400, 650, 1000], main: 50, qual: 110, home: 0.1, qRounds: 2, qPoints: 25 },
+  GS:     { label: 'Grand Slam', name: 'Grand Slam',     level: 80, sd: 3.5, prize: '$50M',     points: [50, 200, 400, 800, 1300, 2000], main: 104, qual: 230, home: 0.08, qRounds: 3, qPoints: 25 },
 };
 const TIER_ORDER = ['GS', 'M1000', 'ATP500', 'ATP250', 'CH125', 'CH75', 'M25', 'M15'];
 const TIER_LEVEL = Object.fromEntries(Object.entries(TIERS).map(([k, t]) => [k, { mean: t.level, sd: t.sd }]));
@@ -354,6 +354,56 @@ function quirksOf(p) {
   const n = h % 100 < 35 ? 0 : h % 100 < 80 ? 1 : 2, a = (h >>> 8) % QUIRKS.length, b = (a + 1 + ((h >>> 16) % (QUIRKS.length - 1))) % QUIRKS.length;
   return [QUIRKS[a], QUIRKS[b]].slice(0, n);
 }
+// What the coach reads about an opponent: settings to change, most important first, each with the reason.
+// Reads compare the opponent with their own average (at tour level everyone's stats are high), plus their plan,
+// their weaker wing and the surface. Your plan following a read pays off on court (readHits); how many reads you're told depends on your coach (coachPlan).
+function matchReads(o, ev) {
+  const op = planOf(o), r = k => rel(o, k), g = wingGap(o), out = [];
+  const add = (key, val, why, w) => out.push({ key, val, why, w });
+  if (op.returnPos === 'deep') { add('net', 'often', 'They return from far back: serve and come forward.', 3); add('drops', 'often', 'Their deep position leaves the drop shot open.', 2.5); }
+  if (g > 0.15) add('wing', 'bh', 'Their backhand is the weaker wing.', 3);
+  else if (g < -0.1) add('wing', 'fh', 'Their forehand is the weaker wing.', 3);
+  if (r('serve') <= -3) add('returnPos', 'inside', "Their serve is the weakest part of their game: step in and attack it.", 2.8);
+  else if (r('serve') >= 3 || op.serve === 'big') add('returnPos', 'deep', 'Big serve: stand back and get it in play.', 2.6);
+  if (r('ret') >= 3) add('serve', 'safe', 'Elite returner: make first serves rather than go for broke.', 2.2);
+  else if (r('ret') <= -3) add('serve', 'big', 'Their return is a weakness: go after your first serve.', 2.4);
+  if (op.spin === 'flat') add('spin', 'topspin', 'Flat hitters hate high, heavy balls.', 2.5);
+  else if (op.spin === 'topspin') add('aggression', 'aggressive', 'Heavy spin needs time: take the ball early.', 2.2);
+  if (r('stam') >= 3 || op.aggression === 'patient') add('aggression', 'aggressive', "Don't get dragged into their long rallies.", 2.3);
+  else if (r('stam') <= -3) add('aggression', 'patient', 'Their stamina is a weakness: make the points long.', 2.3);
+  if (r('ground') >= 3 && op.aggression === 'aggressive') { add('aggression', 'patient', "Don't trade power with them: absorb and redirect.", 2.2); add('depth', 'deep', 'Keep it deep so they can\'t step in.', 1.8); }
+  if (r('net') >= 3 || op.net === 'often') add('net', 'rarely', 'They are dangerous at the net: keep them back and pass.', 2);
+  else if (r('net') <= -3) add('drops', 'often', 'Bring them forward: the net is not their place.', 2);
+  if (r('mental') <= -3) add('pressure', 'broke', 'They get tight on big points: go for it.', 1.5);
+  else if (r('mental') >= 3) add('pressure', 'safe', 'They are ice-cold on big points: make them earn it.', 1.4);
+  if (ev.surface === 'grass') add('net', 'often', 'Grass rewards coming forward.', 1);
+  if (ev.surface === 'clay') add('spin', 'topspin', 'Clay rewards heavy spin.', 1);
+  // One read per setting (the most important).
+  const seen = new Set();
+  return out.sort((x, y) => y.w - x.w).filter(x => !seen.has(x.key) && seen.add(x.key));
+}
+// How many of the opponent's reads your plan exploits (your plans only). Their effect fades as they adjust.
+function readHits(A, B, ev) {
+  if (!A || !A.isPlayer || !B) return 0;
+  const pl = { ...planOf(A), ...advPlan(A, B) };
+  return matchReads(B, ev).filter(x => x.w >= 1.4 && pl[x.key] === x.val).length;
+}
+// Does your plan walk into what this opponent is known to be good at? Each one costs points (your plans only;
+// computer players are judged by the adapting system instead). Reads are relative to the opponent's own game.
+function strengthHits(A, B) {
+  if (!A || !A.isPlayer || !B) return [];
+  const pl = { ...planOf(A), ...advPlan(A, B) }, op = planOf(B), r = k => rel(B, k), g = wingGap(B), hits = [];
+  if ((r('net') >= 3 || op.net === 'often') && pl.drops === 'often') hits.push('drops into a great mover at the net');
+  if (r('ground') >= 2 && r('ret') >= 2 && pl.net === 'often') hits.push('rushing the net against a great passer');
+  if (r('ret') >= 3 && pl.serve === 'big') hits.push('big first serves into an elite returner');
+  if (r('serve') >= 3 && pl.returnPos === 'inside') hits.push('standing in against a huge serve');
+  if (r('ground') >= 3 && op.aggression === 'aggressive' && pl.aggression === 'aggressive') hits.push('trading power with a power hitter');
+  if ((r('stam') >= 3 || op.aggression === 'patient') && pl.aggression === 'patient') hits.push('grinding against a grinder');
+  if (op.spin === 'flat' && pl.spin === 'flat') hits.push('feeding pace to a flat hitter');
+  if (op.spin === 'topspin' && pl.depth === 'high') hits.push('moonballing a heavy-spin hitter');
+  if ((pl.wing === 'bh' && g < -0.1) || (pl.wing === 'fh' && g > 0.15)) hits.push('attacking their stronger wing');
+  return hits;
+}
 // Does A's plan play into one of B's hidden strengths?
 function quirkHits(A, B) {
   const qs = quirksOf(B);
@@ -466,7 +516,9 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
     + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch) // advanced plan (coach unlocks)
     + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
-    - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length); // walking into a hidden strength
+    - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength
+    - 0.012 * (Math.min(4, strengthHits(A, B).length) - Math.min(4, strengthHits(B, A).length)) // walking into a known strength
+    + 0.012 * (Math.min(4, readHits(A, B, ev)) * clamp(m.exec ? m.exec[s] : 1, 0, 1.3) - Math.min(4, readHits(B, A, ev)) * clamp(m.exec ? m.exec[r] : 1, 0, 1.3)); // exploiting a known weakness
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;
@@ -544,10 +596,11 @@ const SPIN_VS = { topspin: { clay: 0.006, hard: 0.003, grass: 0 }, flat: { grass
 function spinEdge(p, o, ev) {
   const sp = planOf(p).spin, os = planOf(o).spin;
   let e = 0;
-  if (sp === 'flat') e = 0.0012 * (p.attrs.ground - 55) + SPIN_SURFACE.flat[ev.surface] + (ev.indoor ? 0.003 : 0);
-  if (sp === 'topspin') e = 0.0008 * (p.attrs.stam - 52) + SPIN_SURFACE.topspin[ev.surface] - (ev.indoor ? 0.002 : 0);
-  if (sp === 'topspin' && os === 'flat') e += SPIN_VS.topspin[ev.surface] + 0.0006 * (55 - o.attrs.ground);
-  if (sp === 'flat' && os === 'topspin') e += SPIN_VS.flat[ev.surface] + (ev.indoor ? 0.003 : 0) + 0.0006 * (52 - o.attrs.stam);
+  // Relative to each player's own game and to the opponent, so it means the same at every level.
+  if (sp === 'flat') e = 0.0012 * rel(p, 'ground') + 0.0006 * (p.attrs.ground - o.attrs.stam) + SPIN_SURFACE.flat[ev.surface] + (ev.indoor ? 0.003 : 0);
+  if (sp === 'topspin') e = 0.0008 * rel(p, 'stam') + 0.0005 * (p.attrs.stam - o.attrs.ground) + SPIN_SURFACE.topspin[ev.surface] - (ev.indoor ? 0.002 : 0);
+  if (sp === 'topspin' && os === 'flat') e += SPIN_VS.topspin[ev.surface] - 0.0006 * rel(o, 'ground');
+  if (sp === 'flat' && os === 'topspin') e += SPIN_VS.flat[ev.surface] + (ev.indoor ? 0.003 : 0) - 0.0006 * rel(o, 'stam');
   return e;
 }
 
@@ -557,9 +610,10 @@ function rallyEdge(p, o, ev) {
   return sp + rallyStyle(p, o, pl, op);
 }
 function rallyStyle(p, o, pl, op) {
-  if (pl.aggression === 'aggressive') return 0.0014 * (p.attrs.ground - 55) - 0.0008 * (o.attrs.stam - 50);
-  if (pl.aggression === 'patient') return 0.0011 * (p.attrs.stam - 50) + 0.0009 * (attr(p, 'iq') - 50) - 0.002
-    + 0.0008 * (50 - o.attrs.ground) + (op.aggression === 'aggressive' ? 0.0012 * (55 - o.attrs.ground) : 0);
+  // Relative: your groundstrokes against their legs (aggressive), your legs and smarts against their hitting (patient).
+  if (pl.aggression === 'aggressive') return 0.0014 * rel(p, 'ground') + 0.0009 * (p.attrs.ground - o.attrs.stam) - 0.0008 * rel(o, 'stam');
+  if (pl.aggression === 'patient') return 0.0011 * rel(p, 'stam') + 0.0009 * rel(p, 'iq') + 0.0008 * (p.attrs.stam - o.attrs.ground) - 0.002
+    - 0.0008 * rel(o, 'ground') + (op.aggression === 'aggressive' ? -0.0012 * rel(o, 'ground') + 0.003 : 0);
   return 0;
 }
 
@@ -575,12 +629,12 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   let w2 = clamp((p - a0 * w1) / ((1 - a0) * (1 - df)), 0.2, 0.75);
   // Serve plan: big = fewer in but more damage (worth it with a big serve); safe = the reverse.
   const a = clamp(a0 + SP.da, 0.4, 0.85);
-  if (sp.serve === 'big') w1 += (0.03 + (A.attrs.serve - 50) * 0.0015 - (B.attrs.ret - 50) * 0.0006) * ex(m, s);
+  if (sp.serve === 'big') w1 += (0.03 + rel(A, 'serve') * 0.0015 + (A.attrs.serve - B.attrs.ret) * 0.0008 - rel(B, 'ret') * 0.001) * ex(m, s);
   if (sp.serve === 'safe') w1 -= 0.03 - (A.attrs.mental - 50) * 0.0005;
   // Return position: deep blunts big first serves but hands over second-serve points; inside does the opposite.
   const bigness = Math.max(0, A.attrs.serve - 50);
   if (rp.returnPos === 'deep') { w1 -= (0.012 + bigness * 0.0008) * ex(m, r); w2 += 0.03; }
-  if (rp.returnPos === 'inside') { w1 += 0.02 + bigness * 0.001; w2 -= (0.035 + (B.attrs.ret - 50) * 0.001 + Math.max(0, 50 - A.attrs.serve) * 0.0008) * ex(m, r); }
+  if (rp.returnPos === 'inside') { w1 += 0.02 + Math.max(0, rel(A, 'serve')) * 0.002; w2 -= (0.035 + rel(B, 'ret') * 0.001 + (B.attrs.ret - A.attrs.serve) * 0.0008 - rel(A, 'serve') * 0.0008) * ex(m, r); }
   // Rally style applies to the points that become rallies.
   const edge = 0.8 * (rallyEdge(A, B, ev) * ex(m, s) - rallyEdge(B, A, ev) * ex(m, r));
   w1 = clamp(w1 + edge, 0.3, 0.95);

@@ -480,33 +480,17 @@ function checkInHtml(p) {
 // --- Coach: full scouting report and a counter-plan --------------------------------------
 
 // The plan your coach would pick against this opponent, here.
+// What the coach passes on: the opponent's reads (see matchReads in sim.js), limited to the settings your coach has unlocked.
+function coachReads(o, ev, me) {
+  const lv = typeof teamLevel === 'function' ? teamLevel(current.career, 'coach') : 0;
+  return matchReads(o, ev).filter(x => { const gp = GAME_PLAN.find(q => q.key === x.key); return !gp || !gp.coach || lv >= gp.coach; });
+}
+// How many reads each coach level gives: none without a coach, one from a club coach, all from the Master.
+const COACH_READS = [0, 1, 3, 5, 99];
 function coachPlan(o, ev, me) {
-  const a = o.attrs, op = planOf(o), mine = planOf(me);
-  const fast = ev.surface === 'grass' || ev.indoor;
-  return {
-    serve: a.ret >= 58 ? 'safe' : a.ret <= 46 || me.attrs.serve >= 60 ? 'big' : 'balanced',
-    returnPos: a.serve >= 60 || op.serve === 'big' ? 'deep' : a.serve <= 46 ? 'inside' : 'normal',
-    aggression: a.ground <= 46 ? 'patient' : a.stam >= 58 || op.aggression === 'patient' ? 'aggressive' : mine.aggression,
-    spin: op.spin === 'flat' && !fast ? 'topspin' : op.spin === 'topspin' && fast ? 'flat' : ev.surface === 'clay' ? 'topspin' : mine.spin,
-    net: a.ground <= 48 || ev.surface === 'grass' ? 'often' : a.ground >= 60 ? 'rarely' : 'sometimes',
-    drops: a.stam <= 48 || a.net <= 46 || ev.surface === 'clay' ? 'often' : a.net >= 60 ? 'rarely' : 'sometimes',
-    underarm: op.returnPos === 'deep' && me.attrs.iq >= 55 ? 'rarely' : 'never',
-    // Advanced settings, when your coach is good enough to unlock them.
-    ...advCoach(o, ev, me),
-  };
+  const n = COACH_READS[typeof teamLevel === 'function' ? teamLevel(current.career, 'coach') : 0] || 0;
+  return { ...DEFAULT_PLAN, ...planOf(me), ...Object.fromEntries(coachReads(o, ev, me).slice(0, n).map(x => [x.key, x.val])) };
 }
-function advCoach(o, ev, me) {
-  const lv = teamLevel(current.career, 'coach') >= 4 ? 4 : 0, mine = planOf(me), a = o.attrs, g = wingGap(o);
-  const fast = ev.surface === 'grass' || ev.indoor, hot = typeof wxOf === 'function' && wxOf(ev).heat > 1.15;
-  return {
-    wing: lv >= 2 ? (g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral') : mine.wing,
-    depth: lv >= 2 ? (ev.surface === 'clay' && (planOf(o).aggression === 'aggressive' || a.ground >= 60) && planOf(o).net !== 'often' ? 'high'
-      : me.attrs.ground >= 62 && !(ev.surface === 'clay') ? 'deep' : 'balanced') : mine.depth,
-    energy: lv >= 3 ? (hot && me.attrs.stam < 62 ? 'conserve' : me.attrs.stam >= 66 && !hot ? 'hustle' : 'normal') : mine.energy,
-    pressure: lv >= 3 ? (a.mental < 52 ? 'broke' : a.mental > 66 ? 'safe' : 'standard') : mine.pressure,
-  };
-}
-
 // Video analysis: the full read on an opponent (not limited by your coach's level).
 const advCoachFull = o => { const g = wingGap(o); return { wing: g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral' }; };
 // Before a rematch: the counter-plan from your video analysis of the last loss.

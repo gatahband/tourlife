@@ -9,6 +9,7 @@ const BADGES = [
   { id: 'legend_face', icon: '👑', name: 'Facing Greatness', desc: 'Play a match against a legend (a former world No. 1).', match: r => r.opponent && isLegend(r.opponent) },
   { id: 'legend_beat', icon: '🐐', name: 'Legend Slayer', desc: 'Beat a legend (a former world No. 1).', match: r => r.won && r.opponent && isLegend(r.opponent) },
   { id: 'legend_watch', icon: '🍿', name: 'Clash of Legends', desc: 'Watch a whole match between two legends from your draw.', career: c => !!c.legendWatched },
+  { id: 'study', icon: '📚', name: 'Into The Study Room', desc: 'Play your first ATP-level tournament. Unlocks the Study Room.', career: c => typeof studyUnlocked === 'function' && studyUnlocked(c) },
   { id: 'rival', icon: '⚔️', name: 'Settling Scores', desc: 'Beat one of your rivals.', match: (r, c) => r.won && r.opponent && r.opponent.id && isRival(c, r.opponent.id) },
   { id: 'clutch', icon: '🧊', name: 'Ice in the Veins', desc: 'Win 3 big-point calls in one match.', match: r => r.calls && r.calls.won >= 3 },
   { id: 'student', icon: '🎓', name: 'Student of the Game', desc: 'Watch a whole match.', match: r => (r.watched || 0) >= 0.98 },

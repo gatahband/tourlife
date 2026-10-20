@@ -306,6 +306,7 @@ function renderTournaments(player) {
   renderRivals(c);
   renderBadges(c);
   homeSums(c, player);
+  if (typeof renderStudyBtn === 'function') renderStudyBtn(c);
   if (typeof featureIntro === 'function') featureIntro(c, player);
   // How tired you are, right above the week's events (check it before you pick or enter one).
   $('hFatigue').innerHTML = fatigueBar(player.fatigue || 0);
@@ -621,7 +622,11 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
     (hasPrep(current.entry, 'scout') ? scoutDetailHtml(opp) : '') +
     (r.tendencies.length ? `<h4 class="sh4">Their Habits</h4><div class="chips">${r.tendencies.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '') +
     (lvl >= 2 ? `<h4 class="sh4">Ratings (Your Coach's Read)</h4>${coachCompare(me, opp, near, lvl >= 3)}` : '');
-  const beat = r.counters.length ? `<ol class="beat">${r.counters.map(x => `<li>${x}</li>`).join('')}</ol>` : '<p class="hint">No obvious holes. Play your game.</p>';
+  // How to beat them: nothing without a coach; better coaches see more (the Master adds the full scouting counters).
+  const reads = coach ? coachReads(opp, ev, me).slice(0, COACH_READS[lvl]) : [];
+  const beatLines = [...reads.map(x => x.why), ...(lvl >= 4 ? r.counters : [])];
+  const beat = !coach ? '<p class="hint">🔒 Hire a coach to learn how to beat them. Better coaches see more.</p>'
+    : beatLines.length ? `<ol class="beat">${beatLines.map(x => `<li>${x}</li>`).join('')}</ol>` : '<p class="hint">No obvious holes. Play your game.</p>';
 
   // Your plan, with the coach's suggestion beside each setting.
   const rec = coach ? coachPlan(opp, ev, me) : null, theirs = planOf(opp);
@@ -647,7 +652,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const facts = `<div class="keyfacts">` +
     `<div><span>💪</span><b>Strength</b><em>${r.strengths[0] || 'Nothing stands out'}</em></div>` +
     `<div><span>🩹</span><b>Weakness</b><em>${r.weaknesses[0] || 'No clear hole'}</em></div>` +
-    `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : esc(short(r.counters[0] || 'Play your game.'))}</em></div></div>`;
+    `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : 'Hire a coach for a read on them'}</em></div></div>`;
   const pe = prepEdges(current.entry, opp);
   const prepTags = pe.tags.length ? `<div class="preptags">${pe.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '';
   const mo = moraleData ? `${moraleWord(moraleData.edge, moraleData.cap)[0]} · ${moraleData.edge >= 0 ? '+' : '−'}${(Math.abs(moraleData.edge) * 100).toFixed(1)}% on points` : '';
@@ -659,7 +664,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
     (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +
     fold('d-cond', '🌤️ Conditions & Matchup', `${wx}${myStyle} vs ${oppStyle}`, weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
     fold('d-know', '🔍 Know Your Opponent', `${r.strengths.length} strength${r.strengths.length === 1 ? '' : 's'} · ${r.weaknesses.length} weakness${r.weaknesses.length === 1 ? '' : 'es'}${scouted ? ` · ${qn} hidden` : ''}`, know) +
-    fold('d-beat', '🎯 How To Beat Them', esc(short(r.counters[0] || 'No obvious holes')), beat) +
+    fold('d-beat', '🎯 How To Beat Them', coach ? esc(short(beatLines[0] || 'No obvious holes')) : '🔒 Needs a coach', beat) +
     fold('d-plan', '📋 Your Game Plan', coach && diffs.length ? `Coach suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'}` : esc(short(planSummary({ ...DEFAULT_PLAN, ...plan }))),
       videoPlanHtml(c, opp, plan) + note + table + tbNote + btns) + `</div>`;
 }
@@ -1045,9 +1050,9 @@ async function playOneSet(animate = true) {
     ps[op].prepared = b && mine[b.key] === b.val ? b : null; }
   // Copying the coach's plan word for word is textbook, and smart opponents read textbook plans faster.
   if (hasTeam(current.career, 'coach')) {
-    const cp = coachPlan(ps[op], ev, ps[me]), mine = planOf(ps[me]), lv = ps[me].advLevel;
-    // How close to the coach's plan, from 0 (your own) to 1 (a straight copy). Changing one setting isn't enough.
-    const keys = GAME_PLAN.filter(g => !(g.coach && lv < g.coach)), same = keys.filter(g => cp[g.key] === mine[g.key]).length / keys.length;
+    const mine = { ...planOf(ps[me]), ...advPlan(ps[me], ps[op]) }, reads = coachReads(ps[op], ev, ps[me]).slice(0, COACH_READS[ps[me].advLevel] || 0);
+    // How closely you followed the coach's reads, from 0 (your own) to 1 (a straight copy of a full read).
+    const same = reads.length >= 3 ? reads.filter(x => mine[x.key] === x.val).length / reads.length : 0;
     ps[me].textbook = clamp((same - 0.6) / 0.4, 0, 1);
   } else ps[me].textbook = 0; // which advanced plan settings your coach has unlocked
   // Your plan as the set began (a changeover can change it mid-set; a replay must start from the same one).

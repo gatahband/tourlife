@@ -419,7 +419,8 @@ const adaptRate = () => ADAPT_RATE[advTier] || 1;
 // Legends (former world No. 1s) adjust far more often, and are much harder to adjust to. A textbook plan
 // is read almost at once; only an original plan holds up.
 const isLegend = p => !!(p && p.atpRank && typeof LEGENDS !== 'undefined' && LEGENDS.has(p.name));
-const legendAdapt = (ps, who, target) => (isLegend(ps[who]) ? 3 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) ? 0.35 : 1);
+// Only in matches against you: between computer players, legends play to their rating.
+const legendAdapt = (ps, who, target) => (isLegend(ps[who]) && ps[target].isPlayer ? 3 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.35 : 1);
 // What the adjuster changes depends on the plan they're facing (its most distinctive setting).
 function adaptTo(m, ps, who, target, set) {
   const pl = planOf(ps[target]), ad = advPlan(ps[target], ps[who]);
@@ -434,8 +435,8 @@ function adaptTo(m, ps, who, target, set) {
     pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
   ].filter(Boolean);
   const pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
-  m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) ? 0.45 : 1);
-  if (isLegend(ps[who]) && m.exec[who] !== undefined) m.exec[who] = Math.min(1.6, m.exec[who] + 0.15); // a legend's answer also sharpens their own game
+  m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.45 : 1);
+  if (isLegend(ps[who]) && ps[target].isPlayer && m.exec[who] !== undefined) m.exec[who] = Math.min(1.6, m.exec[who] + 0.15); // a legend's answer also sharpens their own game
   if (pick.key === 'wing') { m.adj = m.adj || {}; m.adj[ps[who].name] = { wing: ad.wing }; }
   m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set }];
   m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
@@ -507,7 +508,7 @@ function handEdge(A, B, ad) {
 
 function pointProb(m, ps, ev, s, clutch, ad = false) {
   const r = 1 - s, A = ps[s], B = ps[r];
-  let p = 0.62 + 0.004 * (serveRating(A, ev.surface) - returnRating(B, ev.surface))
+  let p = 0.62 + 0.0034 * (serveRating(A, ev.surface) - returnRating(B, ev.surface))
     + 0.0018 * (attr(A, 'iq') - attr(B, 'iq')) + handEdge(A, B, ad)
     + SURFACE_SERVE[ev.surface] + comfort(A, ev) - comfort(B, ev)
     + m.form[s] - m.form[r] + m.mood[s] - m.mood[r]
@@ -1024,7 +1025,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
     if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
       && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0)) * legendAdapt(ps, trail, 1 - trail)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
     // A legend checks your plan early in every set, ahead or behind.
-    const lg = isLegend(ps[0]) ? 0 : isLegend(ps[1]) ? 1 : -1;
+    const lg = isLegend(ps[0]) && ps[1].isPlayer ? 0 : isLegend(ps[1]) && ps[0].isPlayer ? 1 : -1;
     if (lg >= 0 && (h0 + h1 === 2 || h0 + h1 === 5) && m.exec && hasPlan(ps[1 - lg]) && m.exec[1 - lg] > 0.3
       && rng() < 0.4 * (1 + 1.2 * (ps[1 - lg].textbook || 0))) adaptTo(m, ps, lg, 1 - lg, m.sets.length + 1);
   }

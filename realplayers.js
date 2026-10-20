@@ -100,12 +100,13 @@ const REAL_TRAIT_SHAPE = { 'Powerful Serve': { bias: [3, 0, 0, 0, 0, 0, 0], plan
   'Flat Hitting': { bias: [0, 1, 0, 0, 0, 0, -1], plan: { spin: 'flat' } }, Aggressive: { bias: [0, 2, 0, 0, -1, 0, -1], plan: { aggression: 'balanced' } } };
 
 // The top two are in a league of their own; everyone else is rated by ranking on a steep curve
-// (No. 2 about 93, top 10 about 87–90, No. 50 about 79, No. 100 about 74). Real players can go past
+// (No. 2 about 91, top 10 about 86.5–89, No. 50 about 79, No. 100 about 74). Real players can go past
 // the 95 cap that applies to your own stats.
 // Former world No. 1s on tour: legends. They read your plan faster than you read theirs.
 const LEGENDS = new Set(['Jannik Sinner', 'Carlos Alcaraz', 'Novak Djokovic', 'Daniil Medvedev']);
-const REAL_OVR = { 'Jannik Sinner': 99, 'Carlos Alcaraz': 99 };
-const REAL_CURVE = [[2, 93], [5, 90], [10, 87], [20, 84], [50, 79], [100, 74], [120, 72]];
+const REAL_OVR = { 'Jannik Sinner': 95.5, 'Carlos Alcaraz': 95.5, 'Daniil Medvedev': 86.5 };
+const REAL_ELITE = new Set(['Jannik Sinner', 'Carlos Alcaraz']); // no weak spots: style shows only as a slight lean
+const REAL_CURVE = [[2, 90], [5, 87.5], [10, 86], [20, 84], [50, 79], [100, 74], [120, 72]];
 function realLevel(rank, name) {
   if (REAL_OVR[name]) return REAL_OVR[name];
   for (let i = 1; i < REAL_CURVE.length; i++) {
@@ -122,7 +123,7 @@ function realPlayer([rank, name, nation, hand, age, style]) {
   const lvl = realLevel(rank, name), st = REAL_STYLE[style] || REAL_STYLE['Aggressive Baseliner'];
   const trait = REAL_TRAIT[name], ts = REAL_TRAIT_SHAPE[trait] || { bias: [0, 0, 0, 0, 0, 0, 0], plan: {} };
   const bias = st.bias.map((b, i) => b + ts.bias[i]);
-  const elite = !!REAL_OVR[name]; // no weak spots: style shows only as a slight lean
+  const elite = REAL_ELITE.has(name);
   let h = nameHash(name);
   const wob = () => { h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; return (h % 1000) / 1000 * 3 - 1.5; };
   const attrs = Object.fromEntries(ATTR_KEYS.map((k, i) => [k, Math.round(clamp(lvl + (elite ? Math.min(0, bias[i]) * 0.2 : bias[i] + wob()), 30, 99))]));

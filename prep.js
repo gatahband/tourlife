@@ -97,7 +97,7 @@ function prepHtml(entry, opp) {
       return `<span class="chip">${it.icon} ${it.name}${id === 'partner' && pr.partner ? ` (${PARTNERS[pr.partner].name})` : ''}</span>`; }).join('')}</div></div>` : '') + recoveryHtml(entry);
   }
   const guess = Object.keys(PARTNERS).find(k => PARTNERS[k].match(opp)) || 'server';
-  return `<div class="prepbox">` + fold('d-prep', '🧰 Prepare for the week', `${used} / ${PREP_SLOTS} slots booked · ${money(c.money)} in the bank`,
+  return `<div class="prepbox">` + fold('d-prep', '🧰 Prepare For The Week', `${used} / ${PREP_SLOTS} slots booked · ${money(c.money)} in the bank`,
     `<p class="hint">Pick up to ${PREP_SLOTS}. They last this tournament, and you can only buy them before your first match.</p>` +
     `<div class="prepitems">${PREP.map(it => {
       const got = pr.items.includes(it.id), cost = prepCost(it, ev.tier);

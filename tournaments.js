@@ -1452,7 +1452,7 @@ function renderMatch() {
       // Before the first ball: how do you want to play this one?
       $('mActions').innerHTML = `<h2 class="choose">How do you want to play this match?</h2><div class="modes">` +
         [['watch', '🎾', 'Watch Live', 'Every point played out on court'],
-         ['sets', '⏭️', 'Set by Set', 'Sim one set at a time'],
+         ['sets', '⏭️', 'Set By Set', 'Sim one set at a time'],
          ['full', '⚡', 'Full Match', 'Straight to the result']].map(([k, icon, t, d]) =>
           `<button type="button" class="mode" data-mode="${k}"><span>${icon}</span><b>${t}</b><small>${d}</small></button>`).join('') +
         `</div>` +

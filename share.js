@@ -222,22 +222,39 @@ async function sendPlayer(contact, note) {
 
 // --- Windows -----------------------------------------------------------------------
 
-// "Join real tournaments": one box, one button. Kept as plain as possible.
+// "Join Real Tournaments": one box, one button. Kept as plain as possible.
+// First time: a short walkthrough of real tournaments and match orders (again any time from the window).
+const SHARE_TOUR = [
+  ['🎾', 'Real Tournaments', 'Send your player in and they get entered into tournaments against characters made by other real people. Every match is played out live and streamed, one at a time.'],
+  ['📋', 'Your Match Orders', "You won't be there when your matches are played, so you decide ahead of time. In My Match Orders, set a full game plan for each type of opponent: Big Servers, Baseline Attackers, Grinders, Net Rushers and Crafty All-Courters."],
+  ['🔁', 'If You Lose A Set', 'Choose Keep My Plan, or Change It Up to switch between attacking and patient play once per match. When it kicks in, the stream shows it.'],
+  ['📨', 'Send Again After Changes', 'Changed your orders or got better? Send your player again and the tournament uses the new version. Results and ranking points come back into your game on their own.'],
+];
+function openShareTour(i = 0) {
+  const [icon, title, text] = SHARE_TOUR[i], last = i === SHARE_TOUR.length - 1;
+  openModal(`<div class="help welcome"><div class="helpicon">${icon}</div><h2 class="itop">${title}</h2><p class="big">${text}</p>` +
+    `<div class="helpdots">${SHARE_TOUR.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>` +
+    `<button type="button" class="btn huge" id="stNext">${last ? 'Got It' : 'Next'}</button></div>`);
+  $('stNext').onclick = () => { if (last) { markTip('share'); openShare(); } else openShareTour(i + 1); };
+}
 function openShare() {
+  if (!tipsSeen().share) return openShareTour(0);
   const p = readJSON(SAVE_KEY), c = loadCareer();
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
-    `<h2 class="itop">🎾 Join real tournaments</h2>` +
+    `<h2 class="itop">🎾 Join Real Tournaments</h2>` +
     `<p class="big">Put <b>${esc(p.name)}</b> into tournaments against players made by real people.</p>` +
-    `<label class="lbl" for="shContact">Your name</label>` +
+    `<label class="lbl" for="shContact">Your Name</label>` +
     `<input id="shContact" class="inp big" maxlength="80" placeholder="e.g. Mike from Leeds" value="${esc(c.sentBy || '')}">` +
     `<p class="hint">So we know whose player it is. Add a phone or email if you want to hear about results.</p>` +
-    `<button type="button" class="btn huge" id="shSend">${c.sentAt ? `Send ${esc(p.name)} again` : `Join with ${esc(p.name)}`}</button>` +
+    `<button type="button" class="btn huge" id="shSend">${c.sentAt ? `Send ${esc(p.name)} Again` : `Join With ${esc(p.name)}`}</button>` +
     `<p class="big center" id="shSendMsg">${c.sentAt ? `✅ ${esc(p.name)} joined on ${new Date(c.sentAt).toLocaleDateString()}. Sending again updates your player.` : ''}</p>` +
     `<button type="button" class="btn ghost" id="shOrders">📋 My Match Orders${p.orders ? ' ✓' : ''}</button>` +
     `<p class="hint center">Optional: tell your player how to play each type of opponent. Then send again.</p>` +
-    `<p class="hint center">That's it. Keep playing as normal.</p>`);
+    `<p class="hint center">That's it. Keep playing as normal.</p>` +
+    `<div class="center"><button type="button" class="link" id="shHow">❓ How This Works</button></div>`);
   $('mx').onclick = closeModal;
   $('shOrders').onclick = () => openOrders(openShare);
+  $('shHow').onclick = () => openShareTour(0);
   $('shSend').onclick = async () => {
     const btn = $('shSend'), msg = $('shSendMsg'), who = $('shContact').value.trim();
     btn.disabled = true; btn.textContent = 'Sending…'; msg.textContent = '';
@@ -258,7 +275,7 @@ function openBackup() {
   const p = readJSON(SAVE_KEY), c = loadCareer();
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
     `<h2 class="itop">Move or back up my career</h2>` +
-    `<section class="sh"><h3>📱 Play on another device</h3>` +
+    `<section class="sh"><h3>📱 Play On Another Device</h3>` +
       `<p class="hint">Sends your career as a link. Open the link on your phone or computer and carry on where you left off.</p>` +
       `<button type="button" class="btn huge" id="shMove">Send my career to my other device</button>` +
       `<p class="hint" id="shMoveMsg"></p></section>` +

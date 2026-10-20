@@ -3,7 +3,7 @@
 //     compared and the copy that's further along wins, automatically.
 //  2. The browser is asked to keep the site's storage permanently (Safari otherwise clears unused sites).
 //  3. Housekeeping on start-up keeps localStorage well under its limit.
-//  4. "Find my lost progress" lists every copy of every career on this device and restores one in a tap.
+//  4. "Find My Lost Progress" lists every copy of every career on this device and restores one in a tap.
 
 const MIRROR_KEYS = ['tourlife.player', 'tourlife.career', 'tourlife.entry', 'tourlife.saves', 'tourlife.backups', 'tourlife.marks'];
 const IDB_NAME = 'tourlife', IDB_STORE = 'kv';
@@ -72,7 +72,7 @@ function housekeeping() {
   } catch {}
 }
 
-// --- Find my lost progress ------------------------------------------------------------------------
+// --- Find My Lost Progress ------------------------------------------------------------------------
 // Every copy of every career on this device (open, saved, safety backups, the mirror), furthest first.
 async function findCopies() {
   const copies = [];
@@ -88,7 +88,7 @@ async function findCopies() {
 async function openRecovery() {
   const copies = await findCopies();
   const matchesOf = c => (c.career.history || []).reduce((n, h) => n + (h.matches || []).length, 0) + ((c.entry && c.entry.matches) || []).length;
-  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🔎 Find my lost progress</h2>` +
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🔎 Find My Lost Progress</h2>` +
     `<p class="hint center">Every copy of your careers on this device, furthest along first. Restoring one keeps the career you have open as a backup.</p>` +
     (copies.length ? `<div class="bklist">${copies.map((c, i) => `<div class="bkrow"><span><b>${esc(c.player.name)}</b> · season ${seasonOfWeek(c.career.week || 1)}, week ${weekInSeason(c.career.week || 1)} · ${matchesOf(c)} matches` +
       `<small>${esc(c.src)}</small></span>${c.src === 'Open now' ? '<em class="hint">open</em>' : `<button type="button" class="btn small" data-rc="${i}">Restore</button>`}</div>`).join('')}</div>`

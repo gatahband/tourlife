@@ -123,7 +123,7 @@ async function nfSite() {
   return site.id;
 }
 
-// Everyone who pressed "Join real tournaments".
+// Everyone who pressed "Join Real Tournaments".
 async function fetchNewPlayers() {
   const site = await nfSite();
   const found = [];
@@ -185,7 +185,7 @@ function connectHtml() {
   const c = nfConf();
   const row = (ok, txt) => `<div class="connrow">${ok ? '✅' : '⬜'} ${txt}</div>`;
   return `<section class="card"><h2>Connect (one time)</h2>` +
-    row(!!c.token, 'Netlify key: collects players who press "Join real tournaments"') +
+    row(!!c.token, 'Netlify key: collects players who press "Join Real Tournaments"') +
     row(!!c.gh, 'GitHub key: sends results out to players') +
     `<input type="password" id="nfKey" class="inp big" placeholder="Paste a Netlify or GitHub key">` +
     `<button type="button" class="btn" id="nfSave">Connect</button><p class="hint" id="nfMsg">Keys are saved on this computer only.</p></section>`;
@@ -216,7 +216,7 @@ function renderAdPlayers() {
   $('adBody').innerHTML = (connected && nfConf().gh ? '' : connectHtml()) +
     `<section class="card"><h2>Players who joined</h2>` +
     (connected ? `<button type="button" class="btn huge" id="adFetch">🔄 Get new players</button>` +
-      `<p class="hint">Picks up everyone who pressed "Join real tournaments" in their game. Sending again just updates their player.</p>` : '') +
+      `<p class="hint">Picks up everyone who pressed "Join Real Tournaments" in their game. Sending again just updates their player.</p>` : '') +
     `<details class="paste"><summary>Other ways to add players</summary>` +
     `<label class="btn ghost small filebtn">Open a CSV from Netlify<input type="file" id="adCsv" accept=".csv,.txt,text/csv,text/plain" hidden></label>` +
     `<textarea id="adPaste" class="inp code" rows="3" placeholder="Or paste player codes (TL1.…)"></textarea>` +

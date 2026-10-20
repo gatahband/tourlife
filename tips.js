@@ -10,54 +10,54 @@ const tipsOff = () => !!tipsSeen().off;
 
 const TOURS = {
   creator: [
-    ['#name', 'Who are you?', 'Give your player a name and pick the country they play for.'],
-    ['#temper', 'Your temperament', 'How you react when things go right or wrong on court. Every type has its upside and its downside.'],
-    ['#attrs', 'Your seven stats', 'Share out your points. Strong serve? Great returner? Fit enough to grind? There is no perfect build, just your build.'],
-    ['#topStyle', 'Your playstyle', 'The shape of your stats gives you a playstyle. Move the sliders and watch it change.'],
+    ['#name', 'Who Are You?', 'Give your player a name and pick the country they play for.'],
+    ['#temper', 'Your Temperament', 'How you react when things go right or wrong on court. Every type has its upside and its downside.'],
+    ['#attrs', 'Your Seven Stats', 'Share out your points. Strong serve? Great returner? Fit enough to grind? There is no perfect build, just your build.'],
+    ['#topStyle', 'Your Playstyle', 'The shape of your stats gives you a playstyle. Move the sliders and watch it change.'],
     ['#fav', 'Surfaces', 'Pick your best and worst court. You will play better on one and worse on the other.'],
-    ['#cPlan', 'Game plan', 'How you like to play. You can change it before any match, so do not overthink it now.'],
+    ['#cPlan', 'Game Plan', 'How you like to play. You can change it before any match, so do not overthink it now.'],
     ['#save', 'Ready?', 'Start your career. You begin at the bottom of the tennis world.'],
   ],
   home: [
-    ['#hOvr', 'This is you', 'Your overall rating, your playstyle and your chances at the levels you can play. Get better and these climb.'],
-    ['#events', 'Each week, pick a tournament', 'Tap Preview to see your chances and the cost of the trip, then enter. Your ranking decides which events let you in.'],
-    ['#hGoals', 'Season goals', 'Five goals for the season. Reach one and you get a reward on the spot.'],
-    ['#hTeam', 'Money and team', 'Prize money pays your travel. Later you can hire a coach and a physio, and brands will come calling.'],
-    ['#share', 'Play with real people', 'Send your player in to be entered into tournaments against other players\' characters.'],
+    ['#hOvr', 'This Is You', 'Your overall rating, your playstyle and your chances at the levels you can play. Get better and these climb.'],
+    ['#events', 'Each Week, Pick A Tournament', 'Tap Preview to see your chances and the cost of the trip, then enter. Your ranking decides which events let you in.'],
+    ['#hGoals', 'Season Goals', 'Five goals for the season. Reach one and you get a reward on the spot.'],
+    ['#hTeam', 'Money And Team', 'Prize money pays your travel. Later you can hire a coach and a medical team, and brands will come calling.'],
+    ['#share', 'Play With Real People', 'Send your player in to be entered into tournaments against other players\' characters. Tap it for a quick walkthrough.'],
   ],
   draw: [
-    ['#dAction .vsbox', 'Your next match', 'You against your next opponent, and how each of you likes to play.'],
-    ['#dAction .scard', 'Scout them', 'Their strengths, weaknesses and habits, plus the weather. Use it to plan.'],
-    ['#dPlanBtn', 'Change your plan', 'Adjust your game plan to beat this particular opponent.'],
-    ['#dPlay', 'Play the match', 'When you are ready, play it.'],
+    ['#dAction .vsbox', 'Your Next Match', 'You against your next opponent, and how each of you likes to play.'],
+    ['#dAction .scard', 'Scout Them', 'Their strengths, weaknesses and habits, plus the weather. Use it to plan.'],
+    ['#dPlanBtn', 'Change Your Plan', 'Adjust your game plan to beat this particular opponent.'],
+    ['#dPlay', 'Play The Match', 'When you are ready, play it.'],
   ],
   match: [
-    ['#mActions .modes', 'How do you want to play it?', 'Watch every point live, go set by set, or skip to the result. Watching lets you make the big calls yourself.'],
-    ['#mCourtWrap', 'The court', 'While you watch, switch camera views here. On big points the match will stop and ask you what to do.'],
+    ['#mActions .modes', 'How Do You Want To Play It?', 'Watch every point live, go set by set, or skip to the result. Watching lets you make the big calls yourself.'],
+    ['#mCourtWrap', 'The Court', 'While you watch, switch camera views here. On big points the match will stop and ask you what to do.'],
   ],
   review: [
-    ['#rStoryBox', 'What happened', 'The story of the match, and below it the full stats.'],
-    ['#rSave', 'Get better', 'After every match, pick one thing to work on. Those stats go up for good.'],
+    ['#rStoryBox', 'What Happened', 'The story of the match, and below it the full stats.'],
+    ['#rSave', 'Get Better', 'After every match, pick one thing to work on. Those stats go up for good.'],
   ],
   train: [
-    ['#tStatus', 'Your body', 'Fatigue builds with matches and training. Keep an eye on it.'],
-    ['#tBody', 'Free days', 'Days without matches: train here, travel early to next week\'s event, or rest.'],
+    ['#tStatus', 'Your Body', 'Fatigue builds with matches and training. Keep an eye on it.'],
+    ['#tBody', 'Free Days', 'Days without matches: train here, travel early to next week\'s event, or rest.'],
   ],
 };
 
 // --- Welcome (brand-new players) ----------------------------------------------------------
 const WELCOME = [
-  ['🎾', 'Welcome to TourLife', 'You are about to start a professional tennis career. Nobody has heard of you yet.'],
-  ['🌍', 'Your goal', 'Start at the small ITF events, win matches, climb the world ranking and work your way up to the ATP Tour, the Grand Slams and world No. 1.'],
-  ['🧬', 'First: create your player', 'Choose who you are and how you play. We will walk you through it one step at a time.'],
+  ['🎾', 'Welcome To TourLife', 'You are about to start a professional tennis career. Nobody has heard of you yet.'],
+  ['🌍', 'Your Goal', 'Start at the small ITF events, win matches, climb the world ranking and work your way up to the ATP Tour, the Grand Slams and world No. 1.'],
+  ['🧬', 'First: Create Your Player', 'Choose who you are and how you play. We will walk you through it one step at a time.'],
 ];
 
 function openWelcome(step = 0, done) {
   const [icon, title, text] = WELCOME[step], last = step === WELCOME.length - 1;
   openModal(`<div class="help welcome"><div class="helpicon">${icon}</div><h2 class="itop">${title}</h2><p class="big">${text}</p>` +
     `<div class="helpdots">${WELCOME.map((_, i) => `<i class="${i === step ? 'on' : ''}"></i>`).join('')}</div>` +
-    `<button type="button" class="btn huge" id="wcNext">${last ? 'Create my player' : 'Next'}</button>` +
-    (step === 0 ? `<button type="button" class="link" id="wcSkip">I've played before: skip the tips</button>` : '') + `</div>`);
+    `<button type="button" class="btn huge" id="wcNext">${last ? 'Create My Player' : 'Next'}</button>` +
+    (step === 0 ? `<button type="button" class="link" id="wcSkip">I've Played Before: Skip The Tips</button>` : '') + `</div>`);
   $('wcNext').onclick = () => { if (last) { markTip('welcome'); closeModal(); done && done(); } else openWelcome(step + 1, done); };
   if ($('wcSkip')) $('wcSkip').onclick = () => { writeJSON(TIPS_KEY, { off: 1, welcome: 1 }); closeModal(); };
 }
@@ -90,8 +90,8 @@ function runTour(id, tries = 0) {
   const show = () => {
     const [sel, title, text] = steps[i], last = i === steps.length - 1;
     card.innerHTML = `<div class="tour-step">${i + 1} of ${steps.length}</div><b>${title}</b><p>${text}</p>` +
-      `<div class="tour-nav"><button type="button" class="link" data-t="off">Skip tips</button>` +
-      `<button type="button" class="btn small" data-t="next">${last ? 'Got it' : 'Next'}</button></div>`;
+      `<div class="tour-nav"><button type="button" class="link" data-t="off">Skip Tips</button>` +
+      `<button type="button" class="btn small" data-t="next">${last ? 'Got It' : 'Next'}</button></div>`;
     document.querySelector(sel).scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(place, 380);
   };
@@ -125,7 +125,7 @@ function startOnboarding() {
 const FEATURES_KEY = 'tourlife.features';
 const FEATURES = [
   { id: 'prep', when: c => c.history.length >= 1 && c.money >= 1500, icon: '🧰', title: 'Prepare For Each Tournament', slides: [
-    'Before your first match of a week, open "Prepare for the week" on the draw screen.',
+    'Before your first match of a week, open "Prepare For The Week" on the draw screen.',
     'Pick up to 3 items: detailed scouting, a hitting partner who plays like your opponent, a surface camp, recovery, a sports psychologist or video analysis.',
     'Each one gives a small edge for that week only. Prices grow with the level of the event, so choose what actually helps you win.'] },
   { id: 'adapt', when: c => (currentRank(c) || 9999) <= 450, icon: '🧠', title: 'Smarter Opponents', slides: [

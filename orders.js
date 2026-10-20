@@ -39,7 +39,7 @@ function openOrders(back) {
     `<p class="big">You won't be there when your matches are played, so set your game plan for each type of opponent. Tap one to open it.</p>` +
     FAMILIES.map(f => `<details class="ordfam"><summary><b>Against ${f.name}</b><small id="ordSum-${f.id}"></small></summary>` +
       `<p class="hint">${f.styles.join(', ')}</p><div class="plan" id="ordPlan-${f.id}"></div></details>`).join('') +
-    `<h3 class="ordq">If I lose a set, I…</h3><div class="seg ordseg" style="grid-template-columns:1fr 1fr" id="ordLosing">` +
+    `<h3 class="ordq">If I Lose A Set, I…</h3><div class="seg ordseg" style="grid-template-columns:1fr 1fr" id="ordLosing">` +
     Object.entries(LOSING).map(([v, l]) => `<button type="button" data-v="${v}" class="${o.losing === v ? 'on' : ''}">${l}</button>`).join('') + `</div>` +
     `<p class="hint center">Change It Up switches between attacking and patient play, once per match.</p>` +
     `<p class="hint center">Saved as you tap. Send your player again so the tournament gets your new orders.</p>` +

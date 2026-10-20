@@ -262,7 +262,7 @@ function initForm(m, ps, rng) {
   m.form = ps.map((p, i) => g[i] * p.formSd * (p.temperament === 'robotic' ? 0.5 : 1));
   // Bad days: now and then anyone, even the best, just plays badly (the low tail of their form roll; fiery
   // players have them more often, robotic ones less). Errors pour out and it can turn a match.
-  m.badDay = ps.map((p, i) => g[i] < (p.temperament === 'fiery' ? -1.45 : p.temperament === 'robotic' ? -1.95 : -1.65));
+  m.badDay = ps.map((p, i) => g[i] < (p.temperament === 'fiery' ? -1.45 : p.temperament === 'robotic' ? -1.95 : -1.65) - (p.calmCoach ? 0.35 : 0)); // a mental coach helps
   m.badDay.forEach((b, i) => { if (b) { m.form[i] -= 0.03; m.moments.push({ set: 1, who: i, kind: 'badday', label: 'is having a bad day: the errors keep coming', at: 0 }); } });
   // How well each player's game plan comes off today. 1 = as expected; it can click (up to 2x)
   // or flop and even backfire (below 0). Smarter players execute a little more reliably.

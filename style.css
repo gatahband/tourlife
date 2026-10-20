@@ -1222,3 +1222,9 @@ button:not(.x):not(.fsbtn), .btn, .chip, .seg button, h2, h3, h4, .itop, .foldt,
 @media (max-width: 560px) { .ov.ovright { top: 44px; } }
 /* Every list item and paragraph starts with a capital letter, whatever the data says. */
 li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-letter { text-transform: uppercase; }
+.teamextra { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.teamextra > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.teamextra > summary::-webkit-details-marker { display: none; }
+.teamextra > summary b::after { content: ' ▾'; color: var(--accent); } .teamextra[open] > summary b::after { content: ' ▴'; }
+.teamextra > summary small { color: var(--muted); font-size: 12px; }
+.teamextra[open] > summary { margin-bottom: 8px; }

@@ -22,7 +22,7 @@ function applyGain(attrs, k, gain) {
 const idleWeeks = c => c.idleWeeks || 0;
 
 // Training gains: the first idle week counts fully, then each extra one 40% less than the last (burnout).
-const burnout = c => Math.pow(0.6, Math.max(0, idleWeeks(c) - 1));
+const burnout = c => Math.pow(typeof hasTeam === 'function' && hasTeam(c, 'fitness') ? 0.75 : 0.6, Math.max(0, idleWeeks(c) - 1)); // a fitness trainer slows it
 
 // Match rust: builds after two idle weeks (0.6% on points a week, up to 4%), and each match you
 // play knocks 1.2% off it.

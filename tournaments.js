@@ -812,7 +812,7 @@ function wrapUpMatch(entry) {
     else if ((entry.live.adjusts || []).length || (entry.live.calls || []).some(x => x.id === 'plan')) c.autopilot = Math.max(0, (c.autopilot || 0) - 1);
     else c.autopilot = (c.autopilot || 0) + 1;
   }
-  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4) * (hasPrep(entry, 'pcfit') ? 0.8 : 1), 0, 100);
+  p.fatigue = clamp((p.fatigue || 0) + (10 + (rec ? Math.max(0, rec.sets.length - 2) * 5 : 0)) * ({ hustle: 1.3, conserve: 0.75 }[advPlan({ ...entry.entrants[0], isPlayer: true, advLevel: teamLevel(current.career, 'coach') }).energy] || 1) * staminaFactor(p) * (1 + (wxOf(eventOf(entry)).heat - 1) * 0.4) * (hasPrep(entry, 'pcfit') ? 0.8 : 1) * (teamOf(current.career, 'fitness').fatigue || 1), 0, 100);
   writeJSON(SAVE_KEY, p);
   shakeRust(current.career);
   writeJSON(CAREER_KEY, current.career);
@@ -1044,7 +1044,8 @@ async function playOneSet(animate = true) {
     ps[me].attrs[dip] = ps[me].attrs[dip] * 0.985;
   }
   ps[me].fitCamp = !!(pr.items && pr.items.includes('pcfit'));
-  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge + dayEdge(entry); ps[me].prepClutch = pe.clutch; } // this week's preparation
+  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge + dayEdge(entry) + (hasTeam(current.career, 'hitting') ? 0.006 : 0) + (hasTeam(current.career, 'stringer') ? 0.003 : 0);
+    ps[me].prepClutch = pe.clutch + (hasTeam(current.career, 'mental') ? 0.012 : 0); ps[me].calmCoach = hasTeam(current.career, 'mental'); } // this week's preparation
   ps[me].advLevel = teamLevel(current.career, 'coach');
   showPlanOnCourt(ps[me]);
   // An opponent you beat recently comes prepared for what beat them, unless you've changed it.

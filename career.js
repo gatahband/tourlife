@@ -20,7 +20,28 @@ const TEAM = {
     { name: 'None', cost: 0, desc: 'No help recovering.' },
     { name: 'Physio', cost: 300, recover: 3, injury: 0.8, desc: 'Recover faster each day; 20% fewer injuries, shorter layoffs.' },
     { name: 'Medical team', cost: 1200, recover: 5, injury: 0.55, desc: 'Recover much faster; 45% fewer injuries, shorter layoffs.' }] },
+  fitness: { icon: '🏋️', name: 'Fitness Trainer', levels: [
+    { name: 'None', cost: 0, desc: 'You manage your own conditioning.' },
+    { name: 'Fitness trainer', cost: 600, fatigue: 0.85, desc: 'Matches tire you 15% less, and training weeks without events burn you out more slowly.' }] },
+  mental: { icon: '🧘', name: 'Mental Coach', levels: [
+    { name: 'None', cost: 0, desc: 'No one to talk you through the big moments.' },
+    { name: 'Mental coach', cost: 700, desc: 'Better on big points, and bad days come less often.' }] },
+  hitting: { icon: '🎾', name: 'Hitting Partner', levels: [
+    { name: 'None', cost: 0, desc: 'You find practice partners on site.' },
+    { name: 'Travelling hitting partner', cost: 900, desc: 'A small preparation edge in every match, every week.' }] },
+  stringer: { icon: '🧵', name: 'Stringer', levels: [
+    { name: 'None', cost: 0, desc: 'Tournament stringing.' },
+    { name: 'Dedicated stringer', cost: 250, desc: 'Rackets strung exactly how you like them: a tiny edge, and a few fewer errors.' }] },
+  hotel: { icon: '🏨', name: 'Hotel', levels: [
+    { name: 'Standard', cost: 0, desc: 'The official players\' hotel.' },
+    { name: 'Upgraded hotel', cost: 500, recover: 2, desc: 'A suite near the venue: you recover more between matches.' }] },
+  agent: { icon: '💼', name: 'Agent', levels: [
+    { name: 'None', cost: 0, desc: 'You handle your own deals.' },
+    { name: 'Agent', cost: 0, desc: 'Takes 12% of your sponsor money, but brings bigger offers (about 35% more a week).' }] },
 };
+// Staff who travel with you to every event (their flights and hotels are added to each trip).
+const TRAVELLERS = ['coach', 'physio', 'fitness', 'mental', 'hitting', 'stringer'];
+const AGENT_CUT = 0.12, AGENT_BOOST = 1.35;
 // Hotel and food for a tournament week. Bigger events put main-draw players up; qualifiers pay their own way.
 const LIVING = { M15: 350, M25: 400, CH75: 250, CH125: 250, ATP250: 150, ATP500: 150, M1000: 150, GS: 150 };
 const QUAL_LIVING = 250;
@@ -40,8 +61,14 @@ function tripCost(c, ev, mode = 'main') {
   // At home you stay with family, so the week costs little.
   const living = ev.nation === current.player.nation ? 100 : (LIVING[ev.tier] || 350) + (mode === 'qual' ? QUAL_LIVING : 0);
   const freeJet = c.perks && c.perks.jet && c.perks.jet.weeks > 0; // business class on the house
-  return FLIGHTS[t] * (c.business && !freeJet ? 3 : 1) + living;
+  // Your travelling team: each one's flight (premium economy, or business if you fly business) and hotel.
+  const crew = TRAVELLERS.filter(k => ownLevel(c, k) > 0).length;
+  const crewCost = crew * (FLIGHTS[t] * (c.business ? 3 : 1.5) + (ev.nation === current.player.nation ? 80 : 150));
+  return FLIGHTS[t] * (c.business && !freeJet ? 3 : 1) + living + Math.round(crewCost);
 }
+// What your travelling team adds to a trip (shown with the trip cost).
+const crewTripCost = (c, ev) => { const t = travelDays(c.location || current.player.nation, ev.nation); const crew = TRAVELLERS.filter(k => ownLevel(c, k) > 0).length;
+  return Math.round(crew * (FLIGHTS[t] * (c.business ? 3 : 1.5) + (ev.nation === current.player.nation ? 80 : 150))); };
 // Fatigue from the journey: long flights in economy wear you down; business class halves it.
 const travelFatigue = (c, from, to) => travelDays(from, to) * 4 * (c.business || (c.perks && c.perks.jet && c.perks.jet.weeks > 0) ? 0.5 : 1);
 
@@ -61,7 +88,7 @@ const teamLevel = (c, k) => { const pk = c.perks && c.perks[k]; return Math.max(
 const teamOf = (c, k) => TEAM[k].levels[teamLevel(c, k)];
 const hasTeam = (c, k) => teamLevel(c, k) > 0;
 const trainBoost = c => teamOf(c, 'coach').train || 1;
-const recoveryBoost = c => teamOf(c, 'physio').recover || 0;
+const recoveryBoost = c => (teamOf(c, 'physio').recover || 0) + (teamOf(c, 'hotel').recover || 0);
 
 // End of every week: pay your team (they leave if you can't), your sponsors pay you, and
 // coaching juniors at home brings in a little when you didn't play an event.
@@ -409,14 +436,21 @@ function renderCareerBits(c, p) {
   const bill = weeklyBill(c), runway = bill ? Math.floor(c.money / bill) : null;
   $('hTeam').innerHTML = `<div class="moneyline"><b>${money(c.money)}</b><span>in the bank</span></div>` +
     (bill ? `<p class="hint ${runway < 4 ? 'warnline' : ''}">Team wages: <b>${money(bill)}/week</b> · enough for ${runway} week${runway === 1 ? '' : 's'} without prize money.${staffMult(c) > 1 ? ' Staff charge more the higher you are ranked.' : ''}</p>` : '') +
-    `<div class="team">${Object.entries(TEAM).map(([k, t]) => {
+    (() => {
+    const row = ([k, t]) => {
       const lv = teamLevel(c, k), cur = t.levels[lv], pk = c.perks && c.perks[k];
       const free = pk && pk.weeks > 0 && pk.level > ownLevel(c, k) ? pk : null;
       return `<div class="teamrow"><span class="ticon">${t.icon}</span><div class="teammain"><b>${t.name}: ${cur.name}${free ? ` · free for ${free.weeks} more week${free.weeks === 1 ? '' : 's'} 🎁` : teamCost(c, k, lv) ? ` · ${money(teamCost(c, k, lv))}/week` : ''}</b><small>${cur.desc}</small>` +
         `<div class="seg" style="grid-template-columns:repeat(${t.levels.length},1fr)" data-team="${k}">${t.levels.map((l, i) =>
           `<button type="button" data-lv="${i}" class="${i === lv ? 'on' : ''}">${l.name.replace(/ (coach|team)$/, '')}${free && i === free.level ? '<small>Free 🎁</small>' : l.cost ? `<small>${money(teamCost(c, k, i))}</small>` : ''}</button>`).join('')}</div>` +
         (free ? `<small class="hint">A season-goal reward. Tap another option to give it up and pick your own.</small>` : '') + `</div></div>`;
-    }).join('')}` +
+    };
+    const core = ['coach', 'physio'], extra = Object.entries(TEAM).filter(([k]) => !core.includes(k)), hired = extra.filter(([k]) => ownLevel(c, k) > 0).length;
+    const crew = TRAVELLERS.filter(k => ownLevel(c, k) > 0).length;
+    return `<div class="team">${core.map(k => row([k, TEAM[k]])).join('')}` +
+      `<details class="teamextra" ${foldOpen('h-staff') ? 'open' : ''} data-fold="h-staff"><summary><b>More Staff & Upgrades</b><small>${hired ? `${hired} hired` : 'Fitness, mental coach, hitting partner, stringer, hotel, agent'}</small></summary>${extra.map(row).join('')}</details>` +
+      (crew ? `<p class="hint">🧳 Your travelling team (${crew}) flies and stays with you: about ${money(crew * (FLIGHTS[2] * (c.business ? 3 : 1.5) + 150))} extra on a long-haul trip, added to each trip's cost.</p>` : '');
+    })() +
     `<label class="teamrow bizrow"><input type="checkbox" id="hBiz" ${c.business ? 'checked' : ''}><span class="ticon">✈️</span><div class="teammain"><b>Fly business class</b>` +
     `<small>Flights cost 3× as much, but long trips tire you half as much.</small></div></label>` +
     `<p class="hint">Main-draw players at Challengers and tour events get a hotel; qualifiers pay their own.</p></div>` + sponsorsHtml(c) +

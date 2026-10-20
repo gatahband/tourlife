@@ -57,7 +57,7 @@ function maybeOffer(c) {
   const cat = pick(Math.random, cats);
   const brands = BRANDS.filter(b => b.cat === cat);
   const b = pick(Math.random, brands);
-  const weekly = Math.max(50, Math.round(bandPay(rank) * CAT_PAY[cat] * (0.85 + Math.random() * 0.3) / 10) * 10);
+  const weekly = Math.max(50, Math.round(bandPay(rank) * CAT_PAY[cat] * (0.85 + Math.random() * 0.3) * (hasTeam(c, 'agent') ? AGENT_BOOST : 1) / 10) * 10);
   const weeks = pick(Math.random, [26, 39, 52]);
   c.offer = { brand: b.id, cat, weekly, weeks, bonus: weekly * 4, rank };
   c.lastOfferRank = rank;
@@ -71,7 +71,11 @@ function signDeal(c, o) {
 // Weekly pay from every active deal; a note when one runs out.
 function payDeals(c) {
   for (const d of dealsOf(c)) {
-    if (d.until >= c.week) earn(c, dealPay(c, d), `${brandOf(d.brand).name} (${CAT_LABEL[d.cat].toLowerCase()} deal)`);
+    if (d.until >= c.week) {
+      const pay = dealPay(c, d);
+      earn(c, pay, `${brandOf(d.brand).name} (${CAT_LABEL[d.cat].toLowerCase()} deal)`);
+      if (hasTeam(c, 'agent')) charge(c, Math.round(pay * AGENT_CUT), `Agent's cut (${brandOf(d.brand).name})`);
+    }
     else if (!d.ended) { d.ended = true; c.notice = `Your ${brandOf(d.brand).name} deal has ended. Keep winning and offers will come.`; c.lastOfferRank = null; }
   }
 }

@@ -93,6 +93,8 @@ const REAL_STYLE = {
   'Variety / Slice-Heavy':   { bias: [-2, -1, 1, 3, -1, 1, 6], fav: 'grass', plan: { drops: 'often', net: 'often', spin: 'mixed' } },
   'Creative Shotmaker':      { bias: [2, -1, -1, 3, -2, -2, 6], fav: 'grass', plan: { drops: 'often', underarm: 'sometimes', spin: 'mixed' } },
 };
+// Temperaments set by the admin from how they really are on court (everyone else: from the name).
+const REAL_TEMPER = { 'Frances Tiafoe': 'stoic', 'Tommy Paul': 'stoic', 'Karen Khachanov': 'stoic', 'Tomas Martin Etcheverry': 'stoic', 'Zizou Bergs': 'stoic', 'Sebastian Baez': 'stoic', 'Thiago Agustin Tirante': 'stoic', 'Nuno Borges': 'stoic', 'Daniel Altmaier': 'stoic', 'Roman Safiullin': 'stoic', 'Alex Molcan': 'stoic', 'Aleksandar Kovacevic': 'stoic', 'Jesper de Jong': 'stoic', 'Sho Shimabukuro': 'stoic', 'Arthur Fils': 'fiery', 'Alejandro Davidovich Fokina': 'fiery', 'Andrey Rublev': 'fiery', 'Luciano Darderi': 'fiery', 'Daniel Merida Aguilar': 'fiery', 'Denis Shapovalov': 'fiery', 'Mattia Bellucci': 'fiery', 'Camilo Ugo Carabelli': 'fiery', 'Lorenzo Sonego': 'fiery', 'Terence Atmane': 'fiery', 'Brandon Nakashima': 'robotic', 'Hubert Hurkacz': 'robotic', 'Botic van de Zandschulp': 'robotic', 'Jan-Lennard Struff': 'robotic', 'Yannick Hanfmann': 'robotic', 'Hamad Medjedovic': 'robotic', 'Zachary Svajda': 'robotic', 'Adrian Mannarino': 'robotic', 'Marin Cilic': 'robotic' };
 // What a researched trait does to the stat shape and plan.
 const REAL_TRAIT_SHAPE = { 'Powerful Serve': { bias: [3, 0, 0, 0, 0, 0, 0], plan: { serve: 'big' } },
   'Flat Hitting': { bias: [0, 1, 0, 0, 0, 0, -1], plan: { spin: 'flat' } }, Aggressive: { bias: [0, 2, 0, 0, -1, 0, -1], plan: { aggression: 'balanced' } } };
@@ -127,7 +129,7 @@ function realPlayer([rank, name, nation, hand, age, style]) {
   const fav = REAL_FAV[name] || st.fav;
   return {
     id: `atp-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`, name, nation, hand: hand === 'L' ? 'left' : 'right',
-    age, attrs, atp: true, atpRank: rank, temperament: ['stoic', 'fiery', 'robotic', 'stoic'][nameHash(name) % 4],
+    age, attrs, atp: true, atpRank: rank, temperament: REAL_TEMPER[name] || ['stoic', 'fiery', 'robotic', 'stoic'][nameHash(name) % 4],
     fav, worst: fav === 'clay' ? 'grass' : 'clay', curve: 'peak', formSd: 0.018,
     plan: { ...DEFAULT_PLAN, ...st.plan, ...ts.plan, ...((typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[name] && REAL_SCOUT[name].plan) || {}) }, seed: null,
     legend: LEGENDS.has(name) || undefined, realStyle: style, realTrait: trait || null, provisional: REAL_PROVISIONAL.has(name) || undefined,

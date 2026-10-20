@@ -1089,3 +1089,15 @@ h2.ctr { text-align: center; }
 .rvscore.up { color: var(--good); } .rvscore.down { color: var(--bad); }
 .adlive.gold { background: linear-gradient(90deg, #f5d36b, #e0a82e); color: #1a1300; font-weight: 800; }
 #adNext { margin-bottom: 8px; } #adNext b { color: inherit; }
+/* Court overlays: compact horizontal rows (views top-left; speed, labels and full screen top-right). */
+.ov.ovleft, .ov.ovright { width: auto; max-width: calc(50% - 12px); gap: 4px; }
+.ov.ovleft { align-items: flex-start; }
+.ov .seg.vert { flex-direction: row; flex-wrap: wrap; width: auto; padding: 2px; gap: 1px; }
+.ov .seg.vert button, .ovright .seg.vert button { text-align: center; padding: 3px 8px; font-size: 11px; }
+.ovleft #mView { width: auto; }
+#mView button.gv { font-size: 10px; }
+.seg.vert .segsep { width: 1px; height: auto; margin: 3px 2px; align-self: stretch; }
+.ov .labels.vert { flex-direction: row; gap: 8px; width: auto; padding: 3px 8px; font-size: 11px; align-items: center; }
+.ov .labels.vert input { width: 12px; height: 12px; margin: 0 3px 0 0; }
+.ov.ovright .fsbtn { font-size: 13px; padding: 2px 8px; }
+@media (max-width: 560px) { .ov.ovleft, .ov.ovright { width: auto; } .ov .seg.vert button { font-size: 10px; padding: 3px 6px; } }

@@ -130,7 +130,7 @@ function stylePanelHtml(ps, m, names, upto = () => true) {
   const col = i => {
     const p = ps[i], st = typeof styleOf === 'function' ? styleOf(p) : { name: '' };
     const rs = p.atpRank && typeof REAL_SCOUT !== 'undefined' ? REAL_SCOUT[p.name] : null;
-    const adj = (m.moments || []).filter(mo => (mo.kind === 'adapt' || mo.kind === 'orders') && mo.who === i && upto(mo));
+    const adj = (m.moments || []).filter(mo => (mo.kind === 'adapt' || mo.kind === 'orders' || mo.kind === 'badday') && mo.who === i && upto(mo));
     const key = p.name || String(i);
     return `<details class="spcol" data-k="${esc(key)}" ${stylePanelOpen[key] ? 'open' : ''}><summary><b>${esc(names[i])}</b>` +
       `<small>${esc(st.name)}${adj.length ? ` · ${adj.length} adjustment${adj.length === 1 ? '' : 's'}` : ''}</small></summary>` +

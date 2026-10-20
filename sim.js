@@ -258,7 +258,12 @@ function newMatch(a, b, rng = Math.random, track = false) {
 }
 
 function initForm(m, ps, rng) {
-  m.form = ps.map(p => gauss(rng) * p.formSd * (p.temperament === 'robotic' ? 0.5 : 1));
+  const g = ps.map(() => gauss(rng));
+  m.form = ps.map((p, i) => g[i] * p.formSd * (p.temperament === 'robotic' ? 0.5 : 1));
+  // Bad days: now and then anyone, even the best, just plays badly (the low tail of their form roll; fiery
+  // players have them more often, robotic ones less). Errors pour out and it can turn a match.
+  m.badDay = ps.map((p, i) => g[i] < (p.temperament === 'fiery' ? -1.45 : p.temperament === 'robotic' ? -1.95 : -1.65));
+  m.badDay.forEach((b, i) => { if (b) { m.form[i] -= 0.03; m.moments.push({ set: 1, who: i, kind: 'badday', label: 'is having a bad day: the errors keep coming', at: 0 }); } });
   // How well each player's game plan comes off today. 1 = as expected; it can click (up to 2x)
   // or flop and even backfire (below 0). Smarter players execute a little more reliably.
   m.exec = ps.map(p => rollExec(p, rng));
@@ -769,7 +774,8 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
     + (wp.spin === 'flat' ? 0.06 : wp.spin === 'topspin' ? -0.04 : 0) + (STYLE_CLEAN[sty[w]] || 0)
     + (fw === 'attack' && fl === 'defend' ? 0.06 : 0) - (fw === 'defend' && fl === 'attack' ? 0.08 : 0)
     + ({ deep: 0.12, high: -0.14 }[aw.depth] || 0) + (al.energy === 'conserve' ? 0.1 : al.energy === 'hustle' ? -0.08 : 0)
-    + (clutch ? ({ broke: 0.22, safe: -0.14 }[aw.pressure] || 0) : 0);
+    + (clutch ? ({ broke: 0.22, safe: -0.14 }[aw.pressure] || 0) : 0)
+    - (m.badDay && m.badDay[l] ? 0.15 : 0); // against someone having a bad day, points end on their errors
   const clean = rng() < clamp(cleanOdds, 0.12, 0.75);
   const ueOdds = 0.6 - (ps[l].attrs.ground - 50) * 0.003 - (attr(ps[l], 'iq') - 50) * 0.003
     + (lp.aggression === 'aggressive' ? 0.15 : lp.aggression === 'patient' ? -0.12 : 0)
@@ -777,7 +783,8 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
     + (fl === 'attack' && fw === 'defend' ? 0.14 : 0) - (fl === 'defend' ? 0.08 : 0) + (typeof wxOf === 'function' ? wxOf(ev).ue : 0)
     + ({ high: -0.2, deep: 0.08 }[al.depth] || 0) + (clutch ? ({ broke: 0.25, safe: -0.2 }[al.pressure] || 0) : 0)
     // Pressure on the weak wing draws the errors.
-    + (aw.wing !== 'neutral' ? 0.25 * wingGap(ps[l]) * (aw.wing === 'bh' ? 1 : -1) : 0);
+    + (aw.wing !== 'neutral' ? 0.25 * wingGap(ps[l]) * (aw.wing === 'bh' ? 1 : -1) : 0)
+    + (m.badDay && m.badDay[l] ? 0.3 : 0); // a bad day: the misses keep coming
   pt.how = clean ? 'winner' : rng() < clamp(ueOdds, 0.2, 0.9) ? 'ue' : 'fe';
   const last = clean ? w : l;
   if (hit(len - 1) !== last) len++;

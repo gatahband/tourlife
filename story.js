@@ -208,6 +208,19 @@ function planLine(rec, oppName) {
   return lines.filter(Boolean).slice(0, 2).join(' ');
 }
 
+// A bad day (see initForm): yours, or theirs.
+function badDayLine(rec, oppName) {
+  const mo = (rec.moments || []).filter(x => x.kind === 'badday');
+  if (!mo.length) return '';
+  const mine = mo.some(x => x.who === 'you'), theirs = mo.some(x => x.who === 'opponent');
+  const ue = (rec.stats && rec.stats.ue) || 0, oue = (rec.oppStats && rec.oppStats.ue) || 0;
+  if (mine && theirs) return pickOne([`Neither of you found your game: ${ue} and ${oue} unforced errors.`, `A scrappy one. You both had an off day, with ${ue + oue} unforced errors between you.`]);
+  if (mine) return rec.won ? pickOne([`It was one of those days for you (${ue} unforced errors), and you still found a way to win.`, `You were nowhere near your best, ${ue} unforced errors, but you got through.`])
+    : pickOne([`It was one of those days. 🫤 ${ue} unforced errors, and nothing felt right.`, `Some days the ball just won't go in: ${ue} unforced errors today.`, `An off day at the worst time. ${ue} unforced errors told the story.`]);
+  return rec.won ? pickOne([`You caught ${oppName} on a bad day: ${oue} unforced errors from their racket.`, `${oppName} was way off their game, with ${oue} unforced errors, and you made them pay.`, `Not ${oppName}'s day: ${oue} unforced errors helped you along.`])
+    : pickOne([`${oppName} had an off day with ${oue} unforced errors, and you still couldn't take advantage.`, `Even with ${oppName} spraying ${oue} unforced errors, you couldn't get over the line.`]);
+}
+
 function closingLine(rec) {
   if (!rec.won) return pickOne(['Time to regroup and get back on the practice court.', 'Take the lessons and move on to the next one.', 'Back to work. There will be another week.', 'Shake it off. The tour moves fast.', '']);
   if (rec.round === 'F') return '🏆 The title is yours.';
@@ -299,7 +312,7 @@ function matchStory(rec, ev, player) {
   const oppName = esc(shortName(rec.opponent));
   return [
     `${openingLine(rec, ev, rec.opponent)} ${debutLine(rec, ev)} ${surfaceLine(rec, ev, player)}`,
-    `${setsLine(rec, oppName)} ${swingLine(rec, oppName)} ${breakLine(rec, oppName)} ${extrasLine(rec, oppName)} ${styleLine(rec, oppName)}`.trim(),
+    `${badDayLine(rec, oppName)} ${setsLine(rec, oppName)} ${swingLine(rec, oppName)} ${breakLine(rec, oppName)} ${extrasLine(rec, oppName)} ${styleLine(rec, oppName)}`.trim(),
     `${planLine(rec, oppName)} ${moraleLine(rec)} ${adjustLine(rec)} ${callsLine(rec)} ${mindLine(rec, player, oppName)} ${closingLine(rec)} ${typeof h2hStory === 'function' ? h2hStory(rec) : ''}`.trim(),
     lessonsHtml(rec),
   ].filter(Boolean);
@@ -400,19 +413,26 @@ function offerIdeas(rec, ev) {
     return { idea, hits, score };
   });
   const apart = (...xs) => new Set(xs.flatMap(x => x.idea.stats)).size === xs.length * 2;
+  // One card always builds on your current game: it trains your two strongest stats.
+  const p = typeof current !== 'undefined' && current.player;
+  const top = p ? [...ATTR_KEYS].sort((a, b) => (p.attrs[b] ?? 0) - (p.attrs[a] ?? 0)).slice(0, 2) : [];
+  const build = top.length ? scored.find(x => x.idea.stats.every(k => top.includes(k))) : null;
   let best = null, bestScore = -1;
   for (let i = 0; i < scored.length; i++)
     for (let j = i + 1; j < scored.length; j++) {
       if (!apart(scored[i], scored[j])) continue;
       for (let k = j + 1; k < scored.length; k++) {
         if (!apart(scored[i], scored[j], scored[k])) continue;
+        if (build && ![scored[i], scored[j], scored[k]].includes(build)) continue;
         const total = scored[i].score + scored[j].score + scored[k].score;
         if (total > bestScore) { bestScore = total; best = [scored[i], scored[j], scored[k]]; }
       }
     }
   // Give each card its own reason where possible.
   const used = new Set();
-  return best.sort(() => Math.random() - 0.5).map(({ idea, hits }) => {
+  return best.sort(() => Math.random() - 0.5).map(x => {
+    const { idea, hits } = x;
+    if (x === build) return { id: idea.id, build: true, why: `⭐ Builds on your current game: your ${top.map(k => attrLabel(k)).join(' and ')}.` };
     const t = hits.find(h => !used.has(h)) || hits[0] || (rec.won ? 'won' : 'lost');
     used.add(t);
     return { id: idea.id, why: sig[t] };

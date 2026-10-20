@@ -1126,9 +1126,15 @@ function bigPoint(info, ps, me) {
   const pct = e => `${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}%`;
   const box = $('mCallBox');
   box.innerHTML = `<div class="cbtitle">${text}</div><div class="cbsub">${serving ? "You're serving" : "You're returning"}. Make a call:</div>` +
-    `<div class="cbopts">${calls.map(c => { const e = callEdge(m, ps, me, c);
-      return `<button type="button" data-call="${c.id}"><span>${c.icon}</span><b>${c.title}</b><small class="${e >= 0 ? 'up' : 'down'}">${pct(e)} on this point</small></button>`; }).join('')}</div>` +
-    `<div class="cbfoot"><button type="button" class="link" data-call="none">Just play it</button><button type="button" class="link" data-call="off">Don't ask again this match</button></div>`;
+    // The Master coach points to the best call for this point (highlighted in gold).
+    (() => {
+      const edges = calls.map(c => callEdge(m, ps, me, c));
+      const pick = teamLevel(current.career, 'coach') >= 4 ? edges.indexOf(Math.max(...edges)) : -1;
+      return `<div class="cbopts eq">${calls.map((c, i) => `<button type="button" data-call="${c.id}" class="${i === pick ? 'rec' : ''}"><span>${c.icon}</span><b>${c.title}</b>` +
+        `<small class="${edges[i] >= 0 ? 'up' : 'down'}">${pct(edges[i])} on this point</small>${i === pick ? '<em class="recpill">🧑‍🏫 Coach\'s pick</em>' : ''}</button>`).join('')}</div>` +
+        (pick >= 0 ? `<p class="cbrec">Gold = your coach's recommended call.</p>` : '');
+    })() +
+    `<div class="cbfoot small"><button type="button" class="link" data-call="none">Just play it</button><button type="button" class="link" data-call="off">Don't ask again this match</button></div>`;
   box.hidden = false;
   return new Promise(done => {
     // Leaving the match or skipping the set answers for you.

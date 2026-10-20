@@ -1017,3 +1017,12 @@ h2.ctr { text-align: center; }
 @media (max-height: 520px), (max-width: 700px) { .callbox .cbsub { display: none; } }
 .cbopts > button { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 1px; align-items: center; justify-items: start; }
 .cbopts > button span { grid-row: span 2; }
+/* Big-point calls: equal buttons, the coach's pick in gold, small stacked footer */
+.cbopts.eq { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 210px)); justify-content: center; gap: 8px; width: 100%; }
+.cbopts.eq > button { width: 100%; min-height: 70px; position: relative; }
+.cbopts > button.rec { border: 2px solid #ffd60a; box-shadow: 0 0 18px rgba(255,214,10,.35); }
+.recpill { position: absolute; top: -10px; right: 10px; font-style: normal; font-size: 10px; font-weight: 800; background: #ffd60a; color: #1c1c1e; border-radius: 99px; padding: 2px 8px; }
+.cbrec { margin: 2px 0 0; font-size: 12px; color: #ffd60a; }
+.cbfoot.small { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px; }
+.cbfoot.small .link { margin: 0; padding: 4px 12px; font-size: 12px; font-weight: 500; background: transparent; border-color: transparent; color: var(--muted); }
+.cbfoot.small .link:hover { color: var(--text); }

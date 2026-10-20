@@ -465,11 +465,11 @@ function advPlan(p, o) {
     return out;
   }
   if (p.real || !ADV_TIERS.has(advTier) || !o) return { wing: pl.wing, depth: pl.depth, energy: pl.energy, pressure: pl.pressure };
-  // Tour-level computer players play the percentages.
-  const g = wingGap(o), a = p.attrs;
+  // Tour-level computer players play the percentages (real players keep their researched shot depth).
+  const g = wingGap(o), a = p.attrs, rs = p.atpRank && typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[p.name];
   return {
     wing: g > 0.25 ? 'bh' : g < -0.1 ? 'fh' : 'neutral',
-    depth: a.ground >= 62 ? 'deep' : a.ground < 52 ? 'high' : 'balanced',
+    depth: rs && rs.plan.depth ? rs.plan.depth : a.ground >= 62 ? 'deep' : a.ground < 52 ? 'high' : 'balanced',
     energy: a.stam >= 66 ? 'hustle' : 'normal',
     pressure: attr(o, 'mental') < 50 ? 'broke' : attr(o, 'mental') > 68 ? 'safe' : 'standard',
   };

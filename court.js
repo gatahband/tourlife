@@ -237,6 +237,27 @@ function createCourt() {
   }
   const sceneArgs = () => [surface, indoorFlag, names, prof];
 
+  // How each playstyle shapes its shots on court: short-angle odds (×), depth floor (m from the net), extra slice
+  // and lob odds, and ball height / kick for topspin, flat and slice drives. Variety players carve low slices and
+  // sharp angles, heavy-topspin players loop high and kick, flat hitters skim the net.
+  const SHOT_STYLE = {
+    'Variety / Slice-Heavy':   { angle: 1.9, sharp: true, slice: 0.2, fhSlice: 0.1, lob: 0.04, h: { slice: 0.85 } },
+    'Creative Shotmaker':      { angle: 2.0, sharp: true, slice: 0.12, fhSlice: 0.05, lob: 0.03 },
+    'All-Court':               { angle: 1.5, slice: 0.05 },
+    'Heavy-Topspin Baseliner': { angle: 0.8, deep: 8.8, h: { topspin: 1.3 }, kick: 1.35, lob: 0.03 },
+    'Heavy-Topspin Attacker':  { angle: 1.1, deep: 8.5, h: { topspin: 1.2 }, kick: 1.25 },
+    'Defensive Grinder':       { angle: 0.7, deep: 9, h: { topspin: 1.2 }, kick: 1.15, lob: 0.06 },
+    'Counterpuncher':          { angle: 0.9, deep: 8.8, lob: 0.03 },
+    'Solid Baseliner':         { angle: 0.8, deep: 9 },
+    'Aggressive Baseliner':    { angle: 1.25, deep: 8.5, h: { flat: 0.92 } },
+    'Flat Attacker':           { angle: 1.2, h: { flat: 0.85, topspin: 0.9 }, kick: 0.85 },
+    'First-Strike Attacker':   { angle: 1.3, h: { flat: 0.9 } },
+    'Serve +1 Attacker':       { angle: 1.25, h: { flat: 0.92 } },
+    'Serve-Dominant':          { angle: 1.1 },
+    'Net Attacker':            { angle: 1.1, slice: 0.06 },
+    'Serve-and-Volley':        { angle: 1.1, slice: 0.08 },
+  };
+  const shotStyle = side => (side !== undefined && prof[side] && SHOT_STYLE[prof[side].style]) || {};
   // Where each player likes to stand on the baseline: grinders deeper (and deeper again on clay).
   function homeDepth(side) {
     const ag = (prof[side].plan || {}).aggression, st = prof[side].style;
@@ -1122,10 +1143,12 @@ function createCourt() {
       if (Math.random() < lobPass) { shot.lob = true; return out('LOB!'); }
       return out(Math.random() < Math.max(0.3, flatOdds) ? 'FLAT!' : 'TOPSPIN!');
     }
-    const lobOdds = (c.defensive ? 0.25 : surface === 'clay' ? 0.05 : 0.03) * (defender && c.defensive ? 1.6 : 1);
+    const ss = shotStyle(side);
+    // Lobs: mostly a defensive shot (defenders a bit more), rare from neutral.
+    const lobOdds = c.defensive ? 0.12 * (defender ? 1.3 : 1) + (ss.lob || 0) : (surface === 'clay' ? 0.03 : 0.015) + (ss.lob || 0) / 3;
     if (k === 'rally' && Math.random() < lobOdds) { shot.lob = true; return out('LOB!'); }
     const sliceOdds = (wing === 'BH' ? (surface === 'grass' ? 0.38 : 0.2) : 0.04) + (c.defensive ? 0.2 : 0)
-      + (defender && c.defensive ? 0.15 : 0) + (st === 'Variety / Slice-Heavy' || st === 'Creative Shotmaker' ? 0.12 : 0) - (st === 'First-Strike Attacker' || st === 'Flat Attacker' ? 0.1 : 0);
+      + (defender && c.defensive ? 0.15 : 0) + (wing === 'BH' ? ss.slice || 0 : ss.fhSlice || 0) - (st === 'First-Strike Attacker' || st === 'Flat Attacker' ? 0.1 : 0);
     if (Math.random() < sliceOdds) return out('SLICE!');
     if (k === 'winner' && Math.random() < 0.45) return out('FLAT!');
     return drive();
@@ -1134,8 +1157,9 @@ function createCourt() {
   // Rally shot direction: mostly crosscourt, some down the line, some through the middle,
   // and short angles, which smarter players use more often.
   function rallyTarget(shot, from, yMin, yMax) {
-    const d = dir(shot.by), hx = from.x, adv = prof[shot.by].adv || {};
-    // Shot depth: moonballs and deep drives both land near the baseline.
+    const d = dir(shot.by), hx = from.x, adv = prof[shot.by].adv || {}, ss = shotStyle(shot.by);
+    // Baseline styles keep the ball deep; moonballs and deep drives both land near the baseline.
+    if (ss.deep && yMin < ss.deep && yMax > ss.deep + 1) yMin = ss.deep;
     if (adv.depth === 'high') { yMin = Math.max(yMin, 8.5); yMax = Math.max(yMax, 11.3); }
     if (adv.depth === 'deep') { yMin = Math.max(yMin, 9.8); yMax = Math.max(yMax, 11.6); }
     // Target wing: most rally balls go to the chosen side of the receiver.
@@ -1144,9 +1168,10 @@ function createCourt() {
       return { x: wx * rand(1.3, 3.9), y: -d * rand(yMin, yMax) };
     }
     const side = Math.abs(hx) < 0.6 ? (Math.random() < 0.5 ? 1 : -1) : Math.sign(hx);
-    const angleOdds = clamp((prof[shot.by].iq - 40) / 150, 0.04, 0.3);
+    const angleOdds = clamp((prof[shot.by].iq - 40) / 150 * (ss.angle || 1), 0.03, 0.5);
     const r = Math.random();
-    if (r < angleOdds && adv.depth !== 'deep') return { x: -side * rand(3.2, 4.0), y: -d * rand(4.5, 7) }; // deep drivers don't play short angles
+    // Short angles: variety players carve them sharper and shorter, pulling the opponent off the court.
+    if (r < angleOdds && adv.depth !== 'deep') return ss.sharp && Math.random() < 0.6 ? { x: -side * rand(3.5, 4.05), y: -d * rand(3.8, 5.6) } : { x: -side * rand(3.2, 4.0), y: -d * rand(4.5, 7) }; // deep drivers don't play short angles
     if (r < angleOdds + 0.5) return { x: -side * rand(1.4, 3.9), y: -d * rand(yMin, yMax) };
     if (r < angleOdds + 0.75) return { x: side * rand(1.4, 3.9), y: -d * rand(yMin, yMax) };
     return { x: rand(-1.4, 1.4), y: -d * rand(yMin, yMax) };
@@ -1412,7 +1437,7 @@ function createCourt() {
       // Soft shots slow down in flight (see play), so they reach the net later in the flight than a straight line would.
       const crossU = softShot && cross !== null ? 1 - (1 - cross) ** (1 / 1.7) : cross;
       const ua = softShot && cross !== null ? clamp(crossU * 0.65, 0.15, 0.8) : fl.apex ?? clamp(cross ?? 0.5, 0.15, 0.9);
-      let peak = isServe ? fromH + (kick ? 0.15 : 0.03) : fl.h();
+      let peak = isServe ? fromH + (kick ? 0.15 : 0.03) : fl.h() * (((shotStyle(hitter).h || {})[call.flight]) || 1); // style shapes ball height
       // Every ball clears the net, except shots going around the post.
       if (cross !== null && !shot.post) while (arc(crossU, fromH, ua, peak, endH) < NET_H + 0.12 && peak < 9) peak += 0.1;
       // After the bounce it carries straight on along the same line.
@@ -1451,7 +1476,7 @@ function createCourt() {
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
-        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin, lowBounce: ['slice', 'drop'].includes(call.flight) || shot.kind === 'drop',
+        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1) * (call.flight === 'topspin' || call.flight === 'flat' ? shotStyle(hitter).kick || 1 : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin, lowBounce: ['slice', 'drop'].includes(call.flight) || shot.kind === 'drop',
       });
       // Where everyone ends up after this shot.
       cur[recv] = { x: lerp(r0.x, body.x, reach), y: lerp(r0.y, body.y, reach) };

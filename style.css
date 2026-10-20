@@ -1064,3 +1064,8 @@ h2.ctr { text-align: center; }
 .realname.legend { color: #f5d36b; font-weight: 800; }
 /* Changeover / big-point buttons: icon and text sit together in the middle of the button. */
 .cbopts > button { grid-template-columns: auto auto; justify-content: center; justify-items: center; text-align: center; }
+
+/* Under the court: today's conditions and the plan you're playing (kept off the court so the controls have room). */
+.courtinfo { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; margin: 8px 2px 4px; font-size: 13px; color: var(--muted); }
+.courtinfo .ci-plan { color: var(--text); text-align: right; margin-left: auto; }
+@media (max-width: 560px) { .courtinfo .ci-plan { text-align: left; margin-left: 0; } }

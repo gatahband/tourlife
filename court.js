@@ -465,8 +465,7 @@ function createCourt() {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawWeather();
-    drawConditions();
-    drawPlan();
+    if (!infoEl) { drawConditions(); drawPlan(); }
     if (!banner && !review && !rain) { ctx.restore(); return; }
     if (rain) drawRain();
     if (banner) {
@@ -1006,6 +1005,14 @@ function createCourt() {
   let wx = { pace: 1, bounce: 1 };
   // Today's conditions, for the scenery and the badge on court: weather key, altitude (m), court speed.
   let conditions = { key: null, altitude: 0, speed: null };
+  let infoEl = null; // when set, conditions and plan show in this strip under the court instead of on it
+  function fillInfo() {
+    if (!infoEl) return;
+    const cond = conditions.speed ? `${conditions.label || ''}${conditions.label ? ' · ' : ''}${conditions.speed} court${conditions.altitude >= 900 ? ` · ⛰️ ${conditions.altitude.toLocaleString('en-US')} m` : ''}` : '';
+    const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    infoEl.innerHTML = (cond ? `<span class="ci-cond">${esc(cond)}</span>` : '') + (planText ? `<span class="ci-plan">📋 ${esc(planText)}</span>` : '');
+    infoEl.hidden = !cond && !planText;
+  }
   let planText = ''; // your current game plan, shown bottom-right (set from the match screen)
   const surf = () => { const b = SURF[indoorFlag ? 'indoor' : surface] || SURF.hard; return { ...b, pace: b.pace * wx.pace, bounce: b.bounce * wx.bounce, keep: b.keep * (wx.pace < 1 ? 0.95 : 1) }; };
   const flightMs = (pre, post, v) => clamp((pre / v + post / (v * surf().keep)) * 1000, 200, 3800);
@@ -1738,10 +1745,12 @@ function createCourt() {
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = { text, t0: clock() }; draw(); },
-    setPlan(text) { planText = text || ''; draw(); },
+    setPlan(text) { planText = text || ''; fillInfo(); draw(); },
+    setInfoEl(el) { infoEl = el; fillInfo(); draw(); },
     setWeather(w, rainy = false, cond = {}) {
       wx = w ? { pace: w.pace || 1, bounce: w.bounce || 1 } : { pace: 1, bounce: 1 };
       conditions = { key: cond.key || null, altitude: cond.altitude || 0, speed: cond.speed || null, label: cond.label || '' };
+      fillInfo();
       rain = rainy;
       // Keep the drizzle moving between points too (about 30 frames a second).
       if (rain && !rainLoop) { let last = 0; const tick = now => { if (!rain) { rainLoop = null; return; } if (now - last > 33 && cv && cv.offsetParent) { last = now; draw(); } rainLoop = requestAnimationFrame(tick); }; rainLoop = requestAnimationFrame(tick); }

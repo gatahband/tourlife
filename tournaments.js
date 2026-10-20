@@ -919,7 +919,7 @@ function openMatch() {
   }
   showScreen('match');
   if (!anim.mounted) {
-    Court.mount($('court')); anim.mounted = true;
+    Court.mount($('court')); Court.setInfoEl($('mInfo')); anim.mounted = true;
     Court.pauseCheck = () => anim.paused;
     // Full screen: the court plus the view tabs, GATAH bar, speed and match controls.
     const stage = $('mStage');

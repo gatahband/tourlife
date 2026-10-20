@@ -1699,7 +1699,7 @@ function renderPoints() {
     if (!g) st.games.push(g = { key, pts: [] });
     g.pts.push({ r, i });
   });
-  box.innerHTML = sets.map(st => `<div class="pset">Set ${st.set}</div>` + st.games.map(g => {
+  const gameHtml = g => {
     const first = g.pts[0].r, last = g.pts[g.pts.length - 1].r;
     const title = first.tb ? 'Tiebreak' : `Game ${g.key}`;
     const sub = first.tb ? '' : `<small>${esc(first.server || '')} serving</small>`;
@@ -1709,7 +1709,19 @@ function renderPoints() {
       `<button type="button" class="pchip${r.highlight ? ' hl' : ''}" data-i="${i}" title="${esc(r.text ? shortHow(r.text) : r.call || (r.gameEnd ? 'Game point' : ''))}">` +
       `${r.highlight ? HL_ICON[r.highlight] + ' ' : ''}${r.gameEnd ? (r.tb ? 'TB' : 'Game') : r.label}</button>`).join('');
     return `<div class="pgame"><div class="plabel2"><b>${title}</b>${sub}</div><div class="pchips">${chips}</div>${result}</div>`;
-  }).join('')).join('');
+  };
+  // Only the current game is open. Earlier games of this set, and whole earlier sets, fold away
+  // (and stay open if you opened them, as points keep coming in).
+  anim.pfold = anim.pfold || {};
+  const fold = (key, label, inner) => `<details class="pfold" data-pf="${key}" ${anim.pfold[key] ? 'open' : ''}><summary>${label}</summary>${inner}</details>`;
+  box.innerHTML = sets.map((st, si) => {
+    const lastG = st.games[st.games.length - 1], lastR = lastG.pts[lastG.pts.length - 1].r;
+    if (si < sets.length - 1) return fold(`s${st.set}`, `Set ${st.set} · ${lastR.game || ''} <small>${st.games.length} games</small>`, st.games.map(gameHtml).join(''));
+    const earlier = st.games.slice(0, -1);
+    return `<div class="pset">Set ${st.set}</div>` + (earlier.length ? fold(`e${st.set}`, `Earlier Games <small>${earlier.length}</small>`, earlier.map(gameHtml).join('')) : '') + gameHtml(lastG);
+  }).join('');
+  box.ontoggle = null;
+  box.querySelectorAll('details.pfold').forEach(d => { d.ontoggle = () => { anim.pfold[d.dataset.pf] = d.open; }; });
   box.scrollTop = box.scrollHeight;
   box.onclick = e => { const b = e.target.closest('[data-i]'); if (b) openReplay(+b.dataset.i); };
 }

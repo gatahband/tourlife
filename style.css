@@ -1026,3 +1026,8 @@ h2.ctr { text-align: center; }
 .cbfoot.small { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px; }
 .cbfoot.small .link { margin: 0; padding: 4px 12px; font-size: 12px; font-weight: 500; background: transparent; border-color: transparent; color: var(--muted); }
 .cbfoot.small .link:hover { color: var(--text); }
+.pfold { border-bottom: 1px solid var(--line); }
+.pfold > summary { list-style: none; cursor: pointer; padding: 10px 0; font-size: 14px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.pfold > summary::-webkit-details-marker { display: none; }
+.pfold > summary::before { content: '▸'; transition: transform .15s; } .pfold[open] > summary::before { transform: rotate(90deg); }
+.pfold > summary small { font-weight: 500; opacity: .8; }

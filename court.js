@@ -446,11 +446,27 @@ function createCourt() {
     ctx.fillStyle = 'rgba(245,245,247,.92)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 9, y + 11);
   }
 
+  // Bottom-right: the plan you're playing right now (only what differs from a balanced plan).
+  function drawPlan() {
+    if (!planText || camera() === 'fps' || camera() === 'fps2') return;
+    ctx.font = `600 11px ${FONT}`;
+    const words = planText.split(' · '), maxW = Math.min(W * 0.46, 360), lines = [];
+    let line = '📋 ';
+    for (const w of words) { const t = line === '📋 ' ? line + w : line + ' · ' + w; if (ctx.measureText(t).width > maxW && line !== '📋 ') { lines.push(line); line = w; } else line = t; }
+    lines.push(line);
+    const shown = lines.slice(0, 2), w = Math.max(...shown.map(l => ctx.measureText(l).width)) + 18, h = 8 + shown.length * 15;
+    const x = W - w - 10, y = H - h - 10;
+    ctx.fillStyle = 'rgba(14,17,22,.72)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, 10) : ctx.rect(x, y, w, h); ctx.fill();
+    ctx.fillStyle = 'rgba(245,245,247,.92)'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    shown.forEach((l, i) => ctx.fillText(l, x + 9, y + 11.5 + i * 15));
+  }
+
   function drawOverlays() {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawWeather();
     drawConditions();
+    drawPlan();
     if (!banner && !review && !rain) { ctx.restore(); return; }
     if (rain) drawRain();
     if (banner) {
@@ -990,6 +1006,7 @@ function createCourt() {
   let wx = { pace: 1, bounce: 1 };
   // Today's conditions, for the scenery and the badge on court: weather key, altitude (m), court speed.
   let conditions = { key: null, altitude: 0, speed: null };
+  let planText = ''; // your current game plan, shown bottom-right (set from the match screen)
   const surf = () => { const b = SURF[indoorFlag ? 'indoor' : surface] || SURF.hard; return { ...b, pace: b.pace * wx.pace, bounce: b.bounce * wx.bounce, keep: b.keep * (wx.pace < 1 ? 0.95 : 1) }; };
   const flightMs = (pre, post, v) => clamp((pre / v + post / (v * surf().keep)) * 1000, 200, 3800);
 
@@ -1721,6 +1738,7 @@ function createCourt() {
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = { text, t0: clock() }; draw(); },
+    setPlan(text) { planText = text || ''; draw(); },
     setWeather(w, rainy = false, cond = {}) {
       wx = w ? { pace: w.pace || 1, bounce: w.bounce || 1 } : { pace: 1, bounce: 1 };
       conditions = { key: cond.key || null, altitude: cond.altitude || 0, speed: cond.speed || null, label: cond.label || '' };

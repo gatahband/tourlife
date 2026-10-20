@@ -969,6 +969,7 @@ function openMatch() {
     style: styleOf(p).name, trait: (traitOf(p) || {}).name });
   Court.scene(ev.surface, ev.indoor, ['You' + tag(ps[me]), shortName(ps[1 - me]) + tag(ps[1 - me])],
     [profile(ps[me]), profile(ps[1 - me])]);
+  showPlanOnCourt({ ...ps[me], plan: { ...eventPlan(entry) }, isPlayer: true, advLevel: teamLevel(current.career, 'coach') });
   Court.setWeather(wxOf(ev), ev.weather === 'damp', { key: ev.indoor ? 'indoor' : ev.weather, altitude: altitudeOf(ev), speed: courtSpeed(ev), surface: ev.surface, label: ev.indoor ? '🏟️ Indoors' : ev.weather && WEATHER[ev.weather] ? `${WEATHER[ev.weather].icon} ${WEATHER[ev.weather].name}` : '' });
   renderGvBar();
   // Replays live in memory for the match on screen only.
@@ -1011,6 +1012,7 @@ async function playOneSet(animate = true) {
   ps[me].fitCamp = !!(pr.items && pr.items.includes('pcfit'));
   { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge; ps[me].prepClutch = pe.clutch; } // this week's preparation
   ps[me].advLevel = teamLevel(current.career, 'coach');
+  showPlanOnCourt(ps[me]);
   // Copying the coach's plan word for word is textbook, and smart opponents read textbook plans faster.
   if (hasTeam(current.career, 'coach')) {
     const cp = coachPlan(ps[op], ev, ps[me]), mine = planOf(ps[me]), lv = ps[me].advLevel;
@@ -1507,6 +1509,7 @@ function changeover(entry, ps, me, step) {
       if (JSON.stringify(pl) !== before) {
         ps[me].plan = { ...pl };
         m.exec[me] = rollExec(ps[me]);
+        showPlanOnCourt(ps[me]);
         L.calls = (L.calls || []).filter(c => !(c.step === step && c.id === 'plan'));
         L.calls.push({ step, id: 'plan', plan: { ...pl }, exec: m.exec[me] });
         writeJSON(ENTRY_KEY, entry);
@@ -1531,6 +1534,17 @@ function changeover(entry, ps, me, step) {
   });
 }
 
+// The plan you're playing, short, for the corner of the court: only what differs from a balanced plan.
+const PLAN_SHORT = { serve: { big: 'Big serve', safe: 'Safe serve' }, returnPos: { deep: 'Deep return', inside: 'Inside return' },
+  aggression: { aggressive: 'Aggressive', patient: 'Patient' }, spin: { flat: 'Flat', topspin: 'Topspin' }, net: { often: 'Net often', rarely: 'Net rarely' },
+  drops: { often: 'Drops often', rarely: 'Few drops' }, underarm: { rarely: 'Underarm sometimes', sometimes: 'Underarm often' },
+  wing: { bh: 'Target BH', fh: 'Target FH' }, depth: { high: 'High margin', deep: 'Deep drives' }, energy: { hustle: 'Hustle', conserve: 'Conserve' }, pressure: { broke: 'Go for broke', safe: 'Safe big points' } };
+function showPlanOnCourt(p) {
+  const pl = { ...planOf(p), ...(typeof advPlan === 'function' ? advPlan(p) : {}) };
+  const bits = Object.entries(PLAN_SHORT).map(([k, m]) => m[pl[k]]).filter(Boolean);
+  Court.setPlan(bits.length ? bits.join(' · ') : 'Balanced plan');
+}
+
 // Commit a set-break plan change: remembered for the match story, and the new plan's execution is rolled fresh.
 function commitSetPlan(entry, pl) {
   const { m } = entry.live, ps = matchPlayers(entry, m), me = m.a === 0 ? 0 : 1;
@@ -1542,6 +1556,7 @@ function commitSetPlan(entry, pl) {
     score: m.sets.map(st => `${st.games[me]}-${st.games[1 - me]}`).join(' ') }];
   ps[me].plan = { ...pl };
   m.exec[me] = rollExec(ps[me]);
+  showPlanOnCourt(ps[me]);
   entry.live.log.push(`🔄 <b>Set break:</b> you changed your plan. ${planSummary(pl)}`);
   writeJSON(ENTRY_KEY, entry);
   toast('🔄 Plan changed', changes.map(g => g.label).join(', '));
@@ -1570,6 +1585,7 @@ function openSetAdjust(entry) {
           score: m.sets.map(st => `${st.games[me]}-${st.games[1 - me]}`).join(' ') }];
         ps[me].plan = { ...pl };
         m.exec[me] = rollExec(ps[me]);
+        showPlanOnCourt(ps[me]);
         entry.live.log.push(`🔄 <b>Set break:</b> you changed your plan. ${planSummary(pl)}`);
         writeJSON(ENTRY_KEY, entry);
       }

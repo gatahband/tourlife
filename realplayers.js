@@ -4,58 +4,58 @@
 // how good they are. Tagged October 2026 from ATP match reporting, player interviews and the Tennis
 // Abstract Match Charting Project.
 
-const ATP_DATE = '5 October 2026';
+const ATP_DATE = '19 October 2026';
 const ATP_TOP = [
   [1, 'Jannik Sinner', 'ITA', 'R', 25, 'Aggressive Baseliner'], [2, 'Alexander Zverev', 'GER', 'R', 29, 'Solid Baseliner'],
   [3, 'Carlos Alcaraz', 'ESP', 'R', 23, 'All-Court'], [4, 'Ben Shelton', 'USA', 'L', 24, 'Serve +1 Attacker'],
-  [5, 'Daniil Medvedev', 'NEU', 'R', 30, 'Counterpuncher'], [6, 'Felix Auger-Aliassime', 'CAN', 'R', 26, 'Serve +1 Attacker'],
-  [7, 'Flavio Cobolli', 'ITA', 'R', 24, 'Aggressive Baseliner'], [8, 'Frances Tiafoe', 'USA', 'R', 28, 'All-Court'],
-  [9, 'Alex de Minaur', 'AUS', 'R', 27, 'Counterpuncher'], [10, 'Arthur Fils', 'FRA', 'R', 22, 'Aggressive Baseliner'],
-  [11, 'Novak Djokovic', 'SRB', 'R', 39, 'All-Court'], [12, 'Taylor Fritz', 'USA', 'R', 29, 'Serve +1 Attacker'],
-  [13, 'Rafael Jodar', 'ESP', 'R', 20, 'Aggressive Baseliner'], [14, 'Valentin Vacherot', 'MON', 'R', 28, 'Solid Baseliner'],
-  [15, 'Jakub Mensik', 'CZE', 'R', 21, 'Serve +1 Attacker'], [16, 'Learner Tien', 'USA', 'L', 21, 'Counterpuncher'],
-  [17, 'Tommy Paul', 'USA', 'R', 29, 'All-Court'], [18, 'Brandon Nakashima', 'USA', 'R', 25, 'Solid Baseliner'],
-  [19, 'Jiri Lehecka', 'CZE', 'R', 25, 'First-Strike Attacker'], [20, 'Francisco Cerundolo', 'ARG', 'R', 28, 'Aggressive Baseliner'],
-  [21, 'Luciano Darderi', 'ITA', 'R', 24, 'Heavy-Topspin Attacker'], [22, 'Alexander Bublik', 'KAZ', 'R', 29, 'Creative Shotmaker'],
-  [23, 'Andrey Rublev', 'NEU', 'R', 29, 'Aggressive Baseliner'], [24, 'Casper Ruud', 'NOR', 'R', 28, 'Heavy-Topspin Baseliner'],
-  [25, 'Lorenzo Musetti', 'ITA', 'R', 24, 'Variety / Slice-Heavy'], [26, 'Alejandro Davidovich Fokina', 'ESP', 'R', 27, 'All-Court'],
-  [27, 'Karen Khachanov', 'NEU', 'R', 30, 'Aggressive Baseliner'], [28, 'Alexander Blockx', 'BEL', 'R', 21, 'Aggressive Baseliner'],
-  [29, 'Joao Fonseca', 'BRA', 'R', 20, 'Aggressive Baseliner'], [30, 'Alejandro Tabilo', 'CHI', 'L', 29, 'Flat Attacker'],
-  [31, 'Tomas Martin Etcheverry', 'ARG', 'R', 27, 'Heavy-Topspin Baseliner'], [32, 'Ugo Humbert', 'FRA', 'L', 28, 'Flat Attacker'],
-  [33, 'Arthur Rinderknech', 'FRA', 'R', 31, 'Serve +1 Attacker'], [34, 'Hubert Hurkacz', 'POL', 'R', 29, 'Serve-Dominant'],
-  [35, 'Alex Michelsen', 'USA', 'R', 22, 'All-Court'], [36, 'Ignacio Buse', 'PER', 'R', 22, 'Aggressive Baseliner'],
-  [37, 'Arthur Fery', 'GBR', 'R', 24, 'All-Court'], [38, 'Matteo Arnaldi', 'ITA', 'R', 25, 'Aggressive Baseliner'],
-  [39, 'Zizou Bergs', 'BEL', 'R', 27, 'First-Strike Attacker'], [40, 'Cameron Norrie', 'GBR', 'L', 31, 'Solid Baseliner'],
-  [41, 'Botic van de Zandschulp', 'NED', 'R', 31, 'Flat Attacker'], [42, 'Denis Shapovalov', 'CAN', 'L', 27, 'First-Strike Attacker'],
-  [43, 'Stefanos Tsitsipas', 'GRE', 'R', 28, 'Serve +1 Attacker'], [44, 'Daniel Merida Aguilar', 'ESP', 'R', 22, 'Aggressive Baseliner'],
-  [45, 'Luca van Assche', 'FRA', 'R', 22, 'Counterpuncher'], [46, 'Matteo Berrettini', 'ITA', 'R', 30, 'Serve +1 Attacker'],
-  [47, 'Mariano Navone', 'ARG', 'R', 25, 'Defensive Grinder'], [48, 'Quentin Halys', 'FRA', 'R', 30, 'First-Strike Attacker'],
-  [49, 'Jaume Munar', 'ESP', 'R', 29, 'Solid Baseliner'], [50, 'Raphael Collignon', 'BEL', 'R', 24, 'All-Court'],
-  [51, 'Nuno Borges', 'POR', 'R', 29, 'All-Court'], [52, 'Adolfo Daniel Vallejo', 'PAR', 'R', 22, 'Aggressive Baseliner'],
-  [53, 'Sebastian Baez', 'ARG', 'R', 26, 'Heavy-Topspin Baseliner'], [54, 'Thiago Agustin Tirante', 'ARG', 'R', 25, 'Aggressive Baseliner'],
-  [55, 'Juan Manuel Cerundolo', 'ARG', 'L', 25, 'Heavy-Topspin Baseliner'], [56, 'Arthur Gea', 'FRA', 'R', 22, 'Serve +1 Attacker'],
-  [57, 'Yannick Hanfmann', 'GER', 'R', 35, 'First-Strike Attacker'], [58, 'Tallon Griekspoor', 'NED', 'R', 30, 'Serve +1 Attacker'],
-  [59, 'Jan-Lennard Struff', 'GER', 'R', 36, 'Net Attacker'], [60, 'Jaime Faria', 'POR', 'R', 23, 'Aggressive Baseliner'],
-  [61, 'Miomir Kecmanovic', 'SRB', 'R', 27, 'Solid Baseliner'], [62, 'Roman Andres Burruchaga', 'ARG', 'R', 24, 'Defensive Grinder'],
-  [63, 'Fabian Marozsan', 'HUN', 'R', 27, 'First-Strike Attacker'], [64, 'James Duckworth', 'AUS', 'R', 34, 'Serve +1 Attacker'],
-  [65, 'Pablo Carreno Busta', 'ESP', 'R', 35, 'Solid Baseliner'], [66, 'Ethan Quinn', 'USA', 'R', 22, 'First-Strike Attacker'],
-  [67, 'Daniel Altmaier', 'GER', 'R', 28, 'Heavy-Topspin Baseliner'], [68, 'Vit Kopriva', 'CZE', 'R', 29, 'Defensive Grinder'],
-  [69, 'Facundo Diaz Acosta', 'ARG', 'L', 26, 'Heavy-Topspin Baseliner'], [70, 'Kamil Majchrzak', 'POL', 'R', 30, 'Solid Baseliner'],
-  [71, 'Corentin Moutet', 'FRA', 'L', 27, 'Variety / Slice-Heavy'], [73, 'Martin Landaluce', 'ESP', 'R', 20, 'Aggressive Baseliner'],
-  [74, 'Sebastian Korda', 'USA', 'R', 26, 'Flat Attacker'], [75, 'Tomas Machac', 'CZE', 'R', 26, 'All-Court'],
-  [77, 'Camilo Ugo Carabelli', 'ARG', 'R', 27, 'Heavy-Topspin Baseliner'], [78, 'Hamad Medjedovic', 'SRB', 'R', 23, 'First-Strike Attacker'],
-  [79, 'Roman Safiullin', 'NEU', 'R', 29, 'Flat Attacker'], [80, 'Marin Cilic', 'CRO', 'R', 38, 'Serve +1 Attacker'],
-  [81, 'Aleksandar Kovacevic', 'USA', 'R', 28, 'First-Strike Attacker'], [82, 'Zachary Svajda', 'USA', 'R', 24, 'Counterpuncher'],
-  [83, 'Adrian Mannarino', 'FRA', 'L', 38, 'Counterpuncher'], [84, 'Alex Molcan', 'SVK', 'L', 29, 'Counterpuncher'],
-  [85, 'Rinky Hijikata', 'AUS', 'R', 25, 'All-Court'], [86, 'Mattia Bellucci', 'ITA', 'L', 25, 'Creative Shotmaker'],
-  [87, 'Lorenzo Sonego', 'ITA', 'R', 31, 'Serve +1 Attacker'], [88, 'Marcos Giron', 'USA', 'R', 33, 'Solid Baseliner'],
-  [89, 'Hugo Gaston', 'FRA', 'L', 26, 'Variety / Slice-Heavy'], [90, 'Marco Trungelliti', 'ARG', 'R', 36, 'Defensive Grinder'],
-  [91, 'Jan Choinski', 'GBR', 'R', 30, 'Serve +1 Attacker'], [95, 'Jesper de Jong', 'NED', 'R', 26, 'Solid Baseliner'],
-  [96, 'Jacob Fearnley', 'GBR', 'R', 25, 'Counterpuncher'], [98, 'Adam Walton', 'AUS', 'R', 27, 'Solid Baseliner'],
-  [99, 'Terence Atmane', 'FRA', 'L', 24, 'First-Strike Attacker'], [101, 'Coleman Wong', 'HKG', 'R', 22, 'Aggressive Baseliner'],
-  [102, 'Jenson Brooksby', 'USA', 'R', 26, 'Counterpuncher'], [104, 'Martin Damm', 'USA', 'L', 23, 'Serve-Dominant'],
-  [105, 'Valentin Royer', 'FRA', 'R', 25, 'Net Attacker'], [109, 'Sho Shimabukuro', 'JPN', 'R', 29, 'First-Strike Attacker'],
-  [111, 'Alexander Shevchenko', 'KAZ', 'R', 26, 'Aggressive Baseliner'], [115, 'Aleksandar Vukic', 'AUS', 'R', 30, 'Serve +1 Attacker'],
+  [5, 'Daniil Medvedev', 'NEU', 'R', 30, 'Counterpuncher'], [6, 'Flavio Cobolli', 'ITA', 'R', 24, 'Aggressive Baseliner'],
+  [7, 'Felix Auger-Aliassime', 'CAN', 'R', 26, 'Serve +1 Attacker'], [8, 'Alex de Minaur', 'AUS', 'R', 27, 'Counterpuncher'],
+  [9, 'Frances Tiafoe', 'USA', 'R', 28, 'All-Court'], [10, 'Arthur Fils', 'FRA', 'R', 22, 'Aggressive Baseliner'],
+  [11, 'Rafael Jodar', 'ESP', 'R', 20, 'Aggressive Baseliner'], [12, 'Novak Djokovic', 'SRB', 'R', 39, 'All-Court'],
+  [13, 'Alejandro Davidovich Fokina', 'ESP', 'R', 27, 'All-Court'], [14, 'Taylor Fritz', 'USA', 'R', 29, 'Serve +1 Attacker'],
+  [15, 'Tommy Paul', 'USA', 'R', 29, 'All-Court'], [16, 'Jakub Mensik', 'CZE', 'R', 21, 'Serve +1 Attacker'],
+  [17, 'Brandon Nakashima', 'USA', 'R', 25, 'Solid Baseliner'], [18, 'Learner Tien', 'USA', 'L', 21, 'Counterpuncher'],
+  [19, 'Alexander Bublik', 'KAZ', 'R', 29, 'Creative Shotmaker'], [20, 'Jiri Lehecka', 'CZE', 'R', 25, 'First-Strike Attacker'],
+  [21, 'Francisco Cerundolo', 'ARG', 'R', 28, 'Aggressive Baseliner'], [22, 'Andrey Rublev', 'NEU', 'R', 29, 'Aggressive Baseliner'],
+  [23, 'Luciano Darderi', 'ITA', 'R', 24, 'Heavy-Topspin Attacker'], [24, 'Casper Ruud', 'NOR', 'R', 28, 'Heavy-Topspin Baseliner'],
+  [25, 'Karen Khachanov', 'NEU', 'R', 30, 'Aggressive Baseliner'], [26, 'Lorenzo Musetti', 'ITA', 'R', 24, 'Variety / Slice-Heavy'],
+  [27, 'Alexander Blockx', 'BEL', 'R', 21, 'Aggressive Baseliner'], [28, 'Joao Fonseca', 'BRA', 'R', 20, 'Aggressive Baseliner'],
+  [29, 'Tomas Martin Etcheverry', 'ARG', 'R', 27, 'Heavy-Topspin Baseliner'], [30, 'Hubert Hurkacz', 'POL', 'R', 29, 'Serve-Dominant'],
+  [31, 'Alejandro Tabilo', 'CHI', 'L', 29, 'Flat Attacker'], [32, 'Valentin Vacherot', 'MON', 'R', 28, 'Solid Baseliner'],
+  [33, 'Ignacio Buse', 'PER', 'R', 22, 'Aggressive Baseliner'], [34, 'Arthur Fery', 'GBR', 'R', 24, 'All-Court'],
+  [35, 'Ugo Humbert', 'FRA', 'L', 28, 'Flat Attacker'], [36, 'Matteo Arnaldi', 'ITA', 'R', 25, 'Aggressive Baseliner'],
+  [37, 'Alex Michelsen', 'USA', 'R', 22, 'All-Court'], [38, 'Botic van de Zandschulp', 'NED', 'R', 31, 'Flat Attacker'],
+  [39, 'Stefanos Tsitsipas', 'GRE', 'R', 28, 'Serve +1 Attacker'], [40, 'Cameron Norrie', 'GBR', 'L', 31, 'Solid Baseliner'],
+  [41, 'Zizou Bergs', 'BEL', 'R', 27, 'First-Strike Attacker'], [42, 'Daniel Merida Aguilar', 'ESP', 'R', 22, 'Aggressive Baseliner'],
+  [43, 'Matteo Berrettini', 'ITA', 'R', 30, 'Serve +1 Attacker'], [44, 'Arthur Gea', 'FRA', 'R', 22, 'Serve +1 Attacker'],
+  [45, 'Mariano Navone', 'ARG', 'R', 25, 'Defensive Grinder'], [46, 'Quentin Halys', 'FRA', 'R', 30, 'First-Strike Attacker'],
+  [47, 'Denis Shapovalov', 'CAN', 'L', 27, 'First-Strike Attacker'], [48, 'Luca van Assche', 'FRA', 'R', 22, 'Counterpuncher'],
+  [49, 'Sebastian Baez', 'ARG', 'R', 26, 'Heavy-Topspin Baseliner'], [50, 'Thiago Agustin Tirante', 'ARG', 'R', 25, 'Aggressive Baseliner'],
+  [51, 'Jaume Munar', 'ESP', 'R', 29, 'Solid Baseliner'], [52, 'Nuno Borges', 'POR', 'R', 29, 'All-Court'],
+  [53, 'Juan Manuel Cerundolo', 'ARG', 'L', 25, 'Heavy-Topspin Baseliner'], [54, 'Adolfo Daniel Vallejo', 'PAR', 'R', 22, 'Aggressive Baseliner'],
+  [55, 'Raphael Collignon', 'BEL', 'R', 24, 'All-Court'], [56, 'Jaime Faria', 'POR', 'R', 23, 'Aggressive Baseliner'],
+  [57, 'Miomir Kecmanovic', 'SRB', 'R', 27, 'Solid Baseliner'], [58, 'Jan-Lennard Struff', 'GER', 'R', 36, 'Net Attacker'],
+  [59, 'Yannick Hanfmann', 'GER', 'R', 35, 'First-Strike Attacker'], [60, 'Tallon Griekspoor', 'NED', 'R', 30, 'Serve +1 Attacker'],
+  [61, 'Arthur Rinderknech', 'FRA', 'R', 31, 'Serve +1 Attacker'], [62, 'Roman Andres Burruchaga', 'ARG', 'R', 24, 'Defensive Grinder'],
+  [63, 'Ethan Quinn', 'USA', 'R', 22, 'First-Strike Attacker'], [64, 'Fabian Marozsan', 'HUN', 'R', 27, 'First-Strike Attacker'],
+  [65, 'Daniel Altmaier', 'GER', 'R', 28, 'Heavy-Topspin Baseliner'], [66, 'Vit Kopriva', 'CZE', 'R', 29, 'Defensive Grinder'],
+  [67, 'Martin Landaluce', 'ESP', 'R', 20, 'Aggressive Baseliner'], [68, 'Mattia Bellucci', 'ITA', 'L', 25, 'Creative Shotmaker'],
+  [70, 'Roman Safiullin', 'NEU', 'R', 29, 'Flat Attacker'], [71, 'Facundo Diaz Acosta', 'ARG', 'L', 26, 'Heavy-Topspin Baseliner'],
+  [72, 'Tomas Machac', 'CZE', 'R', 26, 'All-Court'], [73, 'James Duckworth', 'AUS', 'R', 34, 'Serve +1 Attacker'],
+  [74, 'Pablo Carreno Busta', 'ESP', 'R', 35, 'Solid Baseliner'], [75, 'Camilo Ugo Carabelli', 'ARG', 'R', 27, 'Heavy-Topspin Baseliner'],
+  [76, 'Hamad Medjedovic', 'SRB', 'R', 23, 'First-Strike Attacker'], [77, 'Zachary Svajda', 'USA', 'R', 24, 'Counterpuncher'],
+  [78, 'Kamil Majchrzak', 'POL', 'R', 30, 'Solid Baseliner'], [79, 'Adrian Mannarino', 'FRA', 'L', 38, 'Counterpuncher'],
+  [80, 'Alex Molcan', 'SVK', 'L', 29, 'Counterpuncher'], [81, 'Sebastian Korda', 'USA', 'R', 26, 'Flat Attacker'],
+  [82, 'Aleksandar Kovacevic', 'USA', 'R', 28, 'First-Strike Attacker'], [84, 'Marin Cilic', 'CRO', 'R', 38, 'Serve +1 Attacker'],
+  [86, 'Rinky Hijikata', 'AUS', 'R', 25, 'All-Court'], [87, 'Jacob Fearnley', 'GBR', 'R', 25, 'Counterpuncher'],
+  [88, 'Marcos Giron', 'USA', 'R', 33, 'Solid Baseliner'], [89, 'Lorenzo Sonego', 'ITA', 'R', 31, 'Serve +1 Attacker'],
+  [90, 'Marco Trungelliti', 'ARG', 'R', 36, 'Defensive Grinder'], [92, 'Coleman Wong', 'HKG', 'R', 22, 'Aggressive Baseliner'],
+  [93, 'Hugo Gaston', 'FRA', 'L', 26, 'Variety / Slice-Heavy'], [94, 'Corentin Moutet', 'FRA', 'L', 27, 'Variety / Slice-Heavy'],
+  [97, 'Adam Walton', 'AUS', 'R', 27, 'Solid Baseliner'], [98, 'Terence Atmane', 'FRA', 'L', 24, 'First-Strike Attacker'],
+  [99, 'Jenson Brooksby', 'USA', 'R', 26, 'Counterpuncher'], [102, 'Jesper de Jong', 'NED', 'R', 26, 'Solid Baseliner'],
+  [107, 'Martin Damm', 'USA', 'L', 23, 'Serve-Dominant'], [108, 'Alexander Shevchenko', 'KAZ', 'R', 26, 'Aggressive Baseliner'],
+  [109, 'Sho Shimabukuro', 'JPN', 'R', 29, 'First-Strike Attacker'], [110, 'Valentin Royer', 'FRA', 'R', 25, 'Net Attacker'],
+  [113, 'Jan Choinski', 'GBR', 'R', 30, 'Serve +1 Attacker'], [116, 'Aleksandar Vukic', 'AUS', 'R', 30, 'Serve +1 Attacker'],
 ];
 
 // Hybrids: the second half of the label is a secondary trait (shown next to the style, and it shapes points).
@@ -153,3 +153,15 @@ function mixInReal(entrants, tier, playerRank) {
   entrants.forEach(e => { e.seed = null; });
   [...entrants].sort((a, b) => strength(b) - strength(a)).forEach((p, i) => { p.seed = i < 8 && strength(p) > 0 ? i + 1 : null; });
 }
+
+// Home heads-up: the real-player ranking is refreshed every Monday, like the real ATP list. Dismissed per update.
+function showRankNote() {
+  const el = document.getElementById('rankNote');
+  if (!el) return;
+  let gone = null; try { gone = localStorage.getItem('tourlife.rankNote'); } catch {}
+  if (gone === ATP_DATE) { el.hidden = true; return; }
+  el.innerHTML = `<span>🎾 Real player rankings are from the ATP list of <b>${ATP_DATE}</b>. They're updated every Monday, so for a few days they may not match the real world.</span><button type="button" aria-label="Close">×</button>`;
+  el.hidden = false;
+  el.querySelector('button').onclick = () => { el.hidden = true; try { localStorage.setItem('tourlife.rankNote', ATP_DATE); } catch {} };
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showRankNote); else setTimeout(showRankNote, 0);

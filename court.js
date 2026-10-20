@@ -1001,6 +1001,9 @@ function createCourt() {
     'VOLLEY!': 'volley', 'SMASH!': 'smash', 'AROUND THE POST!': 'post', 'TWEENER!': 'lob' };
 
   // Ball height along a flight: rises to the peak (slowing), then falls (speeding up).
+  // Soft shots (drops, underarms) lose forward speed through the air: position along the line = 1 − (1 − u)^SOFT.
+  // Planning (net clearance) and playback both use this, so the ball is drawn exactly where it was checked.
+  const SOFT = 1.25;
   function arc(u, h0, ua, H, h1) {
     if (u < ua) return lerp(h0, H, Math.sin(Math.PI / 2 * u / ua));
     return lerp(H, h1, 1 - Math.cos(Math.PI / 2 * (u - ua) / (1 - ua)));
@@ -1439,7 +1442,7 @@ function createCourt() {
       // Drop shots peak on the hitter's side and are already falling as they cross the net.
       const softShot = shot.kind === 'drop' || shot.kind === 'underarm';
       // Soft shots slow down in flight (see play), so they reach the net later in the flight than a straight line would.
-      const crossU = softShot && cross !== null ? 1 - (1 - cross) ** (1 / 1.7) : cross;
+      const crossU = softShot && cross !== null ? 1 - (1 - cross) ** (1 / SOFT) : cross;
       const ua = softShot && cross !== null ? clamp(crossU * 0.65, 0.15, 0.8) : fl.apex ?? clamp(cross ?? 0.5, 0.15, 0.9);
       let peak = isServe ? fromH + (kick ? 0.15 : 0.03) : fl.h() * (((shotStyle(hitter).h || {})[call.flight]) || 1); // style shapes ball height
       // Every ball clears the net, except shots going around the post.
@@ -1703,7 +1706,7 @@ function createCourt() {
               }
             }
             // Backspin on drop shots: forward speed bleeds off, so it drops steeply after the net.
-            const uh = s.softShot ? 1 - (1 - u) ** 1.25 : u;
+            const uh = s.softShot ? 1 - (1 - u) ** SOFT : u;
             setBall({ x: lerp(s.from.x, s.to0.x, uh), y: lerp(s.from.y, s.to0.y, uh) }, h);
           } else {
             if (!marked) {

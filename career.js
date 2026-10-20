@@ -524,24 +524,24 @@ function videoPlanHtml(c, opp, plan) {
 function counters(key, cur) {
   const other = cur.wing === 'bh' ? 'fh' : 'bh';
   return ({
-    wing: [{ label: `Switch to their ${other === 'bh' ? 'backhand' : 'forehand'} and catch them out of position`, plan: { wing: other } },
-      { label: 'Go back to neutral and drive deep through the middle', plan: { wing: 'neutral', depth: 'deep' } }],
-    aggression: [{ label: 'Be patient: make them hit one more ball', plan: { aggression: 'patient' } },
-      { label: 'Come forward and finish points at the net', plan: { net: 'often' } }],
-    serve: [{ label: 'Serve safer and mix up the placement', plan: { serve: 'balanced' } },
-      { label: 'Follow the serve in and rush them', plan: { net: 'often' } }],
-    net: [{ label: 'Stay back and rally', plan: { net: 'rarely' } },
-      { label: 'Approach off deeper, heavier balls', plan: { spin: 'topspin', depth: 'deep' } }],
-    depth: [{ label: 'Drive it deep and flat instead', plan: { depth: 'deep', spin: 'flat' } },
-      { label: 'Drop shot them when they step in', plan: { drops: 'often' } }],
-    spin: [{ label: 'Use heavy topspin to get the ball up high', plan: { spin: 'topspin' } },
-      { label: 'Shorten the points: attack earlier', plan: { aggression: 'aggressive' } }],
-    drops: [{ label: 'Save the drop shot for the big moments', plan: { drops: 'rarely' } },
-      { label: 'Push them deep first, then drop', plan: { depth: 'deep' } }],
-    returnPos: [{ label: 'Step back to a normal return position', plan: { returnPos: 'normal' } },
-      { label: 'Stand deep and start the rally neutral', plan: { returnPos: 'deep' } }],
-  })[key] || [{ label: 'Change the rhythm: switch your rally style', plan: { aggression: cur.aggression === 'aggressive' ? 'patient' : 'aggressive' } },
-    { label: 'Change the shape: heavier topspin and more margin', plan: { spin: 'topspin', depth: 'high' } }];
+    wing: [{ short: `Hit To Their ${other === 'bh' ? 'Backhand' : 'Forehand'}`, label: `Switch to their ${other === 'bh' ? 'backhand' : 'forehand'} and catch them out of position`, plan: { wing: other } },
+      { short: 'Neutral & Deep', label: 'Go back to neutral and drive deep through the middle', plan: { wing: 'neutral', depth: 'deep' } }],
+    aggression: [{ short: 'Be Patient', label: 'Be patient: make them hit one more ball', plan: { aggression: 'patient' } },
+      { short: 'Finish At The Net', label: 'Come forward and finish points at the net', plan: { net: 'often' } }],
+    serve: [{ short: 'Safer Serve', label: 'Serve safer and mix up the placement', plan: { serve: 'balanced' } },
+      { short: 'Serve And Volley', label: 'Follow the serve in and rush them', plan: { net: 'often' } }],
+    net: [{ short: 'Stay Back', label: 'Stay back and rally', plan: { net: 'rarely' } },
+      { short: 'Deeper Approaches', label: 'Approach off deeper, heavier balls', plan: { spin: 'topspin', depth: 'deep' } }],
+    depth: [{ short: 'Drive Flat & Deep', label: 'Drive it deep and flat instead', plan: { depth: 'deep', spin: 'flat' } },
+      { short: 'Drop Shot Them', label: 'Drop shot them when they step in', plan: { drops: 'often' } }],
+    spin: [{ short: 'Heavy Topspin', label: 'Use heavy topspin to get the ball up high', plan: { spin: 'topspin' } },
+      { short: 'Attack Earlier', label: 'Shorten the points: attack earlier', plan: { aggression: 'aggressive' } }],
+    drops: [{ short: 'Save The Drops', label: 'Save the drop shot for the big moments', plan: { drops: 'rarely' } },
+      { short: 'Deep, Then Drop', label: 'Push them deep first, then drop', plan: { depth: 'deep' } }],
+    returnPos: [{ short: 'Normal Return', label: 'Step back to a normal return position', plan: { returnPos: 'normal' } },
+      { short: 'Deep Return', label: 'Stand deep and start the rally neutral', plan: { returnPos: 'deep' } }],
+  })[key] || [{ short: 'Switch Rally Style', label: 'Change the rhythm: switch your rally style', plan: { aggression: cur.aggression === 'aggressive' ? 'patient' : 'aggressive' } },
+    { short: 'Topspin & Margin', label: 'Change the shape: heavier topspin and more margin', plan: { spin: 'topspin', depth: 'high' } }];
 }
 // The latest adjustment the opponent made against you this match, if any.
 const lastAdapt = (m, me) => (m.adapted || []).filter(a => a.against === me).slice(-1)[0] || null;

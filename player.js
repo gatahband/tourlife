@@ -23,7 +23,7 @@ const GAME_PLAN = [
     hint: 'Deep: blunts big servers but gives up second-serve points. Inside: attacks second serves, risky against big serves.' },
   { key: 'aggression', label: 'Rally style', opts: [['patient', 'Patient'], ['balanced', 'Balanced'], ['aggressive', 'Aggressive']],
     hint: 'Aggressive: more winners and more errors. Needs strong Groundstrokes. Patient: longer rallies. Suits Stamina and Tennis IQ.' },
-  { key: 'spin', label: 'Spin', opts: [['topspin', 'Heavy topspin'], ['mixed', 'Mixed'], ['flat', 'Flat']],
+  { key: 'spin', label: 'Spin', opts: [['topspin', 'Heavy Topspin'], ['mixed', 'Mixed'], ['flat', 'Flat']],
     hint: 'Flat: faster, more winners and more errors. Needs strong Groundstrokes; best on grass and indoors. Heavy topspin: safer, higher balls, longer rallies. Suits Stamina; best on clay.' },
   { key: 'net', label: 'Net approaches', opts: [['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']],
     hint: 'Works with Net Proficiency, best on grass. Come in too often and you get passed.' },
@@ -34,11 +34,11 @@ const GAME_PLAN = [
   // Unlocked by the Master coach.
   { key: 'wing', label: 'Target wing', coach: 4, opts: [['fh', 'Forehand'], ['neutral', 'Neutral'], ['bh', 'Backhand']],
     hint: 'Send most rally balls to one side. Pick on their weaker wing (your coach can tell you which). Smart players adjust as the match goes on.' },
-  { key: 'depth', label: 'Shot depth & margin', coach: 4, opts: [['high', 'High margin'], ['balanced', 'Balanced'], ['deep', 'Deep & driving']],
+  { key: 'depth', label: 'Shot depth & margin', coach: 4, opts: [['high', 'High Margin'], ['balanced', 'Balanced'], ['deep', 'Deep & Driving']],
     hint: 'High margin: moonballs over the net, safe and great on clay against big hitters, but net rushers feast. Deep & driving: pins them back. Needs strong Groundstrokes, best on quick courts.' },
-  { key: 'energy', label: 'Energy pacing', coach: 4, opts: [['conserve', 'Conserve'], ['normal', 'Normal'], ['hustle', 'All-out hustle']],
+  { key: 'energy', label: 'Energy pacing', coach: 4, opts: [['conserve', 'Conserve'], ['normal', 'Normal'], ['hustle', 'All-Out Hustle']],
     hint: 'Hustle wins more points but tires you much faster (worse in the heat) and leaves you more tired after. Conserve saves your legs for later rounds.' },
-  { key: 'pressure', label: 'Big-point risk', coach: 4, opts: [['safe', 'Safe & solid'], ['standard', 'Standard'], ['broke', 'Go for broke']],
+  { key: 'pressure', label: 'Big-point risk', coach: 4, opts: [['safe', 'Safe & Solid'], ['standard', 'Standard'], ['broke', 'Go For Broke']],
     hint: 'On break points, set points and tiebreaks. Go for broke against a nervous, fragile opponent; stay safe and solid against a tough one.' },
 ];
 

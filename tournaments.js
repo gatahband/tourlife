@@ -306,6 +306,7 @@ function renderTournaments(player) {
   renderRivals(c);
   renderBadges(c);
   homeSums(c, player);
+  if (typeof featureIntro === 'function') featureIntro(c, player);
   if (renderCareerBits(c, player)) return;
   if (!c.seed) { c.seed = Math.floor(Math.random() * 1e6) + 1; writeJSON(CAREER_KEY, c); }
   const box = $('events');
@@ -1497,14 +1498,24 @@ function changeover(entry, ps, me, step) {
   const diffs = coach ? GAME_PLAN.filter(g => coach[g.key] !== pl[g.key]).length : 0;
   const adv = teamLevel(current.career, 'coach') >= 4 ? liveAdvice(m, ps, me, ev) : null, nAdv = adv ? Object.keys(adv.plan).length : 0;
   const box = $('mCallBox');
-  box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div><div class="cbsub">Towel, Water, And A Look At The Plan</div>` +
-    (adv ? adviceHtml(adv) : adaptNotice(m, ps, me) ? `<div class="advice">${adaptNotice(m, ps, me)}</div>` : '') +
-    `<div class="cbopts"><button type="button" data-co="go"><span>▶️</span><b>Keep Playing</b><small>Same Plan</small></button>` +
-    (adv ? adv.counters.map((c, i) => `<button type="button" data-co="ct${i}"><span>${i ? '🅱️' : '🅰️'}</span><b>${esc(c.label)}</b><small>Counter ${i + 1}</small></button>`).join('') : '') +
-    (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take The Advice</b><small>${nAdv} Change${nAdv === 1 ? '' : 's'}</small></button>` : '') +
-    (diffs ? `<button type="button" data-co="coach"><span>🧑‍🏫</span><b>Use The Coach's Plan</b><small>${diffs} Change${diffs === 1 ? '' : 's'}</small></button>` : '') +
-    `<button type="button" data-co="edit"><span>📝</span><b>Adjust My Plan</b><small>Change Settings</small></button></div>` +
-    `<div class="cbfoot"><button type="button" class="link" data-co="off">Don't Stop At Changeovers This Match</button></div>`;
+  // Main view: the coach's read, one row of equal choices (short names; hover for the detail), small extras below.
+  const mainView = () => {
+    box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div>` +
+      (adv ? adviceHtml(adv) : adaptNotice(m, ps, me) ? `<div class="advice">${adaptNotice(m, ps, me)}</div>` : '') +
+      `<div class="cbopts eq"><button type="button" data-co="go"><span>▶️</span><b>Keep Playing</b><small>Same Plan</small></button>` +
+      (adv ? adv.counters.map((c, i) => `<button type="button" data-co="ct${i}" title="${esc(c.label)}"><span>${i ? '🅱️' : '🅰️'}</span><b>${esc(c.short || c.label)}</b><small>Coach's Counter</small></button>`).join('') : '') +
+      (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take The Advice</b><small>${nAdv} Change${nAdv === 1 ? '' : 's'}</small></button>` : '') +
+      `<button type="button" data-co="edit"><span>📝</span><b>Adjust My Plan</b><small>Pick Settings</small></button></div>` +
+      `<div class="cbfoot small">` + (diffs ? `<button type="button" class="link" data-co="coach">🧑‍🏫 Use The Coach's Full Plan (${diffs} Change${diffs === 1 ? '' : 's'})</button>` : '') +
+      `<button type="button" class="link" data-co="off">Don't Stop At Changeovers This Match</button></div>`;
+  };
+  // Adjust view: a compact plan editor right here on court (no jumping to another window).
+  const editView = () => {
+    box.innerHTML = `<div class="cbtitle small">ADJUST YOUR PLAN</div><div class="pcgrid" id="coGrid"></div>` +
+      `<div class="pcbtns"><button type="button" class="btn small" data-co="go">✅ Play On</button><button type="button" class="btn small ghost" data-co="back">Back</button></div>`;
+    compactPlanEditor($('coGrid'), pl);
+  };
+  mainView();
   box.hidden = false;
   return new Promise(done => {
     const iv = setInterval(() => { if (Court.skip) finish(); }, 200);
@@ -1530,16 +1541,29 @@ function changeover(entry, ps, me, step) {
       else if (k === 'coach') { Object.assign(pl, coach); finish(); }
       else if (k === 'advice') { Object.assign(pl, adv.plan); finish(); }
       else if (k.startsWith('ct')) { Object.assign(pl, adv.counters[+k.slice(2)].plan); finish(); }
-      else if (k === 'edit') {
-        // The full plan editor opens in its own scrolling window (the court is too small for it); closing it plays on.
-        box.hidden = true;
-        openModal(`<h2 class="itop">Changeover: adjust your plan</h2><p class="hint center">Applies from the next game. A new plan resets what ${esc(shortName(opp))} has figured out.</p>` +
-          `<div id="coPlan2" class="plan"></div><button type="button" class="btn" id="coDone">✅ Play on with this plan</button>`, { wide: true, onClose: finish });
-        planEditor($('coPlan2'), pl, () => {});
-        $('coDone').onclick = closeModal;
-      }
+      else if (k === 'edit') editView();
+      else if (k === 'back') { Object.assign(pl, JSON.parse(before)); mainView(); }
     };
   });
+}
+
+// A compact plan editor for the court overlay: every setting as a short label and three small buttons
+// (the long explanation shows when you hover the label).
+function compactPlanEditor(el, plan) {
+  const lv = teamLevel(current.career, 'coach');
+  const draw = () => {
+    el.innerHTML = GAME_PLAN.filter(g => !g.coach || lv >= g.coach).map(g =>
+      `<div class="pcrow"><span title="${esc(g.hint)}">${g.coach ? '🎓 ' : ''}${g.label.replace(/\b\w/g, c => c.toUpperCase())}</span><div class="pcseg" data-key="${g.key}">${g.opts.map(([v, l]) =>
+        `<button type="button" data-v="${v}" class="${(plan[g.key] || DEFAULT_PLAN[g.key]) === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>`).join('');
+  };
+  el.onclick = e => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    e.stopPropagation();
+    plan[b.parentElement.dataset.key] = b.dataset.v;
+    draw();
+  };
+  draw();
 }
 
 // The plan you're playing, short, for the corner of the court: only what differs from a balanced plan.

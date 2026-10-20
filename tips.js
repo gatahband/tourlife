@@ -118,3 +118,54 @@ function startOnboarding() {
   if (!tipsSeen().welcome) setTimeout(() => openWelcome(0, () => runTour('creator')), 300);
   else runTour('creator');
 }
+
+// --- New-feature introductions ---------------------------------------------------------------
+// When something new opens up (you can afford it, you've unlocked it, or it starts happening in your
+// matches), a short set of slides explains it on Home. Each shows once per player.
+const FEATURES_KEY = 'tourlife.features';
+const FEATURES = [
+  { id: 'prep', when: c => c.history.length >= 1 && c.money >= 1500, icon: '🧰', title: 'Prepare For Each Tournament', slides: [
+    'Before your first match of a week, open "Prepare for the week" on the draw screen.',
+    'Pick up to 3 items: detailed scouting, a hitting partner who plays like your opponent, a surface camp, recovery, a sports psychologist or video analysis.',
+    'Each one gives a small edge for that week only. Prices grow with the level of the event, so choose what actually helps you win.'] },
+  { id: 'adapt', when: c => (currentRank(c) || 9999) <= 450, icon: '🧠', title: 'Smarter Opponents', slides: [
+    'From the Challengers up, opponents adjust to your plan during the match, and more often the higher you climb.',
+    'When they do, you see it in the match ("is standing further back…"). Change your plan at a set break or changeover to answer it.',
+    'Many players also have a hidden strength their stats don\'t show. Detailed scouting reveals it before you play.'] },
+  { id: 'coach', when: c => !hasTeam(c, 'coach') && c.history.length >= 4 && c.money >= teamCost(c, 'coach', 2) * 8, icon: '🧑‍🏫', title: 'You Can Afford A Coach', slides: [
+    'Coaches train you faster and read your opponents: their game plan, their ratings, and a counter-plan for you.',
+    'Hire one under Money & Team on Home. Wages are paid every week, and they go up as your ranking climbs.',
+    'A coach gives you an edge, not the win: copy their plan word for word and smart opponents read it faster. Make it your own.'] },
+  { id: 'master', when: c => teamLevel(c, 'coach') < 4 && c.history.length >= 4 && c.money >= teamCost(c, 'coach', 4) * 3, icon: '🎓', title: 'The Master Coach Is Within Reach', slides: [
+    'The Master coach is the best there is, and the most expensive.',
+    'It unlocks four advanced settings: target wing, shot depth, energy pacing and big-point risk.',
+    'It also coaches you during matches: advice and counters at every changeover and set break, and a "Coach\'s Pick" on big points.'] },
+  { id: 'mastergot', when: c => teamLevel(c, 'coach') >= 4, icon: '🎓', title: 'Your Master Coach', slides: [
+    'Your game plan now has four 🎓 settings: target wing, shot depth & margin, energy pacing and big-point risk.',
+    'Watch your matches to get the most from it: at changeovers and set breaks it reads the match and offers advice and two counters, one tap each.',
+    'On break points and set points, the gold "Coach\'s Pick" is the call it recommends.'] },
+  { id: 'changeovers', when: (c, p) => overall(p) >= 75 && (currentRank(c) || 9999) <= 230, icon: '🔁', title: 'Changeovers', slides: [
+    'In ATP 250 and bigger main draws, a 75+ player gets changeovers: the match pauses after game 1 and then every two games.',
+    'Keep playing, take your coach\'s advice or a counter, or adjust your plan right there on court.',
+    'Tap "Don\'t Stop At Changeovers This Match" if you\'d rather play straight through.'] },
+  { id: 'pc', when: c => c.badges && c.badges.elite, icon: '🏛️', title: 'Performance Center Unlocked', slides: [
+    'You earned the Elite Program: the Performance Center is open, in the Prepare card on the draw screen.',
+    'Premium preparation: an elite fitness camp, an intelligence package, a specialist sparring partner and technical breakthroughs. Big items take two of your three slots.',
+    'Between rounds you can book premium recovery (each one this week helps less). Spend wisely: the right plan still decides the match.'] },
+];
+function featureIntro(c, p) {
+  if (!c || !p || !$('modal').hidden) return;
+  const seen = readJSON(FEATURES_KEY) || {};
+  const f = FEATURES.find(x => !seen[x.id] && (() => { try { return x.when(c, p); } catch { return false; } })());
+  if (!f) return;
+  seen[f.id] = c.week; writeJSON(FEATURES_KEY, seen);
+  const show = i => {
+    const last = i === f.slides.length - 1;
+    openModal(`<div class="help welcome"><div class="helpicon">${f.icon}</div><div class="newtag">New</div><h2 class="itop">${f.title}</h2><p class="big">${f.slides[i]}</p>` +
+      `<div class="helpdots">${f.slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>` +
+      `<button type="button" class="btn huge" id="ftNext">${last ? 'Got It' : 'Next'}</button></div>`);
+    $('ftNext').onclick = () => { if (last) closeModal(); else show(i + 1); };
+  };
+  // Never cover another window (season review, an offer…): try again next time Home opens.
+  setTimeout(() => { if (!$('modal').hidden) { const s2 = readJSON(FEATURES_KEY) || {}; delete s2[f.id]; writeJSON(FEATURES_KEY, s2); return; } show(0); }, 700);
+}

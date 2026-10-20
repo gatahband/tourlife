@@ -1498,7 +1498,6 @@ function changeover(entry, ps, me, step) {
     (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take the advice</b><small>${nAdv} change${nAdv === 1 ? '' : 's'}</small></button>` : '') +
     (diffs ? `<button type="button" data-co="coach"><span>🧑‍🏫</span><b>Use the coach's plan</b><small>${diffs} change${diffs === 1 ? '' : 's'}</small></button>` : '') +
     `<button type="button" data-co="edit"><span>📝</span><b>Adjust my plan</b><small>Change settings</small></button></div>` +
-    `<div id="coPlan" class="plan coplan" hidden></div>` +
     `<div class="cbfoot"><button type="button" class="link" data-co="off">Don't stop at changeovers this match</button></div>`;
   box.hidden = false;
   return new Promise(done => {
@@ -1526,9 +1525,12 @@ function changeover(entry, ps, me, step) {
       else if (k === 'advice') { Object.assign(pl, adv.plan); finish(); }
       else if (k.startsWith('ct')) { Object.assign(pl, adv.counters[+k.slice(2)].plan); finish(); }
       else if (k === 'edit') {
-        const el = $('coPlan'); el.hidden = false;
-        planEditor(el, pl, () => {});
-        b.outerHTML = `<button type="button" data-co="go"><span>✅</span><b>Done</b><small>Play on with the new plan</small></button>`;
+        // The full plan editor opens in its own scrolling window (the court is too small for it); closing it plays on.
+        box.hidden = true;
+        openModal(`<h2 class="itop">Changeover: adjust your plan</h2><p class="hint center">Applies from the next game. A new plan resets what ${esc(shortName(opp))} has figured out.</p>` +
+          `<div id="coPlan2" class="plan"></div><button type="button" class="btn" id="coDone">✅ Play on with this plan</button>`, { wide: true, onClose: finish });
+        planEditor($('coPlan2'), pl, () => {});
+        $('coDone').onclick = closeModal;
       }
     };
   });

@@ -1220,3 +1220,5 @@ button:not(.x):not(.fsbtn), .btn, .chip, .seg button, h2, h3, h4, .itop, .foldt,
   .ov.ovleft { top: 44px; } .ov .seg.vert { min-width: 70px; } .ov .seg.vert button { font-size: 11px; padding: 3px 7px; }
 }
 @media (max-width: 560px) { .ov.ovright { top: 44px; } }
+/* Every list item and paragraph starts with a capital letter, whatever the data says. */
+li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-letter { text-transform: uppercase; }

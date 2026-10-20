@@ -1109,3 +1109,6 @@ h2.ctr { text-align: center; }
 @media (max-width: 560px) { .ordseg { grid-template-columns: 1fr 1fr !important; } }
 .rworders { margin: 6px 0 8px; padding: 8px 12px; border: 1px solid rgba(255,214,10,.4); border-radius: 10px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
 .rworders b { color: #ffd60a; margin-right: 6px; }
+
+.dlwatch { display: inline-block; width: auto; margin: 6px 0 0; padding: 3px 10px; font-size: 12px; }
+.dlwatch.legend { border-color: #e0a82e; color: #f5d36b; }

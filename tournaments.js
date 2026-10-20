@@ -532,10 +532,17 @@ function simRound(entry, r) {
   const ev = eventOf(entry);
   for (const slot of entry.rounds[r]) {
     if (slot.winner !== undefined) continue;
-    const m = newMatch(slot.a, slot.b);
-    if (ev.tier === 'GS') m.bestOf = 5;
-    playMatch(m, [entry.entrants[slot.a], entry.entrants[slot.b]], ev);
-    record(slot, m);
+    // Played from a saved seed and snapshot, so anyone can watch it later from the draw (this event only).
+    const ps = [entry.entrants[slot.a], entry.entrants[slot.b]], seed = (Math.random() * 4294967296) >>> 0, rng = seeded(seed);
+    const bestOf = ev.tier === 'GS' ? 5 : 3;
+    slot.replay = { seed, bestOf, side: 0, ps: JSON.parse(JSON.stringify(ps)),
+      ev: { tier: ev.tier, surface: ev.surface, indoor: !!ev.indoor, weather: ev.weather || null, nation: ev.nation, city: ev.city } };
+    const m = newMatch(0, 1, rng, true);
+    m.bestOf = bestOf;
+    let guard = 0;
+    while (m.winner === null && guard++ < 7) playSet(m, ps, ev, rng);
+    slot.winner = m.winner === 0 ? slot.a : slot.b;
+    slot.score = scoreLine(m, 0);
   }
 }
 
@@ -883,8 +890,17 @@ function renderDraw() {
         `<span>${nameCell(entry, i)}</span><span class="dl-mark">${won ? '✓' : ''}</span></div>`;
     };
     const score = s.score ? `<div class="dl-score">${s.score}</div>` : '';
-    return `<div class="dl-match">${row(s.a, s.b)}${row(s.b, s.a)}${score}</div>`;
+    const both = isLegend(entry.entrants[s.a]) && isLegend(entry.entrants[s.b]);
+    const watch = s.replay ? `<button type="button" class="btn small ghost dlwatch${both ? ' legend' : ''}" data-rw="${current.tab}-${entry.rounds[current.tab].indexOf(s)}">▶ Watch${both ? ' 👑' : ''}</button>` : '';
+    return `<div class="dl-match">${row(s.a, s.b)}${row(s.b, s.a)}${score}${watch}</div>`;
   }).join('');
+  $('dList').onclick = e => {
+    const b = e.target.closest('[data-rw]'); if (!b) return;
+    const [r, k] = b.dataset.rw.split('-').map(Number), s = entry.rounds[r][k];
+    const legends = isLegend(entry.entrants[s.a]) && isLegend(entry.entrants[s.b]);
+    watchRealMatch({ replay: s.replay, round: ROUND_NAMES[r], event: `${ev.city} ${tierLabel(ev.tier)}` }, { neutral: true,
+      onDone: () => { if (!legends) return; const c = current.career || loadCareer(); c.legendWatched = true; writeJSON(CAREER_KEY, c); checkBadges(c); } });
+  };
 }
 
 // --- Match screen ----------------------------------------------------------

@@ -399,6 +399,8 @@ const ADV_TIERS = new Set(['ATP250', 'ATP500', 'M1000', 'GS']);
 // How much weaker a player's backhand is than their forehand (negative: the forehand is the weaker
 // wing). Fixed per player; one-handers tend to have the bigger gap.
 function wingGap(p) {
+  // Real players: the researched weaker wing (realscout.js).
+  if (p && p.atpRank && typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[p.name]) return REAL_SCOUT[p.name].wing;
   let h = 2166136261;
   for (const ch of String(p.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
   return (h % 1000) / 1000 * 0.9 - 0.2 + (p.backhand === 'one' ? 0.15 : 0);

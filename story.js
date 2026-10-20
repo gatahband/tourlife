@@ -438,6 +438,10 @@ const SPIN_TIP = {
 };
 
 function scoutReport(o) {
+  // Real ATP players: researched scouting (realscout.js) instead of reading it off their stats.
+  const rs = o && o.atpRank && typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[o.name];
+  if (rs) return { strengths: rs.strengths, weaknesses: rs.weaknesses, counters: rs.counters.slice(0, 3), trait: rs.trait,
+    tendencies: [...(o.hand === 'left' ? ['Left-handed: watch the serve out wide on the ad side'] : []), ...rs.habits] };
   const keys = ['serve', 'ground', 'ret', 'net', 'stam', 'mental', 'iq'];
   const vals = keys.map(k => [k, o.attrs[k] ?? 50]);
   const avg = vals.reduce((a, [, v]) => a + v, 0) / vals.length;

@@ -653,7 +653,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const mo = moraleData ? `${moraleWord(moraleData.edge, moraleData.cap)[0]} · ${moraleData.edge >= 0 ? '+' : '−'}${(Math.abs(moraleData.edge) * 100).toFixed(1)}% on points` : '';
   const scouted = hasPrep(current.entry, 'scout'), qn = quirksOf(opp).length;
   const wx = ev.weather && WEATHER[ev.weather] ? `${wxLabel(ev)} · ` : '';
-  return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}${isLegend(opp) ? ' <em class="legend">👑 Legend</em>' : ''}</h2></div>` +
+  return `<div class="card scard"><div class="scouthead"><span>Scouting report</span><h2 class="sname">${esc(opp.name)}${opp.atpRank ? ` <small>ATP #${opp.atpRank}</small>` : ''}${isLegend(opp) ? ' <em class="legend">👑 Legend</em>' : ''}</h2>${r.trait ? `<small class="strait">${esc(styleOf(opp).name)} · ${esc(r.trait)}</small>` : ''}</div>` +
     (isLegend(opp) ? `<p class="legendnote">A former world No. 1. Legends adjust to your plan far faster than you can adjust to theirs. A textbook plan won't last a set; bring one of your own. Beating a legend is worth a lot of experience.</p>` : '') +
     h2hLine(c, opp) + facts + rivalPrepHtml(c, opp, { ...DEFAULT_PLAN, ...plan, ...(typeof advPlan === 'function' ? advPlan({ ...me, isPlayer: true, advLevel: teamLevel(c, 'coach'), plan: { ...DEFAULT_PLAN, ...plan } }) : {}) }) + prepTags +
     (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +

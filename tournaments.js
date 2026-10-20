@@ -1125,16 +1125,16 @@ function bigPoint(info, ps, me) {
   const serving = info.s === me, calls = CALLS[serving ? 'serve' : 'ret'];
   const pct = e => `${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}%`;
   const box = $('mCallBox');
-  box.innerHTML = `<div class="cbtitle">${text}</div><div class="cbsub">${serving ? "You're serving" : "You're returning"}. Make a call:</div>` +
+  box.innerHTML = `<div class="cbtitle">${text}</div><div class="cbsub">${serving ? "You're Serving" : "You're Returning"} · Make A Call</div>` +
     // The Master coach points to the best call for this point (highlighted in gold).
     (() => {
       const edges = calls.map(c => callEdge(m, ps, me, c));
       const pick = teamLevel(current.career, 'coach') >= 4 ? edges.indexOf(Math.max(...edges)) : -1;
       return `<div class="cbopts eq">${calls.map((c, i) => `<button type="button" data-call="${c.id}" class="${i === pick ? 'rec' : ''}"><span>${c.icon}</span><b>${c.title}</b>` +
-        `<small class="${edges[i] >= 0 ? 'up' : 'down'}">${pct(edges[i])} on this point</small>${i === pick ? '<em class="recpill">🧑‍🏫 Coach\'s pick</em>' : ''}</button>`).join('')}</div>` +
-        (pick >= 0 ? `<p class="cbrec">Gold = your coach's recommended call.</p>` : '');
+        `<small class="${edges[i] >= 0 ? 'up' : 'down'}">${pct(edges[i])} On This Point</small>${i === pick ? '<em class="recpill">🧑‍🏫 Coach\'s Pick</em>' : ''}</button>`).join('')}</div>` +
+        '';
     })() +
-    `<div class="cbfoot small"><button type="button" class="link" data-call="none">Just play it</button><button type="button" class="link" data-call="off">Don't ask again this match</button></div>`;
+    `<div class="cbfoot small"><button type="button" class="link" data-call="none">Just Play It</button><button type="button" class="link" data-call="off">Don't Ask Again This Match</button></div>`;
   box.hidden = false;
   return new Promise(done => {
     // Leaving the match or skipping the set answers for you.
@@ -1412,7 +1412,7 @@ function renderMatch() {
       if (!adv) { const n = m.winner === null ? adaptNotice(m, ps, me) : ''; return n ? `<div class="advice">${n}</div>` : ''; }
       return adviceHtml(adv) + `<div class="advbtns">` +
         adv.counters.map((c, i) => `<button type="button" class="btn ghost small" data-bk="ct${i}">${i ? '🅱️' : '🅰️'} ${esc(c.label)}</button>`).join('') +
-        (Object.keys(adv.plan).length ? `<button type="button" class="btn small" data-bk="advice">💡 Take the advice</button>` : '') + `</div>`;
+        (Object.keys(adv.plan).length ? `<button type="button" class="btn small" data-bk="advice">💡 Take The Advice</button>` : '') + `</div>`;
     };
     const bindBreak = () => {
       if ($('mAdj')) $('mAdj').onclick = () => openSetAdjust(entry);
@@ -1487,7 +1487,7 @@ function renderMatch() {
 const changeoversOn = entry => teamLevel(current.career, 'coach') >= 4 // a Master coach talks to you at every changeover
   || ['ATP250', 'ATP500', 'M1000', 'GS'].includes(eventOf(entry).tier) && !inQual(entry) && overall(current.player) >= 75;
 // The Master coach's live advice, as a block of tips (and how many changes it suggests).
-const adviceHtml = adv => `<div class="advice"><b>🧑‍🏫 Coach's advice</b><ul>${adv.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+const adviceHtml = adv => `<div class="advice"><b>🧑‍🏫 Coach's Advice</b><ul>${adv.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
 
 // At a changeover the match pauses on court: keep going, take the coach's plan, or adjust your own.
 function changeover(entry, ps, me, step) {
@@ -1497,14 +1497,14 @@ function changeover(entry, ps, me, step) {
   const diffs = coach ? GAME_PLAN.filter(g => coach[g.key] !== pl[g.key]).length : 0;
   const adv = teamLevel(current.career, 'coach') >= 4 ? liveAdvice(m, ps, me, ev) : null, nAdv = adv ? Object.keys(adv.plan).length : 0;
   const box = $('mCallBox');
-  box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div><div class="cbsub">Towel, water, and a look at the plan.</div>` +
+  box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div><div class="cbsub">Towel, Water, And A Look At The Plan</div>` +
     (adv ? adviceHtml(adv) : adaptNotice(m, ps, me) ? `<div class="advice">${adaptNotice(m, ps, me)}</div>` : '') +
-    `<div class="cbopts"><button type="button" data-co="go"><span>▶️</span><b>Keep playing</b><small>Same plan</small></button>` +
+    `<div class="cbopts"><button type="button" data-co="go"><span>▶️</span><b>Keep Playing</b><small>Same Plan</small></button>` +
     (adv ? adv.counters.map((c, i) => `<button type="button" data-co="ct${i}"><span>${i ? '🅱️' : '🅰️'}</span><b>${esc(c.label)}</b><small>Counter ${i + 1}</small></button>`).join('') : '') +
-    (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take the advice</b><small>${nAdv} change${nAdv === 1 ? '' : 's'}</small></button>` : '') +
-    (diffs ? `<button type="button" data-co="coach"><span>🧑‍🏫</span><b>Use the coach's plan</b><small>${diffs} change${diffs === 1 ? '' : 's'}</small></button>` : '') +
-    `<button type="button" data-co="edit"><span>📝</span><b>Adjust my plan</b><small>Change settings</small></button></div>` +
-    `<div class="cbfoot"><button type="button" class="link" data-co="off">Don't stop at changeovers this match</button></div>`;
+    (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take The Advice</b><small>${nAdv} Change${nAdv === 1 ? '' : 's'}</small></button>` : '') +
+    (diffs ? `<button type="button" data-co="coach"><span>🧑‍🏫</span><b>Use The Coach's Plan</b><small>${diffs} Change${diffs === 1 ? '' : 's'}</small></button>` : '') +
+    `<button type="button" data-co="edit"><span>📝</span><b>Adjust My Plan</b><small>Change Settings</small></button></div>` +
+    `<div class="cbfoot"><button type="button" class="link" data-co="off">Don't Stop At Changeovers This Match</button></div>`;
   box.hidden = false;
   return new Promise(done => {
     const iv = setInterval(() => { if (Court.skip) finish(); }, 200);

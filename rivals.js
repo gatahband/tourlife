@@ -113,8 +113,9 @@ function renderRivals(c) {
     const p = pool[id], h = h2h[id], r = p.atpRank || ovrToRank(overall(p));
     const items = allMatches().filter(it => it.rec.opponent && (it.rec.opponent.id === id || (!it.rec.opponent.id && it.rec.opponent.name === p.name)));
     return `<details class="rvbox">` +
-      `<summary class="rvrow">${isRival(c, id) ? '<span class="rivaltag">⚔️</span>' : ''}<span class="adname"><b>${flagOf(me.nation)} ${esc(me.name)} <span class="rvvs">vs</span> ${flagOf(p.nation)} ${esc(p.name)}</b>` +
-      `<small>${h.w + h.l} meetings · they're ${p.atpRank ? `ATP #${p.atpRank}` : `about #${r}`}${myRank ? (r < myRank ? ' (above you)' : ' (below you)') : ''}</small></span><span class="chev">▾</span></summary>` +
+      `<summary class="rvsum"><div class="rvline">${isRival(c, id) ? '<span class="rivaltag">⚔️</span>' : ''}<div class="rvwho"><div class="rvnames">${flagOf(me.nation)} ${esc(me.name || 'You')} <span class="rvvs">vs</span> ${flagOf(p.nation)} ${esc(p.name || 'Unknown')}</div>` +
+      `<div class="rvmeta">${h.w + h.l} meetings · they're ${p.atpRank ? `ATP #${p.atpRank}` : `about #${r}`}${myRank ? (r < myRank ? ' (above you)' : ' (below you)') : ''}</div></div>` +
+      `<span class="rvscore ${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h.w}–${h.l}</span><span class="chev">▾</span></div></summary>` +
       `<div class="rvbody"><div class="rvlead ${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h2hText(h, esc(shortName(p)))}</div>` +
       (h.last ? `<p class="hint">Last time: ${h.last.won ? 'you won' : 'you lost'} ${h.last.score} · ${esc(h.last.city)} ${h.last.round}</p>` : '') +
       `<p class="hint">Age ${p.age} · ${p.hand === 'left' ? 'left-handed' : 'right-handed'}${TEMPERAMENTS[p.temperament] ? ` · ${TEMPERAMENTS[p.temperament].emoji} ${TEMPERAMENTS[p.temperament].name}` : ''}</p>` +

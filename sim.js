@@ -633,6 +633,9 @@ function rallyStyle(p, o, pl, op) {
 // Which wing hit the point's last ball: errors come more from a player's weaker wing (and the wing the opponent
 // targets), winners more from the stronger one. Decided from the point count, not the random stream, so it
 // never changes a result.
+// A steady 0–1 number for this point (from the point count): picks presentation details without touching the
+// random stream, so results never change.
+const pointHash = (m, salt = 0) => Math.abs(Math.sin(((m.sets || []).length * 97 + (m.points || []).length + 1) * 12.9898 + salt * 4.1414) * 43758.5453) % 1;
 function finalWing(m, ps, h, clean) {
   const g = wingGap(ps[h]), tgt = advPlan(ps[1 - h], ps[h]).wing, n = (m.sets || []).length * 97 + (m.points || []).length;
   const pBh = clamp(0.42 + (tgt === 'bh' ? 0.18 : tgt === 'fh' ? -0.18 : 0) + (clean ? -0.5 : 0.7) * g, 0.1, 0.9);
@@ -876,7 +879,8 @@ function tryDrop(m, ps, ev, s, rng, forced) {
     st.dropWon = (st.dropWon || 0) + 1;
     st.winners++;
     if (hitter(len - 1) !== by) len++;
-    return { w: by, pt: { how: 'drop', len, drop: { by, result: 'won' } } };
+    // Heavy backspin: now and then the ball bites and spins away sideways off the bounce.
+    return { w: by, pt: { how: 'drop', len, drop: { by, result: 'won', spin: pointHash(m, 5) < clamp((attr(ps[by], 'iq') - 55) / 90, 0.05, 0.4) } } };
   }
   // Not a winner. It clips the net; or the opponent gets there. A smart, fit retriever arrives early
   // enough to counterattack and win the point; otherwise they just dig it back and the rally goes on.
@@ -889,7 +893,9 @@ function tryDrop(m, ps, ev, s, rng, forced) {
   if (rng() < counter) {
     m.stats[o].winners++;
     if (hitter(len - 1) !== o) len++;
-    return { w: o, pt: { how: 'dropchased', len, drop: { by, result: 'chased' } } };
+    // Great hands answer a drop with a drop: dug up and re-dropped cross-court, away from the hitter.
+    const touch = (attr(ps[o], 'iq') + ps[o].attrs.net) / 2, h = pointHash(m, 3);
+    return { w: o, pt: { how: 'dropchased', len, drop: { by, result: 'chased', redrop: touch >= 66 && h < (touch - 56) / 60 } } };
   }
   return { retrieved: true, pt: { drop: { by, result: 'retrieved' } } };
 }

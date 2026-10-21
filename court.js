@@ -1073,6 +1073,8 @@ function createCourt() {
       shots = base();
       shots[n - 1].kind = res === 'won' ? 'drop' : res === 'net' ? 'net' : 'winner';
       if (res === 'chased') shots[n - 2].kind = 'drop';
+      if (res === 'chased' && pt.drop.redrop) { shots[n - 1].kind = 'drop'; shots[n - 1].redrop = true; } // a drop answered with a cross-court drop
+      if (res === 'won' && pt.drop.spin) shots[n - 1].spinAway = true;
       if (res === 'net') shots[n - 1].dropNet = true;
       end = { won: 'drop', net: 'dropnet', chased: 'dropchased' }[res];
     } else {
@@ -1091,6 +1093,16 @@ function createCourt() {
       end = clean ? (app === winner ? 'volley' : app === loser ? 'pass' : 'winner')
         : n === 2 && loser === returner ? 'return-error' : pt.how === 'ue' ? 'ue' : 'fe';
     }
+    // The last ball is hit with the wing the engine recorded (and the ball before it is placed to that side).
+    const body = shots.filter(s => s.kind !== 'fault'), fin = body[body.length - 1];
+    if (pt.wing && body.length >= 3 && ['winner', 'net', 'out', 'pass'].includes(fin.kind)) {
+      fin.forceWing = pt.wing; body[body.length - 2].aimWing = pt.wing;
+      // Signature patterns. Attacking baseliners run around for the inside-out forehand winner.
+      const st = (prof[fin.by] || {}).style;
+      if (fin.kind === 'winner' && pt.wing === 'fh' && ['Aggressive Baseliner', 'Heavy-Topspin Attacker', 'All-Court', 'Flat Attacker'].includes(st) && Math.random() < 0.45) body[body.length - 2].aimWing = 'bh', fin.insideOut = true;
+    }
+    // Serve +1: a big server goes wide, then puts the next ball into the open court.
+    if (body.length === 3 && body[0].kind === 'serve' && body[2].kind === 'winner' && body[2].by === server && ['Serve +1 Attacker', 'First-Strike Attacker', 'Serve-Dominant'].includes((prof[server] || {}).style)) body[0].aim = 'wide';
     // A drop shot that got dug back: the rally carried on from there.
     if (pt.drop && pt.drop.result === 'retrieved') {
       const idx = shots.findIndex((sh, i) => i > 0 && i < shots.length - 2 && sh.by === pt.drop.by && sh.kind === 'rally');
@@ -1188,6 +1200,13 @@ function createCourt() {
   // Where a shot lands.
   function landing(shot, from, deuce, recvPos) {
     const d = dir(shot.by);
+    // Placed to a wing (so the next ball is struck with the wing the engine recorded): a rally ball to that side.
+    if (shot.aimWing && recvPos && ['rally', 'approach', 'pass'].includes(shot.kind)) {
+      const recv = 1 - shot.by;
+      return { x: clamp(recvPos.x + (shot.aimWing === 'fh' ? 1 : -1) * fhDir(recv) * rand(1.4, 2.8), -3.9, 3.9), y: -d * rand(8, 11.2) };
+    }
+    // A re-drop goes cross-court, to the far side of the net from the drop it answered.
+    if (shot.redrop) return { x: -Math.sign(from.x || 1) * rand(2.6, 3.8), y: -d * rand(0.6, 1.6) };
     // Lobs vary: most go deep, some fall short (and get punished).
     // A winning lob goes right over the player at the net and lands deep behind them.
     if (shot.lob && (shot.kind === 'pass' || shot.kind === 'winner') && recvPos) return { x: clamp(recvPos.x + rand(-0.8, 0.8), -3.8, 3.8), y: -d * rand(9.8, 11.5) };
@@ -1197,7 +1216,7 @@ function createCourt() {
       case 'ace': case 'serve': {
         const side = (deuce ? -1 : 1) * d;
         // A serve call aims it: into the body (at the returner) or out wide.
-        const aim = curCall && curCall.side === shot.by && typeof CALL_FX !== 'undefined' ? (CALL_FX[curCall.id] || {}).serve : null;
+        const aim = shot.aim || (curCall && curCall.side === shot.by && typeof CALL_FX !== 'undefined' ? (CALL_FX[curCall.id] || {}).serve : null);
         const wide = aim === 'body' && recvPos ? clamp(Math.abs(recvPos.x) + rand(-0.4, 0.3), 0.6, 3.4) : aim === 'wide' ? rand(3.3, 3.95)
           : shot.kind === 'ace' ? (Math.random() < 0.5 ? 0.35 : 3.8) : rand(0.6, 3.6);
         return { x: side * wide, y: -d * rand(shot.kind === 'ace' ? 5.4 : 3, 6.1) };
@@ -1376,7 +1395,7 @@ function createCourt() {
       const meet = (b, sMax = 11) => {
         const L = Math.max(0.1, dist(from, b)), hx = (b.x - from.x) / L, hy = (b.y - from.y) / L;
         const want = desiredFor(b);
-        const wing = chooseWing(recv, r0.x, want.x);
+        const wing = next && next.forceWing ? (next.forceWing === 'fh' ? 'Forehand' : 'Backhand') : chooseWing(recv, r0.x, want.x);
         const base = inAir ? from : b;
         const sWant = (want.x - base.x) * hx + (want.y - base.y) * hy;
         let best = null;
@@ -1457,6 +1476,8 @@ function createCourt() {
       // After the bounce it carries straight on along the same line.
       const L = dist(from, bounce), ux = (bounce.x - from.x) / (L || 1), uy = (bounce.y - from.y) / (L || 1);
       const postTo = !final ? contact
+        // Heavy backspin: the drop bites and spins away sideways (sometimes right off the court).
+        : shot.spinAway ? { x: clamp(bounce.x + Math.sign(bounce.x || 1) * rand(1.8, 3.2), -DOUBLES - 1.5, DOUBLES + 1.5), y: bounce.y - uy * 0.5 }
         : { x: bounce.x + ux * (goodDrop ? 0.4 : L * 0.35), y: bounce.y + uy * (goodDrop ? 0.4 : L * 0.35) };
       const preDist = dist(from, to0);
       // Share of the flight before the bounce, from the real distances (ball slows a little after the

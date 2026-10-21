@@ -1379,6 +1379,7 @@ function createCourt() {
       // A short lob to a player at the back: they move in and smash it after the bounce.
       if (shot.lob && next && !next.smash && !atNet(recv) && Math.abs(bounce.y) < 9 && Math.random() < 0.75) next.bounceSmash = true;
       const inAir = !!next && (next.kind === 'volley' || next.kind === 'volleyx' || !!next.volleyErr || !!next.smash);
+      const prevShot = rally.shots[k - 1], firstVolley = inAir && !!prevShot && prevShot.by === recv && (prevShot.kind === 'serve' || prevShot.kind === 'approach');
       const goodDrop = final && (shot.kind === 'drop' || shot.kind === 'underarm');
       const serveMps = (faults ? pt.kmh2 : pt.kmh1) / 3.6 * 0.75;
       // Put-aways are struck harder than rally balls.
@@ -1403,8 +1404,9 @@ function createCourt() {
         for (let sv = s0; sv <= s1; sv += 0.25) {
           const pnt = { x: base.x + hx * sv, y: base.y + hy * sv };
           if (Math.sign(pnt.y) !== dir(recv) || Math.abs(pnt.y) > BASE + 6.5 || Math.abs(pnt.x) > DOUBLES + 2.8) continue;
-          // Volleys are hit around the net, never from the back of the court.
-          if (inAir && !(next && next.smash) && Math.abs(pnt.y) > 6.5) continue;
+          // Volleys are hit around the net, never from the back of the court. A serve-and-volleyer's first volley
+          // comes in around the service line, as they charge in behind the serve.
+          if (inAir && !(next && next.smash) && Math.abs(pnt.y) > (firstVolley ? 8.6 : 6.5)) continue;
           const ms = inAir ? clamp(sv / v * 1000, 150, 3800) : flightMs(L, sv, v);
           const body = bodyFor(recv, wing, pnt);
           const need = dist(r0, body), can = runDist(ms / 1000);

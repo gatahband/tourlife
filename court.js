@@ -791,6 +791,21 @@ function createCourt() {
     });
   }
 
+  // A small gold crown sitting on a player's head; returns the new top (for the name label above it).
+  function drawCrown(cx, top, w) {
+    const h = w * 0.62, y0 = top - 1, y1 = y0 - h;
+    ctx.save();
+    ctx.fillStyle = '#ffd60a'; ctx.strokeStyle = 'rgba(80,55,0,.7)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - w / 2, y0); ctx.lineTo(cx - w / 2, y1 + h * 0.25); ctx.lineTo(cx - w / 4, y1 + h * 0.6);
+    ctx.lineTo(cx, y1); ctx.lineTo(cx + w / 4, y1 + h * 0.6); ctx.lineTo(cx + w / 2, y1 + h * 0.25); ctx.lineTo(cx + w / 2, y0); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff375f';
+    for (const dx of [-w / 2, 0, w / 2]) { ctx.beginPath(); ctx.arc(cx + dx, (dx ? y1 + h * 0.25 : y1), Math.max(1.2, w * 0.08), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    return y1 - 2;
+  }
+
   function drawPlayer(side) {
     const p = pos[side];
     const gold = prof[side] && prof[side].real; // real ATP players are drawn in gold
@@ -817,6 +832,8 @@ function createCourt() {
       ctx.beginPath(); ctx.arc(fx, headY, hr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       top = headY - hr; below = P(p.x, p.y, 0.8)[1];
     }
+    // Legends wear a crown.
+    if (prof[side] && prof[side].legend) { top = drawCrown(fx, top, camera() === 'top' ? Math.max(12, k * 0.8) : Math.max(13, k * 0.55)); }
     ctx.fillStyle = gold ? '#ffd60a' : 'rgba(255,255,255,.95)';
     ctx.font = `600 ${camera() === 'top' ? clamp(S * 0.62, 10, 14) : 13}px ${FONT}`;
     ctx.textAlign = 'center';

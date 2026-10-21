@@ -331,6 +331,8 @@ const ex = (m, i) => (m.exec ? m.exec[i] : 1);
 
 // A plan has something to execute (and to counter) only if it isn't the middle setting everywhere.
 const hasPlan = p => Object.entries(planOf(p)).some(([k, v]) => v !== DEFAULT_PLAN[k]);
+// Something to read: any plan away from the defaults, and against a legend, any plan at all (default included).
+const readable = (ps, who, target) => hasPlan(ps[target]) || (isLegend(ps[who]) && ps[target].isPlayer);
 
 function fatigue(m, p) {
   const pace = { conserve: 0.5, normal: 1, hustle: 1.6 }[advPlan(p).energy] || 1;
@@ -435,7 +437,26 @@ function legendSurge(m, ps, i) {
   if (behind >= 3) m.comeback[i] = set;
   if (behind < 0) delete m.comeback[i];
   const on = m.comeback[i] === set;
-  return (on ? 0.13 : Math.max(0, behind - 1) * 0.015) + Math.max(0, setsBehind) * 0.01;
+  return (on ? 0.09 : Math.max(0, behind - 1) * 0.012) + Math.max(0, setsBehind) * 0.008;
+}
+// A legend's grip on the match: they're simply better at the top level (an aura on every point), and every
+// adjustment of theirs you haven't answered keeps costing you, point after point, until you change exactly what
+// they countered. Unanswered, it snowballs; answer it and the pressure lifts.
+function legendPressure(m, ps, i) {
+  if (!isLegend(ps[i]) || !ps[1 - i].isPlayer) return 0;
+  const you = { ...planOf(ps[1 - i]), ...advPlan(ps[1 - i], ps[i]) };
+  // (A general read of your plan is answered by changing anything in it.)
+  // Each unanswered adjustment hurts more the longer you leave it: a point or two is cheap, a set is crushing.
+  let open = 0;
+  const played = m.stats ? m.stats[0].points + m.stats[1].points : 0;
+  for (const a of (m.adapted || []).filter(a => a.who === i && a.val !== undefined)) {
+    const still = a.key === 'plan' ? JSON.stringify(you) === a.val : you[a.key] === a.val;
+    if (still) open += Math.min(1.8, Math.max(0, played - (a.at || 0) - 4) * 0.045);
+    // Answered: you win back the plan they'd taken away (once per adjustment).
+    else if (!a.answered) { a.answered = true; if (m.exec) m.exec[1 - i] = Math.min(1.4, (m.exec[1 - i] || 0) + 0.25); }
+  }
+  const o = Math.min(3, open);
+  return 0.004 + o * 0.01 + o * o * 0.006; // several unanswered at once snowball
 }
 // Phase two: a legend who loses a set against you rethinks their whole plan, built around what's wrong in your
 // game (your weaknesses), so the match changes under you and you have to read it again.
@@ -451,7 +472,7 @@ function legendPhase(m, ps, i) {
   m.moments.push({ set: m.sets.length + 1, who: i, kind: 'adapt', label: `changes everything for the next set (${what})`, at: 0 });
 }
 // Only in matches against you: between computer players, legends play to their rating.
-const legendAdapt = (ps, who, target) => (isLegend(ps[who]) && ps[target].isPlayer ? 3 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.35 : 1);
+const legendAdapt = (ps, who, target) =>  (isLegend(ps[who]) && ps[target].isPlayer ? 2 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.35 : 1);
 // What the adjuster changes depends on the plan they're facing (its most distinctive setting).
 function adaptTo(m, ps, who, target, set) {
   const pl = planOf(ps[target]), ad = advPlan(ps[target], ps[who]);
@@ -466,10 +487,15 @@ function adaptTo(m, ps, who, target, set) {
     pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
   ].filter(Boolean);
   const pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
-  m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.45 : 1);
+  // A legend's adjustment against you works mostly as pressure (legendPressure) that lifts when you answer it.
+  if (isLegend(ps[who]) && ps[target].isPlayer) m.exec[target] = Math.max(0.35, m.exec[target] - 0.2);
+  else m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.45 : 1);
   if (isLegend(ps[who]) && ps[target].isPlayer && m.exec[who] !== undefined) m.exec[who] = Math.min(1.6, m.exec[who] + 0.15); // a legend's answer also sharpens their own game
   if (pick.key === 'wing') { m.adj = m.adj || {}; m.adj[ps[who].name] = { wing: ad.wing }; }
-  m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set }];
+  // What they countered, and the value it had: until you change that setting, a legend keeps punishing it.
+  const cur = { ...planOf(ps[target]), ...advPlan(ps[target], ps[who]) };
+  const played = (m.stats ? m.stats[0].points + m.stats[1].points : 0);
+  m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set, at: played, val: pick.key === 'plan' ? JSON.stringify(cur) : cur[pick.key] }];
   m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
 }
 
@@ -556,6 +582,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength
     - 0.012 * (Math.min(4, strengthHits(A, B).length) - Math.min(4, strengthHits(B, A).length)) // walking into a known strength
     + legendSurge(m, ps, s) - legendSurge(m, ps, r) // a legend raising their level when behind
+    + legendPressure(m, ps, s) - legendPressure(m, ps, r) // a legend's aura, and every adjustment you haven't answered
     + 0.012 * (Math.min(4, readHits(A, B, ev)) * clamp(m.exec ? m.exec[s] : 1, 0, 1.3) - Math.min(4, readHits(B, A, ev)) * clamp(m.exec ? m.exec[r] : 1, 0, 1.3)); // exploiting a known weakness
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
@@ -1078,14 +1105,17 @@ function* setGen(m, ps, ev, rng = Math.random) {
     yield* gameGen(m, ps, ev, rng);
     // At tour level, a player falling behind mid-set may adjust right away.
     const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
-    if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
+    if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && readable(ps, trail, 1 - trail) && m.exec[1 - trail] > 0.6
       && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0)) * legendAdapt(ps, trail, 1 - trail)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+    // A legend broken by you works out what you did, straight away.
+    { const lp = m.points && m.points[m.points.length - 1];
+      if (lp && lp.end && !lp.tb && lp.w !== lp.s && isLegend(ps[lp.s]) && ps[lp.w].isPlayer && m.exec && rng() < 0.6) adaptTo(m, ps, lp.s, lp.w, m.sets.length + 1); }
     // A legend 3+ games down re-reads your current plan straight away (once a set).
     { const lgB = [0, 1].find(i => isLegend(ps[i]) && ps[1 - i].isPlayer && m.games[1 - i] - m.games[i] >= 3);
-      if (lgB !== undefined && !(m.surgeRead || {})[m.sets.length] && m.exec && hasPlan(ps[1 - lgB])) { m.surgeRead = { ...(m.surgeRead || {}), [m.sets.length]: true }; adaptTo(m, ps, lgB, 1 - lgB, m.sets.length + 1); } }
+      if (lgB !== undefined && !(m.surgeRead || {})[m.sets.length] && m.exec) { m.surgeRead = { ...(m.surgeRead || {}), [m.sets.length]: true }; adaptTo(m, ps, lgB, 1 - lgB, m.sets.length + 1); } }
     // A legend checks your plan early in every set, ahead or behind.
     const lg = isLegend(ps[0]) && ps[1].isPlayer ? 0 : isLegend(ps[1]) && ps[0].isPlayer ? 1 : -1;
-    if (lg >= 0 && (h0 + h1 === 2 || h0 + h1 === 5) && m.exec && hasPlan(ps[1 - lg]) && m.exec[1 - lg] > 0.3
+    if (lg >= 0 && (h0 + h1 === 2 || h0 + h1 === 5) && m.exec && m.exec[1 - lg] > 0.3
       && rng() < 0.4 * (1 + 1.2 * (ps[1 - lg].textbook || 0))) adaptTo(m, ps, lg, 1 - lg, m.sets.length + 1);
   }
   const set = { games: [...m.games], tb };
@@ -1100,7 +1130,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
   // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
   // and the higher the level, the more often it happens.
   const winner = 1 - loser;
-  if (m.exec && hasPlan(ps[winner]) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate() * (1 + 0.6 * (ps[winner].textbook || 0)) * legendAdapt(ps, loser, winner)) adaptTo(m, ps, loser, winner, m.sets.length + 1);
+  if (m.exec && readable(ps, loser, winner) && m.exec[winner] > 0.6 && rng() < (0.35 + (attr(ps[loser], 'iq') - 50) * 0.01) * adaptRate() * (1 + 0.6 * (ps[winner].textbook || 0)) * legendAdapt(ps, loser, winner)) adaptTo(m, ps, loser, winner, m.sets.length + 1);
   const won = [0, 1].map(i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length);
   if (won[0] === setsToWin(m)) m.winner = 0;
   if (won[1] === setsToWin(m)) m.winner = 1;

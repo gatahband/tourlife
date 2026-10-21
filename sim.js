@@ -193,6 +193,13 @@ function returnRating(p, surface) {
 }
 
 const SURFACE_SERVE = { hard: 0, clay: -0.03, grass: 0.03 };
+// Base chance of winning a point on serve, tuned so tour-level holds and tiebreaks match real tennis (tools/stats-check.html).
+let SERVE_BASE = 0.664;
+// When two real players meet (Study Room, AI matches), the point-by-point gap between them is scaled by this, tuned so
+// the sim's favourites win as often as real favourites do (tools/predict-check.html). Matches involving you are unchanged.
+let REAL_GAP = 0.45;
+// Legends' surge and pressure, scaled up with the stronger serve (holding is easier, so legends need more bite to stay as hard).
+let LEGEND_X = 1.4;
 
 function comfort(p, ev) {
   let c = p.acclimated ? 0.01 : 0; // arrived early and practised on these courts
@@ -259,6 +266,7 @@ function newMatch(a, b, rng = Math.random, track = false) {
 
 function initForm(m, ps, rng) {
   const g = ps.map(() => gauss(rng));
+  m.realPair = ps.every(p => p.atpRank && !p.isPlayer);
   m.form = ps.map((p, i) => g[i] * p.formSd * (p.temperament === 'robotic' ? 0.5 : 1));
   // Bad days: now and then anyone, even the best, just plays badly (the low tail of their form roll; fiery
   // players have them more often, robotic ones less). Errors pour out and it can turn a match.
@@ -332,7 +340,8 @@ const ex = (m, i) => (m.exec ? m.exec[i] : 1);
 // A plan has something to execute (and to counter) only if it isn't the middle setting everywhere.
 const hasPlan = p => Object.entries(planOf(p)).some(([k, v]) => v !== DEFAULT_PLAN[k]);
 // Something to read: any plan away from the defaults, and against a legend, any plan at all (default included).
-const readable = (ps, who, target) => hasPlan(ps[target]) || (isLegend(ps[who]) && ps[target].isPlayer);
+const readable = (ps, who, target) => hasPlan(ps[target]) || (isLegend(ps[who]) && ps[target].isPlayer)
+  || (ps[target].atpRank && !ps[target].isPlayer && !ps[who].isPlayer); // real players always have a signature to read
 
 function fatigue(m, p) {
   const pace = { conserve: 0.5, normal: 1, hustle: 1.6 }[advPlan(p).energy] || 1;
@@ -486,7 +495,16 @@ function adaptTo(m, ps, who, target, set) {
     pl.drops === 'often' && { key: 'drops', label: 'is reading the drop shot and staying closer' },
     pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
   ].filter(Boolean);
-  const pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
+  // Between two real players, they go after whatever is actually hurting them most so far (and something new each
+  // time); against you, the order above stands.
+  let pick = opts[0] || { key: 'plan', label: 'found answers to the game plan' };
+  if (m.realPair && opts.length) {
+    const st = m.stats[target], done = new Set((m.adapted || []).filter(a => a.who === who && a.against === target).map(a => a.key));
+    const hurt = { serve: st.aces / Math.max(1, st.servePts) * 6, net: st.netWon / Math.max(1, st.points) * 8, drops: (st.dropWon || 0) / Math.max(1, st.points) * 14,
+      aggression: st.winners / Math.max(1, st.points) * 2.2, wing: 0.5, spin: 0.35, depth: 0.35, returnPos: 0.3 };
+    const left = opts.filter(o => !done.has(o.key));
+    if (left.length) pick = left.reduce((b, o) => (hurt[o.key] || 0.3) > (hurt[b.key] || 0.3) ? o : b);
+  }
   // A legend's adjustment against you works mostly as pressure (legendPressure) that lifts when you answer it.
   if (isLegend(ps[who]) && ps[target].isPlayer) m.exec[target] = Math.max(0.35, m.exec[target] - 0.2);
   else m.exec[target] -= (0.25 + attr(ps[who], 'iq') / 200) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.45 : 1);
@@ -497,6 +515,28 @@ function adaptTo(m, ps, who, target, set) {
   const played = (m.stats ? m.stats[0].points + m.stats[1].points : 0);
   m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set, at: played, val: pick.key === 'plan' ? JSON.stringify(cur) : cur[pick.key] }];
   m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
+}
+
+// Between two real players, whoever has been countered can answer back: they rework that part of their game and
+// get some of their edge back. Smarter players find answers sooner.
+const ANSWER = {
+  serve: 'is mixing up the serve: more bodies and slices to the deeper returner',
+  net: 'is coming in behind deeper approaches instead of any short ball',
+  drops: 'is hiding the drop shot better and saving it for the right moment',
+  aggression: 'is building the point first before pulling the trigger',
+  wing: 'is opening up the court to run around and hit forehands',
+  spin: 'is adding more shape to get the ball up above the slice',
+  depth: 'is mixing the depth so they can\'t sit on it',
+  returnPos: 'is standing a step further back to handle the body serve',
+  plan: 'has reworked the game plan',
+};
+function answerBack(m, ps, i, set, rng) {
+  if (!m.realPair || !m.exec) return;
+  const a = (m.adapted || []).find(x => x.against === i && !x.answered);
+  if (!a || rng() >= 0.12 + (attr(ps[i], 'iq') - 50) * 0.004) return;
+  a.answered = true;
+  m.exec[i] = Math.min(1, m.exec[i] + 0.6 * (0.25 + attr(ps[a.who], 'iq') / 200));
+  m.moments.push({ set, who: i, kind: 'adapt', label: ANSWER[a.key] || ANSWER.plan, at: m.points.length - 1 });
 }
 
 // --- Advanced game plan (unlocked by better coaches) --------------------------------------
@@ -570,7 +610,7 @@ function handEdge(A, B, ad) {
 
 function pointProb(m, ps, ev, s, clutch, ad = false) {
   const r = 1 - s, A = ps[s], B = ps[r];
-  let p = 0.62 + 0.0034 * (serveRating(A, ev.surface) - returnRating(B, ev.surface))
+  let p = SERVE_BASE + 0.0034 * (serveRating(A, ev.surface) - returnRating(B, ev.surface))
     + 0.0018 * (attr(A, 'iq') - attr(B, 'iq')) + handEdge(A, B, ad)
     + SURFACE_SERVE[ev.surface] + comfort(A, ev) - comfort(B, ev)
     + m.form[s] - m.form[r] + m.mood[s] - m.mood[r]
@@ -582,8 +622,8 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
     - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength
     - 0.012 * (Math.min(4, strengthHits(A, B).length) - Math.min(4, strengthHits(B, A).length)) // walking into a known strength
-    + legendSurge(m, ps, s) - legendSurge(m, ps, r) // a legend raising their level when behind
-    + legendPressure(m, ps, s) - legendPressure(m, ps, r) // a legend's aura, and every adjustment you haven't answered
+    + LEGEND_X * (legendSurge(m, ps, s) - legendSurge(m, ps, r)) // a legend raising their level when behind
+    + LEGEND_X * (legendPressure(m, ps, s) - legendPressure(m, ps, r)) // a legend's aura, and every adjustment you haven't answered
     + 0.012 * (Math.min(4, readHits(A, B, ev)) * clamp(m.exec ? m.exec[s] : 1, 0, 1.3) - Math.min(4, readHits(B, A, ev)) * clamp(m.exec ? m.exec[r] : 1, 0, 1.3)); // exploiting a known weakness
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
@@ -596,6 +636,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     const robotCap = x => x > 0 ? x * 0.5 : x;
     p += A.temperament === 'robotic' ? robotCap(edge) : B.temperament === 'robotic' ? -robotCap(-edge) : edge;
   }
+  if (m.realPair && REAL_GAP !== 1) { const mid = SERVE_BASE + SURFACE_SERVE[ev.surface]; p = mid + (p - mid) * REAL_GAP; }
   return clamp(p, 0.35, 0.85);
 }
 
@@ -1108,6 +1149,8 @@ function* setGen(m, ps, ev, rng = Math.random) {
     const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
     if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && readable(ps, trail, 1 - trail) && m.exec[1 - trail] > 0.6
       && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0)) * legendAdapt(ps, trail, 1 - trail)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+    // Real players who've been countered may answer back at the changeover.
+    if ((h0 + h1) % 2 === 1) for (const i of [0, 1]) answerBack(m, ps, i, m.sets.length + 1, rng);
     // A legend broken by you works out what you did, straight away.
     { const lp = m.points && m.points[m.points.length - 1];
       if (lp && lp.end && !lp.tb && lp.w !== lp.s && isLegend(ps[lp.s]) && ps[lp.w].isPlayer && m.exec && rng() < 0.6) adaptTo(m, ps, lp.s, lp.w, m.sets.length + 1); }

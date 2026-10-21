@@ -424,6 +424,32 @@ const adaptRate = () => ADAPT_RATE[advTier] || 1;
 // Legends (former world No. 1s) adjust far more often, and are much harder to adjust to. A textbook plan
 // is read almost at once; only an original plan holds up.
 const isLegend = p => !!(p && p.atpRank && typeof LEGENDS !== 'undefined' && LEGENDS.has(p.name));
+// A legend behind against you finds another level: the further behind in the set (and in the match), the
+// harder they come back. 0–5 down is never safe against Sinner or Alcaraz. Fades once they're level again.
+function legendSurge(m, ps, i) {
+  if (!isLegend(ps[i]) || !ps[1 - i].isPlayer) return 0;
+  const behind = (m.games[1 - i] || 0) - (m.games[i] || 0), set = (m.sets || []).length;
+  const setsWon = j => (m.sets || []).filter(x => x.games[j] > x.games[1 - j]).length, setsBehind = setsWon(1 - i) - setsWon(i);
+  // Comeback mode: once 3 games down, they stay switched on for the rest of the set (until they lead).
+  m.comeback = m.comeback || {};
+  if (behind >= 3) m.comeback[i] = set;
+  if (behind < 0) delete m.comeback[i];
+  const on = m.comeback[i] === set;
+  return (on ? 0.13 : Math.max(0, behind - 1) * 0.015) + Math.max(0, setsBehind) * 0.01;
+}
+// Phase two: a legend who loses a set against you rethinks their whole plan, built around what's wrong in your
+// game (your weaknesses), so the match changes under you and you have to read it again.
+function legendPhase(m, ps, i) {
+  if (!isLegend(ps[i]) || !ps[1 - i].isPlayer || typeof matchReads !== 'function') return;
+  let reads = matchReads(ps[1 - i], { surface: m.surface || 'hard' }).slice(0, 3);
+  // Nothing obvious to attack: they change the rhythm of the match instead.
+  if (!reads.length) { const pl = planOf(ps[i]); reads = [{ key: 'aggression', val: pl.aggression === 'aggressive' ? 'patient' : 'aggressive' }, { key: 'net', val: pl.net === 'often' ? 'rarely' : 'often' }]; }
+  ps[i].plan = { ...planOf(ps[i]), ...Object.fromEntries(reads.map(x => [x.key, x.val])) };
+  m.exec[i] = Math.min(1.5, (m.exec[i] || 1) + 0.25);
+  m.legendPhase = (m.legendPhase || 0) + 1;
+  const what = reads.map(x => (GAME_PLAN.find(g => g.key === x.key) || {}).label + ': ' + planLabel(x.key, x.val)).join(', ');
+  m.moments.push({ set: m.sets.length + 1, who: i, kind: 'adapt', label: `changes everything for the next set (${what})`, at: 0 });
+}
 // Only in matches against you: between computer players, legends play to their rating.
 const legendAdapt = (ps, who, target) => (isLegend(ps[who]) && ps[target].isPlayer ? 3 * (1 + 0.8 * (ps[target].textbook || 0)) : 1) * (isLegend(ps[target]) && ps[who].isPlayer ? 0.35 : 1);
 // What the adjuster changes depends on the plan they're facing (its most distinctive setting).
@@ -529,6 +555,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
     - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength
     - 0.012 * (Math.min(4, strengthHits(A, B).length) - Math.min(4, strengthHits(B, A).length)) // walking into a known strength
+    + legendSurge(m, ps, s) - legendSurge(m, ps, r) // a legend raising their level when behind
     + 0.012 * (Math.min(4, readHits(A, B, ev)) * clamp(m.exec ? m.exec[s] : 1, 0, 1.3) - Math.min(4, readHits(B, A, ev)) * clamp(m.exec ? m.exec[r] : 1, 0, 1.3)); // exploiting a known weakness
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
   // Momentum and nerves (see gameMood).
@@ -1053,6 +1080,9 @@ function* setGen(m, ps, ev, rng = Math.random) {
     const [h0, h1] = m.games, trail = h0 < h1 ? 0 : 1;
     if (ADV_TIERS.has(advTier) && h0 + h1 === 6 && Math.abs(h0 - h1) >= 2 && m.exec && hasPlan(ps[1 - trail]) && m.exec[1 - trail] > 0.6
       && rng() < 0.3 * adaptRate() * (attr(ps[trail], 'iq') / 60) * (1 + 0.6 * (ps[1 - trail].textbook || 0)) * legendAdapt(ps, trail, 1 - trail)) adaptTo(m, ps, trail, 1 - trail, m.sets.length + 1);
+    // A legend 3+ games down re-reads your current plan straight away (once a set).
+    { const lgB = [0, 1].find(i => isLegend(ps[i]) && ps[1 - i].isPlayer && m.games[1 - i] - m.games[i] >= 3);
+      if (lgB !== undefined && !(m.surgeRead || {})[m.sets.length] && m.exec && hasPlan(ps[1 - lgB])) { m.surgeRead = { ...(m.surgeRead || {}), [m.sets.length]: true }; adaptTo(m, ps, lgB, 1 - lgB, m.sets.length + 1); } }
     // A legend checks your plan early in every set, ahead or behind.
     const lg = isLegend(ps[0]) && ps[1].isPlayer ? 0 : isLegend(ps[1]) && ps[0].isPlayer ? 1 : -1;
     if (lg >= 0 && (h0 + h1 === 2 || h0 + h1 === 5) && m.exec && hasPlan(ps[1 - lg]) && m.exec[1 - lg] > 0.3
@@ -1065,6 +1095,7 @@ function* setGen(m, ps, ev, rng = Math.random) {
   m.sets.push(set);
   const loser = set.games[0] > set.games[1] ? 1 : 0;
   trigger(m, ps, loser, 'setLost', rng);
+  if (m.winner === null) legendPhase(m, ps, loser); // a legend who drops a set comes back with a new plan
   if (typeof ordersAfterSetLost === 'function') ordersAfterSetLost(m, ps, loser); // real players' match orders
   // Players have answers: whoever lost the set may work out the winner's plan. Smarter players adapt more,
   // and the higher the level, the more often it happens.

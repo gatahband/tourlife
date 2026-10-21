@@ -1383,7 +1383,7 @@ function createCourt() {
       const serveMps = (faults ? pt.kmh2 : pt.kmh1) / 3.6 * 0.75;
       // Put-aways are struck harder than rally balls.
       const power = 0.88 + (prof[hitter].ground ?? 50) / 400; // a 50-rated hitter ≈ 1.0, a 90 ≈ 1.1
-      const v = (isServe ? serveMps : fl.mps * power * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.2 : 1)) * surf().pace;
+      let v = (isServe ? serveMps : fl.mps * power * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.2 : 1)) * surf().pace;
       // Where the receiver would like to meet it. Returns are taken back at the returner's depth.
       const desiredFor = b => next && next.smash ? { x: b.x * 0.9, y: lerp(r0.y, b.y, 0.5) }
         : next && next.bounceSmash ? { x: b.x * 1.05, y: dir(recv) * (Math.abs(b.y) + rand(0.3, 1)) } // step in and take it high off the bounce
@@ -1416,11 +1416,18 @@ function createCourt() {
       };
       let met = meet(bounce);
       // A ball that comes back must be reachable: if not, it was placed a little closer to them.
-      if (!final) for (let it = 0; it < 4 && !met.ok; it++) {
+      if (!final) for (let it = 0; it < (inAir ? 8 : 4) && !met.ok; it++) {
         const b2 = landing(shot, from, deuce, r0);
-        b2.x = lerp(b2.x, r0.x, 0.25 * (it + 1));
+        b2.x = lerp(b2.x, r0.x, Math.min(0.9, (inAir ? 0.15 : 0.25) * (it + 1)));
         const m2 = meet(b2);
         if (m2.ok || m2.need - m2.can < met.need - met.can) { bounce = b2; met = m2; }
+      }
+      // A ball the net player volleys has to reach them: if it still can't, it was a softer, dipping ball
+      // (so the volley is played where they are, never with the ball turning back short of them).
+      if (!final && inAir && !met.ok) {
+        const v0 = v;
+        for (const f of [0.85, 0.72, 0.6, 0.5]) { v = v0 * f; const m2 = meet(bounce); if (m2.ok || m2.need - m2.can < met.need - met.can) met = m2; if (met.ok) break; }
+        if (!met.ok) { v = v0 * 0.5; const near = { x: lerp(bounce.x, r0.x, 0.8), y: bounce.y }; const m2 = meet(near); if (m2.ok || m2.need - m2.can < met.need - met.can) { bounce = near; met = m2; } }
       }
       // A winner has to beat them: if they could get to it, it was hit further from them.
       const isWinner = final && ['winner', 'volley', 'drop', 'underarm', 'ace'].includes(shot.kind) || (final && shot.post);
@@ -1511,7 +1518,7 @@ function createCourt() {
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
-        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1) * (call.flight === 'topspin' || call.flight === 'flat' ? shotStyle(hitter).kick || 1 : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin, lowBounce: ['slice', 'drop'].includes(call.flight) || shot.kind === 'drop',
+        bounceH: fl.bounce * surf().bounce * (call.flight === 'slice' ? surf().sliceLow : 1) * (call.flight === 'topspin' || call.flight === 'flat' ? shotStyle(hitter).kick || 1 : 1), slide: slideFor(r0, body, reach, final), goodDrop, softShot, r0, body, reach, beaten: final && !met.ok, metOk: met.ok, metNeed: met.need, metCan: met.can, metMs: met.ms, review: reviewInfo, h0, hGoal, base: realMs, realMs, fx, final, passWin: !!shot.passWin, lowBounce: ['slice', 'drop'].includes(call.flight) || shot.kind === 'drop',
       });
       // Where everyone ends up after this shot.
       cur[recv] = { x: lerp(r0.x, body.x, reach), y: lerp(r0.y, body.y, reach) };

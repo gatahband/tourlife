@@ -28,13 +28,23 @@ function drillFatigue(d, c, p) {
 }
 
 // Your whole build while you train: every stat, what the last session moved, and your playstyle.
-function buildPanel(p, last) {
+function buildPanel(p, last, preview) {
   const style = styleOf(p);
-  return `<div class="tbuild"><div class="tbhead"><b>Your build</b><span>${style.name}${traitOf(p) ? ` · ${traitOf(p).name}` : ''}</span></div>` +
-    ATTRS.map(([k, label]) => {
-      const v = p.attrs[k], up = last && last.stats.includes(k);
-      return `<div class="tbrow${up ? ' up' : ''}"><span>${label}</span><div class="tbbar"><i style="width:${clamp(v, 0, 100)}%"></i></div><b>${v.toFixed(1)}${up ? ` <small>+${pctText(last.gain)}</small>` : ''}</b></div>`;
-    }).join('') + `</div>`;
+  const rows = ATTRS.map(([k, label]) => {
+    const v = p.attrs[k], up = last && last.stats.includes(k), nv = preview ? preview[k] : v, d = nv - v;
+    return `<div class="tbrow${up || d > 0 ? ' up' : ''}"><span>${label}</span><div class="tbbar"><i style="width:${clamp(v, 0, 100)}%"></i>${d > 0 ? `<em style="left:${clamp(v, 0, 100)}%;width:${clamp(d, 0.4, 100)}%"></em>` : ''}</div>` +
+      `<b>${(preview ? nv : v).toFixed(1)}${d > 0 ? ` <small>+${d.toFixed(2)}</small>` : up ? ` <small>+${pctText(last.gain)}</small>` : ''}</b></div>`;
+  }).join('');
+  // Playstyles: where you stand now, and (picking a session) where it would take you.
+  const now = detectStyles(p.attrs, p.fav, planOf(p)); // every playstyle, closest first
+  const aft = preview ? detectStyles(preview, p.fav, planOf(p)) : null;
+  const pct = s => Math.round(s.score * 100), aftOf = n => aft && aft.find(s => s.name === n);
+  const change = aft && aft[0].name !== now[0].name;
+  const styles = `<div class="tbstyles"><div class="tbshead">All Playstyles${preview ? ' · Now → After This Session' : ' · How Close You Are'}</div>` +
+    (change ? `<div class="tbswitch">⚠️ Your playstyle would change: <b>${esc(now[0].name)}</b> → <b>${esc(aft[0].name)}</b></div>` : '') +
+    now.map((s, i) => { const a = aftOf(s.name), dv = a ? pct(a) - pct(s) : 0;
+      return `<div class="tbsrow${i === 0 ? ' top' : ''}"><span>${esc(s.name)}</span><b>${pct(s)}%${a ? ` → ${pct(a)}%` : ''}</b>${a && dv ? `<small class="${dv > 0 ? 'up' : 'down'}">${dv > 0 ? '+' : ''}${dv}</small>` : '<small></small>'}</div>`; }).join('') + `</div>`;
+  return `<div class="tbuild"><div class="tbhead"><b>Your build</b><span>${style.name}${traitOf(p) ? ` · ${traitOf(p).name}` : ''}</span></div>${rows}${styles}</div>`;
 }
 
 function renderTraining() {
@@ -47,7 +57,7 @@ function renderTraining() {
   $('tStatus').innerHTML = fatigueBar(p.fatigue || 0) +
     `<div class="tovr">OVR <b>${overall(p).toFixed(1)}</b> · ${levelOf(overall(p)).name}</div>` +
     `<p class="hint">${left} free day${left === 1 ? '' : 's'} left${dt.next ? ` · then ${flagOf(dt.next.nation)} ${dt.next.city} (${tierLabel(dt.next.tier)}, ${surfaceLabel(dt.next.surface)})` : ''}.</p>` +
-    buildPanel(p, dt.lastSession);
+    `<div id="tBuildBox">${buildPanel(p, dt.lastSession)}</div>`;
 
   const box = $('tBody');
   // Step 1: where to spend the days.
@@ -103,36 +113,63 @@ function renderTraining() {
     return;
   }
   const local = dt.choice === 'travel';
-  const range = local ? "usually 0.8–1.3%" : "0.4–1.3%";
+  const range = local ? '0.8–1.3%' : '0.4–1.3%';
   box.innerHTML = `<h2>Day ${dt.used + 1} of ${dt.days}${local ? ' · practising on site' : ''}</h2>` +
     `<div class="drills">${DRILLS.map(d => {
-      const after = d.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${range}</b></span>`).join('');
+      const res = d.stats.length ? sessionResult(d.id, rollTrain(local) * trainBoost(c)) : null;
+      const after = d.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${(res.attrs[k] - p.attrs[k]).toFixed(2)}</b></span>`).join('');
+      // The playstyle this session moves you toward the most.
+      let toward = '';
+      if (res) { const a = detectStyles(res.attrs, p.fav, planOf(p)), b = detectStyles(p.attrs, p.fav, planOf(p));
+        const best = a.map(s => ({ n: s.name, d: s.score - (b.find(x => x.name === s.name) || s).score })).sort((x, y) => y.d - x.d)[0];
+        if (best && best.d > 0) toward = `<div class="dtoward">Moves You Toward <b>${esc(best.n)}</b></div>`; }
       return `<button type="button" class="drill" data-drill="${d.id}"><span class="ticon">${d.icon}</span><b>${d.title}</b>` +
-        `<small>${d.desc}</small><div class="chips">${after}</div>` +
+        `<small>${d.desc}</small><div class="chips">${after}</div>${toward}` +
         `<div class="dfat">${(f => f > 0 ? `+${f}` : `${f}`)(drillFatigue(d, c, p))} fatigue</div></button>`;
     }).join('')}</div>` +
     (burnout(c) < 1 ? `<p class="hint warnline">🔥 Burnout: ${idleWeeks(c)} weeks in a row without an event, so training only counts ${Math.round(burnout(c) * 100)}% this week. Play a tournament to reset it.</p>` : '') +
     (rustOf(c) >= 0.001 ? `<p class="hint warnline">🧊 ${rustText(c)}</p>` : '') +
     (logHtml ? `<ul class="tlog">${logHtml}</ul>` : '') +
+    `<div class="drillconfirm" id="tConfirm" hidden></div>` +
     `<button type="button" class="link" id="tRestAll">Rest the remaining ${left} day${left === 1 ? '' : 's'}</button>`;
+  // Two steps, so a stray tap never spends a day: pick a session, then confirm it.
+  let picked = null;
   box.onclick = e => {
+    if (e.target.closest('#tGo')) { if (picked) { applyDay(picked, rollTrain(local) * trainBoost(c)); renderTraining(); } return; }
+    if (e.target.closest('#tCancel')) { picked = null; $('tBuildBox').innerHTML = buildPanel(p, dt.lastSession); box.querySelectorAll('.drill').forEach(x => x.classList.remove('picked')); $('tConfirm').hidden = true; return; }
     const b = e.target.closest('[data-drill]');
     if (!b) return;
-    applyDay(b.dataset.drill, rollTrain(local) * trainBoost(c));
-    renderTraining();
+    picked = b.dataset.drill;
+    box.querySelectorAll('.drill').forEach(x => x.classList.toggle('picked', x === b));
+    const d = DRILLS.find(x => x.id === picked);
+    if (d.stats.length) { const res = sessionResult(picked, rollTrain(local) * trainBoost(c)); $('tBuildBox').innerHTML = buildPanel(p, null, res.attrs); }
+    $('tConfirm').innerHTML = `<span>${d.icon} <b>${d.title}</b> for day ${dt.used + 1}?</span><button type="button" class="btn small" id="tGo">✅ Confirm Day</button><button type="button" class="btn small ghost" id="tCancel">Cancel</button>`;
+    $('tConfirm').hidden = false;
   };
   $('tRestAll').onclick = () => { while (dt.used < dt.days) applyDay('rest'); renderTraining(); };
 }
 
 // One day: natural recovery, then the session's fatigue and stat gains (kept for good).
+// Exactly what a session would do to your stats (used for the preview and for the day itself).
+function sessionResult(drillId, gain) {
+  const c = current.career, p = current.player, d = DRILLS.find(x => x.id === drillId);
+  gain *= burnout(c); // training week after week without playing counts for less
+  gain *= Math.max(0.1, 1 - (c.autopilot || 0) / 8);
+  const attrs = { ...p.attrs };
+  for (const k of d.stats) attrs[k] = gainedValue(p.attrs, k, gain * (d.id === 'weakwing' ? 0.4 : 1));
+  return { attrs, gain };
+}
+
 function applyDay(drillId, gain = rollTrain(false)) {
   const c = current.career, p = current.player, dt = c.downtime;
   const d = DRILLS.find(x => x.id === drillId);
   const before = overall(p);
   p.fatigue = clamp((p.fatigue || 0) + drillFatigue(d, c, p), 0, 100);
-  gain *= burnout(c); // training week after week without playing counts for less
-  gain *= Math.max(0.1, 1 - (c.autopilot || 0) / 8); // and so does training while you're on autopilot in your matches
-  for (const k of d.stats) applyGain(p.attrs, k, gain);
+  const res = sessionResult(drillId, gain);
+  gain = res.gain;
+  Object.assign(p.attrs, res.attrs);
+  // Weak-wing work narrows the gap between your forehand and backhand.
+  if (d.id === 'weakwing') { ensureWing(p); const g = p.bhGap; p.bhGap = Math.round(Math.sign(g) * Math.max(0, Math.abs(g) - 0.05 * gain / 0.008) * 100) / 100; }
   dt.lastSession = d.stats.length ? { stats: d.stats, gain } : null;
   p.playstyle = styleOf(p).name;
   dt.used++;
@@ -196,6 +233,15 @@ function seasonStatsHtml(c) {
       : '<p class="hint center">Play your first match of the season to see your numbers here.</p>');
 }
 
+// Your Tactical rating (from Match Reads) and how far it lets you grow, plus your forehand and backhand.
+function tacticalHtml(c, p) {
+  if (typeof tacticalOf !== 'function') return '';
+  if (p.bhGap === undefined) { ensureWing(p); writeJSON(SAVE_KEY, p); }
+  const t = tacticalOf(c), cap = Math.min(95, tacticalCap(c)), w = wingRatings(p), weak = w.fh === w.bh ? '' : w.fh < w.bh ? 'fh' : 'bh';
+  return `<div class="tacrow"><div><span>🧠 Tactical</span><b>${Math.round(t)}</b><small>${overall(p) >= cap - 0.5 ? '⚠️ Holding your growth back. ' : ''}Lets your stats grow to about ${cap.toFixed(0)} OVR. Good Match Reads raise it.</small></div>` +
+    `<div><span>🎾 Forehand / Backhand</span><b>${w.fh} / ${w.bh}</b><small>${weak ? `Opponents will aim at your ${weak === 'fh' ? 'forehand' : 'backhand'}. Weak-Wing Work on free days closes the gap.` : 'Even on both wings.'}</small></div></div>`;
+}
+
 function renderOvr(p) {
   const ovr = overall(p), lv = levelOf(ovr), c = current.career;
   const prog = lv.next ? clamp((ovr - lv.min) / (lv.next.min - lv.min), 0, 1) : 1;
@@ -226,6 +272,7 @@ function renderOvr(p) {
     // Your build at a glance: playstyle and the seven stats.
     `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show my build <i class="foldchev" aria-hidden="true"></i></em></div>` +
     `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary><div class="buildslot" id="hBuildSlot"></div></details>` +
+    tacticalHtml(c, p) +
     seasonStatsHtml(c) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     '';

@@ -410,7 +410,7 @@ function realEntrant(x) {
   const p = x.player;
   return { name: p.name, nation: p.nation, attrs: { ...p.attrs }, temperament: p.temperament, fav: p.fav, worst: p.worst,
     hand: p.hand || 'right', backhand: p.backhand || 'two', plan: planOf(p), formSd: 0.02, seed: null,
-    real: true, owner: x.contact || '', pid: x.id, orders: p.orders || null };
+    real: true, owner: x.contact || '', pid: x.id, orders: p.orders || null, bhGap: p.bhGap };
 }
 
 // Seed lines for an 8/16/32 draw (size/4 seeds); everyone else is drawn at random.
@@ -504,6 +504,7 @@ function openMatchup(ev, slot, onPlay) {
     row('Career Win Rate', S.map(s => s && s.wins + s.losses ? s.wins / (s.wins + s.losses) : null), pct) +
     `<tr><td colspan="3" class="mu-sec">The Build</td></tr>` +
     ATTRS.map(([k, label]) => row(label, ps.map(p => p.attrs[k]), v => v.toFixed(1))).join('') +
+    row('Forehand', ps.map(p => wingRatings({ ...p, isPlayer: p.real }).fh), v => v) + row('Backhand', ps.map(p => wingRatings({ ...p, isPlayer: p.real }).bh), v => v) +
     `</tbody></table>` +
     (N.some(n => !n) && ps.some(p => p.real) ? `<p class="hint center">– means no numbers yet: computer players, or a player who sent their character before season stats were included.</p>` : '') +
     (onPlay ? `<button type="button" class="btn huge" id="muPlay">▶ Play Live</button>` : ''), { wide: true });

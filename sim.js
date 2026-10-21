@@ -455,12 +455,17 @@ const ADV_TIERS = new Set(['ATP250', 'ATP500', 'M1000', 'GS']);
 // How much weaker a player's backhand is than their forehand (negative: the forehand is the weaker
 // wing). Fixed per player; one-handers tend to have the bigger gap.
 function wingGap(p) {
+  // You: your own (visible, trainable) gap, first set from the same formula everyone else uses.
+  if (p && p.isPlayer && p.bhGap !== undefined) return p.bhGap;
   // Real players: the researched weaker wing (realscout.js).
   if (p && p.atpRank && typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[p.name]) return REAL_SCOUT[p.name].wing;
   let h = 2166136261;
   for (const ch of String(p.name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
   return (h % 1000) / 1000 * 0.9 - 0.2 + (p.backhand === 'one' ? 0.15 : 0);
 }
+// Your forehand and backhand as ratings (from Groundstrokes and your wing gap): opponents aim at the weaker one.
+function ensureWing(p) { if (p && p.bhGap === undefined) p.bhGap = Math.round(wingGap({ ...p, isPlayer: false }) * 100) / 100; return p; }
+const wingRatings = p => { const g = wingGap(p), gr = p.attrs.ground ?? 50; return { fh: Math.round(Math.min(99, gr + (g < 0 ? -1 : 0.35) * Math.abs(g) * 14)), bh: Math.round(Math.min(99, gr + (g > 0 ? -1 : 0.35) * Math.abs(g) * 14)) }; };
 let advTier = null; // the tier of the match being played (set by setGen)
 function advPlan(p, o) {
   const pl = planOf(p), lv = p.advLevel || 0;
@@ -625,6 +630,15 @@ function rallyStyle(p, o, pl, op) {
 
 // One point on serve: first/second serve, double faults, aces, rally length and how it ended.
 // Base win odds per serve are solved so the overall point odds equal pointProb; the game plans then shift them.
+// Which wing hit the point's last ball: errors come more from a player's weaker wing (and the wing the opponent
+// targets), winners more from the stronger one. Decided from the point count, not the random stream, so it
+// never changes a result.
+function finalWing(m, ps, h, clean) {
+  const g = wingGap(ps[h]), tgt = advPlan(ps[1 - h], ps[h]).wing, n = (m.sets || []).length * 97 + (m.points || []).length;
+  const pBh = clamp(0.42 + (tgt === 'bh' ? 0.18 : tgt === 'fh' ? -0.18 : 0) + (clean ? -0.5 : 0.7) * g, 0.1, 0.9);
+  const u = Math.abs(Math.sin((n + 1) * 12.9898 + h * 78.233) * 43758.5453) % 1;
+  return u < pBh ? 'bh' : 'fh';
+}
 function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const r = 1 - s, A = ps[s], B = ps[r], st = m.stats[s];
   const sp = planOf(A), rp = planOf(B), SP = SERVE_PLAN[sp.serve];
@@ -789,6 +803,7 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const last = clean ? w : l;
   if (hit(len - 1) !== last) len++;
   pt.len = len;
+  pt.wing = finalWing(m, ps, last, clean); // which wing hit the last ball (shown in Match Reads)
   if (clean) m.stats[w].winners++;
   else if (pt.how === 'ue') m.stats[l].ue++;
   return done();

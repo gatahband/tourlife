@@ -148,6 +148,10 @@ const FEATURES = [
     'In ATP 250 and bigger main draws, a 75+ player gets changeovers: the match pauses after game 1 and then every two games.',
     'Keep playing, take your coach\'s advice or a counter, or adjust your plan right there on court.',
     'Tap "Don\'t Stop At Changeovers This Match" if you\'d rather play straight through.'] },
+  { id: 'reads', when: c => c.history.length >= 1, icon: '🧠', title: 'Match Reads', slides: [
+    'In Watch Live and the new Read The Match mode, the match stops twice a set for a Match Read: the real numbers from the set so far.',
+    'Read them, then keep your plan or change up to two settings. Right changes help, wrong ones hurt, and ignoring an opponent who has worked you out costs you.',
+    'Good reads raise your Tactical rating (on Home), and your Tactical rating decides how far your stats can grow. Reads get harder as you climb.'] },
   { id: 'staff', when: c => (c.money || 0) >= 60000, icon: '💼', title: 'Build Your Team', slides: [
     'Money & Team now has More Staff & Upgrades: a fitness trainer, a mental coach, a travelling hitting partner, a stringer, an upgraded hotel and an agent.',
     'Each gives a real but modest edge. Wages rise as your ranking climbs, and everyone who travels with you adds their flights and hotel to each trip.',

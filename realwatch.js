@@ -33,7 +33,7 @@ function watchRealMatch(rec, opts = {}) {
     `<p class="hint center">${esc(rec.event || rp.ev.city || '')} · ${surfaceLabel(rp.ev.surface)}${rp.ev.indoor ? ' indoor' : ''}${neutral ? '' : ` · Final score ${rec.score}`}</p>` +
     `<button type="button" class="btn small ghost rwfs" id="rwFs">⛶ Full screen</button><div id="rwStage">` +
     (same ? '' : `<p class="hint center warnline">This match was played on an older version, so the replay may differ a little from the real result.</p>`) +
-    `<table class="board" id="rwBoard"></table>` +
+    `<table class="board" id="rwBoard"></table><div id="rwMeter" class="meterbox"></div>` +
     (neutral && ps.some(p => p.ordersNote) ? `<div class="rworders">${ps.filter(p => p.ordersNote).map(p => `<div><b>📋 ${flagOf(p.nation)} ${esc(p.name)}</b> ${esc(p.ordersNote)}</div>`).join('')}</div>` : '') +
     `<div class="rpbar"><div class="seg four" id="rwAngle">${[['broadcast', 'Broadcast'], ['reverse', 'Reverse'], ['side', 'Side'], ['top', 'Top-Down'], ['fps', 'POV: You'], ['fps2', 'POV: Opp']]
       .map(([v, l]) => `<button type="button" data-v="${v}" class="${v === ang ? 'on' : ''}">${l}</button>`).join('')}</div>` +
@@ -85,6 +85,7 @@ function watchRealMatch(rec, opts = {}) {
   const mapBy = o => o && { ...o, by: view(o.by) };
   (async () => {
     const done = [];
+    const tally = [{ w: 0, n: 0 }, { w: 0, n: 0 }];
     for (let si = 0; si < sets.length && !closed; si++) {
       let inGame = 0;
       // A player's match orders kicking in (e.g. "Change It Up" after losing a set).
@@ -102,6 +103,12 @@ function watchRealMatch(rec, opts = {}) {
         await ReplayCourt.playPoint({ ...pt, review: false, w: view(pt.w), net: mapBy(pt.net), drop: mapBy(pt.drop), netcord: mapBy(pt.netcord),
           call: pt.call && { ...pt.call, side: view(pt.call.side) } }, { server: view(pt.s), deuce: inGame % 2 === 0 }, speed);
         board(done, pt.games, [L[me], L[op]], view(pt.s));
+        // Win-probability meter, from the score and each player's serve record so far.
+        tally[pt.s].n++; if (pt.w === pt.s) tally[pt.s].w++;
+        if ($('rwMeter') && !pt.end) { const sv = i => servePct(tally[i].w, tally[i].n, 0.62 + (overall(ps[i]) - overall(ps[1 - i])) * 0.002), won = i => done.filter(x => x.games[i] > x.games[1 - i]).length;
+          const next = { pts: pt.pts ? [...pt.pts] : [0, 0] }; next.pts[pt.w]++;
+          setMeter($('rwMeter'), winProbability({ pA: sv(me), pB: sv(op), setsA: won(me), setsB: won(op), toWin: Math.ceil((rp.bestOf || 3) / 2), gA: pt.games[me], gB: pt.games[op],
+            ptsA: next.pts[me], ptsB: next.pts[op], serverA: pt.s === me, tb: !!pt.tb }), [name(me), name(op)]); }
         { const si0 = si, j0 = j, sp = $('rwStyles'); if (sp) { sp.innerHTML = stylePanelHtml([ps[me], ps[op]], { moments: m.moments.map(mo => ({ ...mo, who: mo.who === me ? 0 : 1 })) },
           [name(me), name(op)], mo => mo.set < si0 + 1 || (mo.set === si0 + 1 && (mo.at ?? 0) <= j0)); bindStylePanel(sp); } }
         if (pt.end) {

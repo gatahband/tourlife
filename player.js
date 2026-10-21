@@ -47,9 +47,11 @@ const GAME_PLAN = [
 function planEditor(el, plan, onChange) {
   const draw = () => {
     const lv = typeof teamLevel === 'function' && current.career ? teamLevel(current.career, 'coach') : 0;
-    el.innerHTML = GAME_PLAN.map(g => {
+    // Basic settings first, then the coach-unlocked tier under its own heading.
+    el.innerHTML = GAME_PLAN.map((g, i) => {
       const locked = g.coach && lv < g.coach;
-      return `<div class="prow${locked ? ' locked' : ''}"><div class="plabel"><b>${g.coach ? '🎓 ' : ''}${g.label}</b><small>${locked ? `🔒 Unlocks with a ${TEAM.coach.levels[g.coach].name}. ${g.hint}` : g.hint}</small></div>` +
+      return (g.coach && !(GAME_PLAN[i - 1] || {}).coach ? `<div class="pctier">🎓 Master Coach Options</div>` : '') +
+        `<div class="prow${locked ? ' locked' : ''}"><div class="plabel"><b>${g.label}</b><small>${locked ? `🔒 Unlocks with a ${TEAM.coach.levels[g.coach].name}. ${g.hint}` : g.hint}</small></div>` +
         `<div class="seg" data-key="${g.key}">${g.opts.map(([v, l]) =>
           `<button type="button" data-v="${v}" class="${(plan[g.key] || DEFAULT_PLAN[g.key]) === v ? 'on' : ''}" ${locked ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>`;
     }).join('');

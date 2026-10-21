@@ -1283,7 +1283,7 @@ function createCourt() {
       const shot = rally.shots[k], next = rally.shots[k + 1];
       if (shot.kind === 'fault') {
         const call = nameShot(shot, '', faults === 0 ? pt.kmh1 : pt.kmh2, {});
-        segs.push({ t: 'fault', side: server, from: { ...from }, spot: landing(shot, from, deuce, cur[1 - server]), call });
+        segs.push({ t: 'fault', side: server, from: { ...from }, spot: landing(shot, from, deuce, cur[1 - server]), call, df: faults === 1 });
         faults++;
         continue;
       }
@@ -1649,7 +1649,8 @@ function createCourt() {
           }
         });
         if (s.t === 'let') say(s.side, { type: 'LET', wing: null, racket: null }, lifeMs);
-        await wait((o.real ? 900 : 450 / o.speed) * slow);
+        if (s.df) banner = { text: 'DOUBLE FAULT!', t0: clock(), big: true }; // the second serve missed too
+        await wait((o.real ? 900 : 450 / o.speed) * slow * (s.df ? 1.6 : 1));
         ball.on = false; trail = [];
       } else if (s.t === 'netball') {
         s.h0 = { ...pos[s.hitter] };
@@ -1784,9 +1785,9 @@ function createCourt() {
     planOnly: (pt, info) => plan(pt, info), // testing: the shot-by-shot script for a point, without playing it
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
-    banner(text) { banner = { text, t0: clock() }; draw(); },
+    banner(text) { banner = text ? { text, t0: clock() } : null; draw(); },
     setPlan(text) { planText = text || ''; fillInfo(); draw(); },
-    setBreak(on) { breakTime = !!on; ball.on = ball.on && !on; draw(); },
+    setBreak(on) { breakTime = !!on; ball.on = ball.on && !on; if (on) banner = null; draw(); },
     setInfoEl(el) { infoEl = el; fillInfo(); draw(); },
     setWeather(w, rainy = false, cond = {}) {
       wx = w ? { pace: w.pace || 1, bounce: w.bounce || 1 } : { pace: 1, bounce: 1 };

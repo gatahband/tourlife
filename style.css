@@ -175,7 +175,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 520px) { .btn-row.three { grid-template-columns: 1fr 1fr; } .btn-row.three .speed { grid-column: span 2; } }
 
 .choose { text-align: center; margin: 4px 0 12px; }
-.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+@media (max-width: 900px) { .modes { grid-template-columns: repeat(2, 1fr); } }
 .mode {
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
   background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--text);
@@ -1228,3 +1229,161 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .teamextra > summary b::after { content: ' ▾'; color: var(--accent); } .teamextra[open] > summary b::after { content: ' ▴'; }
 .teamextra > summary small { color: var(--muted); font-size: 12px; }
 .teamextra[open] > summary { margin-bottom: 8px; }
+
+/* Win-probability meter */
+.meterbox { margin: 6px 0 8px; } .meterbox:empty { display: none; }
+.wpmeter { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wptrack { height: 8px; border-radius: 99px; background: rgba(255,69,58,.55); overflow: hidden; }
+.wptrack i { display: block; height: 100%; background: #30d158; transition: width .6s ease; }
+.meterbox.frozen { visibility: hidden; }
+/* Match Read */
+.rdhint { margin: 4px 0 8px; font-size: 13px; color: var(--muted); text-align: center; }
+.rdtab { width: 100%; max-width: 520px; margin: 0 auto 8px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rdtab th, .rdtab td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: center; } .rdtab td:first-child { text-align: left; color: var(--muted); }
+.rdclue { text-align: center; color: #ffd60a; font-size: 13px; margin: 4px 0 8px; }
+.rdcount { font-size: 12px; color: var(--muted); align-self: center; }
+
+.tacrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+@media (max-width: 560px) { .tacrow { grid-template-columns: 1fr; } }
+.tacrow > div { background: var(--field); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.tacrow span { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.tacrow b { font-size: 20px; } .tacrow small { color: var(--muted); font-size: 12px; }
+
+.wptrack i { transition: width 1.2s cubic-bezier(.25,.8,.3,1); }
+/* While a point is being played the bar breathes, so it feels live (without giving the point away). */
+.meterbox.live .wptrack i { animation: wpbreathe 1.6s ease-in-out infinite; }
+@keyframes wpbreathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+
+/* Read The Match: the court fades out between live moments and back in for them; prompts glide in. */
+#mCourtWrap canvas { transition: opacity .4s ease, filter .4s ease; }
+#mCourtWrap.faded canvas { opacity: .18; filter: blur(2px) saturate(.6); }
+.callbox:not([hidden]) { animation: cbIn .35s ease-out; }
+@keyframes cbIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Read The Match: between live moments the court is fully covered by a loading screen (spinner in the OVR
+   emblem colours) while the scoreboard and meter tick through the points. */
+#mCourtWrap.faded canvas { opacity: 1; filter: none; }
+.loadcover { position: absolute; inset: 0; z-index: 4; border-radius: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: radial-gradient(circle at 50% 40%, #1b2030, #0b0d12 75%); opacity: 0; pointer-events: none; transition: opacity .45s ease; }
+#mCourtWrap.covered .loadcover { opacity: 1; pointer-events: auto; }
+.loadcover b { font-size: 18px; letter-spacing: .04em; } .loadcover small { color: var(--muted); font-size: 13px; text-align: center; padding: 0 16px; }
+.ldspin { width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(from 0deg, #0a84ff, #5e5ce6, #bf5af2, #ff375f, #0a84ff);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px)); mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+  animation: ldspin 1s linear infinite; box-shadow: 0 0 24px rgba(191,90,242,.35); }
+@keyframes ldspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ldspin { animation-duration: 3s; } }
+
+/* Switch how the match is played, any time (above the match log). */
+.modebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 12px 0; }
+.modebar > span { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.modebtns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.modebtns button { display: inline-flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--text); font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer; }
+.modebtns button:hover { border-color: var(--accent); }
+.modebtns button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Big-point calls: title up top, the three calls with room around them, the numbers that matter, and the
+   "just play it" options down at the bottom. */
+.callbox.bp { justify-content: space-between; padding: 16px 12px 10px; }
+.callbox.bp .bphead { display: grid; gap: 4px; }
+.callbox.bp .cbopts { margin: 6px 0; }
+.recpill { top: auto; right: auto; bottom: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.callbox.bp .cbopts > button.rec { padding-bottom: 16px; }
+.bpctx { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 10px; width: min(760px, 100%); margin: 6px auto 0;
+  background: rgba(14,17,22,.7); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; text-align: left; }
+.bpctx small { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.bpctx b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.callbox.bp .cbfoot.small { margin-top: auto; padding-top: 8px; flex-direction: row; gap: 18px; opacity: .8; }
+@media (max-width: 700px) { .bpctx { grid-template-columns: 1fr 1fr; } .bpctx div:nth-child(n+6) { display: none; } }
+/* Big-point layout: header at the top, the three calls centred in the middle, the numbers (compact) under
+   them, the "just play it" options at the bottom. */
+.callbox.bp { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; align-items: center; gap: 6px; }
+.callbox.bp .bphead { align-self: start; }
+.callbox.bp .cbopts { align-self: center; margin: 0; width: 100%; }
+.callbox.bp .bpctx { width: min(620px, 100%); padding: 6px 10px; gap: 2px 10px; margin: 0; grid-template-columns: repeat(4, 1fr); }
+.callbox.bp .bpctx small { font-size: 9px; letter-spacing: .03em; line-height: 1.2; }
+.callbox.bp .bpctx b { font-size: 12px; }
+.callbox.bp .cbfoot.small { margin-top: 0; padding-top: 2px; }
+@media (max-width: 700px) { .callbox.bp .bpctx { grid-template-columns: 1fr 1fr; } }
+
+/* Big-point numbers: three for you, three for them, side by side. */
+.callbox.bp .bpctx.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; width: min(560px, 100%); }
+.bpctx.two .bpcol { display: grid; gap: 4px; align-content: start; }
+.bpctx.two h5 { margin: 0 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #ffd60a; border-bottom: 1px solid var(--line); padding-bottom: 3px; }
+.bpctx.two .bpcol > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.bpctx.two small { font-size: 10px; } .bpctx.two b { font-size: 12px; white-space: nowrap; }
+@media (max-width: 700px) { .callbox.bp .bpctx.two { grid-template-columns: 1fr 1fr; } .bpctx.two div:nth-child(n+6) { display: flex; } }
+
+/* Big-point layout (final): a full-width column. Header pinned to the top, the buttons and their numbers as one
+   group dead centre, the "just play it" links pinned to the bottom. */
+.callbox.bp { display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+.callbox.bp > * { width: 100%; }
+.callbox.bp .bphead { text-align: center; }
+.callbox.bp .bpmid { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.callbox.bp .bpmid .cbopts.eq { width: 100%; justify-content: center; align-self: auto; }
+.callbox.bp .bpmid .bpctx.two { margin: 0 auto; }
+.callbox.bp .cbfoot.small { justify-content: center; }
+
+/* Match Read: its own solid window over the court (nothing from the match shows through). */
+.callbox.rdwin { background: #12161e; backdrop-filter: none; justify-content: flex-start; padding: 16px 14px; overflow-y: auto; z-index: 6; }
+.callbox.rdwin .rdtab { background: var(--card); border-radius: 10px; overflow: hidden; }
+.rdtab td.lead { color: var(--good); font-weight: 800; background: rgba(48,209,88,.1); }
+.rdtab td.tie { font-style: italic; }
+
+.loadcover small { display: grid; gap: 6px; justify-items: center; }
+.loadcover .trrecap { color: var(--text); font-size: 14px; }
+.loadcover .trline { font-size: 12px; color: var(--muted); } .loadcover .trline i { font-style: normal; color: #ffd60a; font-weight: 700; } .loadcover .trline b { color: var(--text); }
+
+/* Set break on the court: score, coach's advice with small side-by-side buttons, and how to play the next set. */
+.setbreakbox { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(10,12,18,.82); backdrop-filter: blur(3px); border-radius: inherit; padding: 16px; text-align: center; animation: cbIn .35s ease-out; }
+.setbreakbox[hidden] { display: none; }
+.sbtitle { font: italic 900 clamp(18px, 3vw, 26px)/1 -apple-system, BlinkMacSystemFont, sans-serif; color: #ffd60a; }
+.sbsub { font-size: 14px; color: var(--text); }
+.sbadv .advice { margin: 0 auto; max-width: 620px; }
+.sbadv .advbtns { margin: 8px auto 0; }
+.sbadv .advbtns .btn { padding: 5px 12px; font-size: 12px; }
+.sbhead { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.setbreakbox .sbadj { width: auto; margin: 0; padding: 5px 14px; font-size: 12px; }
+.setbreakbox { overflow-y: auto; justify-content: safe center; }
+
+/* Compact plan editor: tidy two-column grid, basic settings first, then the coach tier. */
+.pcgrid { grid-template-columns: 1fr 1fr; gap: 6px 12px; max-width: 760px; }
+.pcrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; background: rgba(14,17,22,.88); }
+.pcrow > span { font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: normal; line-height: 1.2; }
+.pcseg { margin-left: 0; } .pcseg button { font-size: 12px; padding: 5px 9px; }
+.pctier { grid-column: 1 / -1; margin: 12px 0 2px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ffd60a; text-align: left; border-top: 1px solid var(--line); padding-top: 10px; }
+@media (max-width: 700px) { .pcgrid { grid-template-columns: 1fr; } .pcseg button { padding: 5px 7px; font-size: 11px; } }
+
+.plan .pctier { margin: 14px 0 4px; }
+.ptable tr.ptier th { padding-top: 12px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ffd60a; border-top: 1px solid var(--line); }
+
+/* While a solid window (Match Read, set break) is over the court, the court underneath isn't drawn at all: no
+   flicker when scrolling, no leftover "WINNER!" text. */
+#mCourtWrap.veiled canvas { visibility: hidden; }
+.setbreakbox { background: #12161e; }
+
+/* Match over: one result window in the middle of the court, Continue underneath. */
+.mendbox { display: grid; gap: 8px; justify-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 28px; min-width: min(420px, 100%); }
+.mendname { font-size: clamp(20px, 3.4vw, 30px); font-weight: 800; }
+.mendscore { font-size: clamp(18px, 3vw, 26px); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.mendres { font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.mendres.good { color: var(--good); } .mendres.bad { color: var(--bad); }
+.setbreakbox .mendbtn { width: min(420px, 100%); margin: 6px 0 0; }
+
+/* Training: a picked session is highlighted, and a confirm bar spends the day. */
+.drill.picked { border-color: #ffd60a !important; box-shadow: 0 0 0 2px rgba(255,214,10,.35); }
+.drillconfirm { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 6px;
+  padding: 12px 16px; background: var(--card); border: 1px solid #ffd60a; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: cbIn .25s ease-out; }
+.drillconfirm[hidden] { display: none; }
+.drillconfirm .btn { width: auto; margin: 0; }
+
+/* Training preview: the gain on each bar, and the playstyle list now → after. */
+.tbbar { position: relative; } .tbbar em { position: absolute; top: 0; bottom: 0; background: #30d158; border-radius: 0 99px 99px 0; }
+.tbstyles { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.tbshead { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tbswitch { font-size: 13px; color: #ffd60a; background: rgba(255,214,10,.08); border: 1px solid rgba(255,214,10,.35); border-radius: 10px; padding: 6px 10px; }
+.tbsrow { display: grid; grid-template-columns: 1fr auto 44px; gap: 10px; font-size: 13px; color: var(--muted); align-items: baseline; }
+.tbsrow.top { color: var(--text); font-weight: 700; } .tbsrow b { font-variant-numeric: tabular-nums; }
+.tbsrow small { text-align: right; font-weight: 700; } .tbsrow small.up { color: var(--good); } .tbsrow small.down { color: var(--bad); }
+.tbstyles { max-height: 260px; overflow-y: auto; padding-right: 4px; }
+.dtoward { font-size: 11px; color: var(--muted); margin-top: 4px; } .dtoward b { color: #ffd60a; }

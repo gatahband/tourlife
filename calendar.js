@@ -122,13 +122,11 @@ function travelDays(from, to) {
 const FREE_DAYS = [5, 4, 3, 2, 1, 0];
 
 // --- Training sessions -------------------------------------------------------
-// Training: each session improves its stats by 0.4–1.3% (rolled per day). Practising on site at next
-// week's venue rolls twice and keeps the better one.
-const TRAIN_MIN = 0.004, TRAIN_MAX = 0.013; // training sharpens you; matches are where you really grow
-const rollTrain = local => {
-  const r = () => TRAIN_MIN + Math.random() * (TRAIN_MAX - TRAIN_MIN);
-  return Math.round((local ? Math.max(r(), r()) : r()) * 10000) / 10000;
-};
+// Training: a fixed gain per session (0.85% of the stat, or 1.0% when practising on site at next week's venue),
+// before growth slows near the cap. You see the exact number before you confirm the day.
+const TRAIN_MIN = 0.004, TRAIN_MAX = 0.013; // (the old random range; kept for the progression tool)
+const TRAIN_FIXED = 0.0085, TRAIN_LOCAL = 0.01;
+const rollTrain = local => (local ? TRAIN_LOCAL : TRAIN_FIXED);
 const DRILLS = [
   { id: 'serve',    icon: '🎯', title: 'Serve practice',     stats: ['serve', 'mental'], fatigue: 12, desc: 'Baskets of serves to targets, then pressure games.' },
   { id: 'baseline', icon: '🎾', title: 'Baseline drills',    stats: ['ground', 'stam'],  fatigue: 14, desc: 'Crosscourt and down-the-line patterns from the back.' },
@@ -137,6 +135,10 @@ const DRILLS = [
   { id: 'touch',    icon: '🪶', title: 'Touch & drop shots', stats: ['iq', 'net'],       fatigue: 10, desc: 'Feel at the net and disguising the drop shot.' },
   { id: 'tactics',  icon: '♟️', title: 'Match-play sets',    stats: ['iq', 'mental'],    fatigue: 14, desc: 'Practice sets against a hitting partner.' },
   { id: 'fitness',  icon: '🫁', title: 'Fitness session',    stats: ['stam', 'mental'],  fatigue: 18, desc: 'Sprints, footwork and endurance work.' },
+  { id: 'shotmaking', icon: '🎨', title: 'Shotmaking & Disguise', stats: ['iq', 'serve'], fatigue: 10, desc: 'Trick shots, disguise and serve variety. Builds a creative, unpredictable game.' },
+  { id: 'plus1',    icon: '💥', title: 'Serve +1 Patterns',  stats: ['serve', 'ground'], fatigue: 12, desc: 'Serve, then attack the first ball with your forehand.' },
+  { id: 'snvdrill', icon: '🏃', title: 'Serve & Volley',     stats: ['serve', 'net'],    fatigue: 13, desc: 'Serve and close in: first volleys and finishing at the net.' },
+  { id: 'weakwing', icon: '🔁', title: 'Weak-Wing Work',     stats: ['ground'],          fatigue: 12, desc: 'Hundreds of balls to your weaker side. Closes the gap between your forehand and backhand.' },
   { id: 'rest',     icon: '🛌', title: 'Rest & recovery',    stats: [],                  fatigue: -25, desc: 'Physio, stretching and sleep. Clears fatigue.' },
 ];
 const DAILY_RECOVERY = 8;

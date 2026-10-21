@@ -13,9 +13,14 @@ const STAT_CAP = 95;
 // Tuned with tools/progress-sim.html: about 4–5 h of ITF, about 20 h to 95 for a player who plays their matches.
 const growthFactor = v => v >= STAT_CAP ? 0 : Math.max(0.06, Math.pow(clamp((STAT_CAP - v) / 45, 0, 1), 0.7));
 
-function applyGain(attrs, k, gain) {
+function applyGain(attrs, k, gain) { attrs[k] = gainedValue(attrs, k, gain); }
+// The value a stat would reach from a gain (growth slows near the cap and past your Tactical rating's cap).
+function gainedValue(attrs, k, gain) {
   const v = attrs[k] ?? 50;
-  attrs[k] = Math.min(STAT_CAP, Math.round(v * (1 + gain * growthFactor(v)) * 1000) / 1000);
+  // Your Tactical rating (reads.js) limits how far your stats grow: past its cap, gains slow to a trickle.
+  if (typeof tacticalCap === 'function' && typeof current !== 'undefined' && current.career && current.player && current.player.attrs === attrs
+    && overall({ attrs }) >= tacticalCap(current.career)) gain *= 0.1;
+  return Math.min(STAT_CAP, Math.round(v * (1 + gain * growthFactor(v)) * 1000) / 1000);
 }
 
 // In-season weeks in a row without playing an event (set by noteWeek at the end of each week).

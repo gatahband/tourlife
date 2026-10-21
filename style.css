@@ -1161,13 +1161,39 @@ h2.ctr { text-align: center; }
 
 /* Study Room */
 .stpick { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin: 10px 0; } .stpick b { color: var(--muted); }
-.stpick select { min-width: 0; width: 100%; }
+.stsearch { position: relative; min-width: 0; } .stsearch input { width: 100%; box-sizing: border-box; }
+.stsug { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; display: grid; gap: 2px; box-shadow: 0 10px 30px rgba(0,0,0,.45); max-height: 340px; overflow-y: auto; }
+.stsug button { background: none; border: 0; color: var(--text); font: inherit; font-size: 16px; text-align: left; padding: 11px 10px; border-radius: 8px; cursor: pointer; }
+.stsug button:hover, .stsug button:focus { background: var(--field); } .stsug small { color: var(--muted); font-size: 12px; margin-right: 4px; }
+.stsug .hint { margin: 8px; text-align: center; }
+@media (max-width: 560px) { .stpick { grid-template-columns: 1fr; } .stpick b { text-align: center; } }
 .stcards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
 @media (max-width: 560px) { .stcards { grid-template-columns: 1fr; } }
 .stcard { background: var(--field); border-radius: 12px; padding: 10px 12px; display: grid; gap: 3px; min-width: 0; }
 .stcard b { font-size: 16px; } .stcard small { color: var(--muted); font-size: 12px; }
 .stcard p { margin: 4px 0 0; font-size: 13px; } .stcard .up { color: var(--good); } .stcard .down { color: var(--bad); }
 .stovr { font-size: 20px; font-weight: 800; color: #ffd60a; } .stovr i { font-style: normal; font-size: 11px; color: var(--muted); }
+.stcard .stceil { color: #ffd60a; opacity: .8; }
+
+/* A real player's 2026 numbers (Study Room cards and the scouting report) */
+.rstats { margin-top: 8px; text-align: center; }
+.rstats .rshead { margin: 0 0 4px; font-size: 13px; font-weight: 700; } .rstats .rshead small { color: var(--muted); font-weight: 400; }
+.rstats .rsform { margin: 0 0 6px; font-size: 12px; color: #ffd60a; }
+.rsgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.rsgrid div { background: var(--bg); border-radius: 8px; padding: 5px 2px; display: grid; }
+.rsgrid b { font-size: 14px !important; } .rsgrid small { font-size: 10px !important; color: var(--muted); }
+.rsgrid div.lead { background: rgba(48,209,88,.14); box-shadow: inset 0 0 0 1px rgba(48,209,88,.5); } .rsgrid div.lead b { color: var(--good); }
+.rsgrid div.tie b { font-style: italic; }
+.rsm { margin-top: 8px; text-align: left; } .rsm summary { cursor: pointer; text-align: center; font-size: 13px; font-weight: 700; padding: 8px; background: var(--bg); border-radius: 8px; list-style: none; }
+.rsm summary::-webkit-details-marker { display: none; }
+.rsmlist { max-height: 340px; overflow-y: auto; margin-top: 6px; } .rsmlist .hint { text-align: center; margin: 4px 0; }
+.rsmlist ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rsmlist li { background: var(--bg); border-radius: 8px; padding: 6px 8px; display: grid; gap: 1px; border-left: 3px solid var(--bad); }
+.rsmlist li.w { border-left-color: var(--good); }
+.rmtop { display: flex; gap: 6px; align-items: baseline; font-size: 13px; } .rmtop span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rmtop em { font-style: normal; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.rsmlist li.w .rmtop b { color: var(--good); } .rsmlist li.l .rmtop b { color: var(--bad); }
+.rsmlist small { font-size: 11px !important; color: var(--muted); }
 
 /* Study Room link: small, top right, opposite the Home button */
 #home, #draw, #train { position: relative; }
@@ -1387,3 +1413,23 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .tbsrow small { text-align: right; font-weight: 700; } .tbsrow small.up { color: var(--good); } .tbsrow small.down { color: var(--bad); }
 .tbstyles { max-height: 260px; overflow-y: auto; padding-right: 4px; }
 .dtoward { font-size: 11px; color: var(--muted); margin-top: 4px; } .dtoward b { color: #ffd60a; }
+
+/* Study Room: admin Quick Sim */
+.qsim { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; text-align: center; }
+.qsim h3 { margin: 0; } .qsim h3 small { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.qsim .hint { margin: 0; }
+.qsres { display: grid; gap: 8px; } .qsres h4 { margin: 8px 0 0; font-size: 14px; }
+.qswin { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+.qswin > div { background: var(--field); border-radius: 12px; padding: 10px 6px; display: grid; }
+.qswin > div b { font-size: 24px; } .qswin small { color: var(--muted); font-size: 12px; } .qswin span { font-size: 12px; color: var(--muted); }
+.qswin > div.lead { box-shadow: inset 0 0 0 1px rgba(48,209,88,.6); background: rgba(48,209,88,.12); } .qswin > div.lead b { color: var(--good); }
+.qsfacts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.qsfacts div { background: var(--field); border-radius: 10px; padding: 8px 4px; display: grid; } .qsfacts b { font-size: 17px; } .qsfacts small { font-size: 11px; color: var(--muted); }
+.qslist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.qslist li { background: var(--field); border-radius: 8px; padding: 7px 10px; display: flex; gap: 8px; align-items: baseline; font-size: 14px; text-align: left; }
+.qslist li em { margin-left: auto; font-style: normal; color: var(--muted); font-size: 13px; }
+.qstab { width: 100%; border-collapse: separate; border-spacing: 0 3px; font-size: 13px; }
+.qstab thead td { font-weight: 700; padding-bottom: 4px; background: none; }
+.qstab th { font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 6px; }
+.qstab td { background: var(--field); padding: 6px 4px; width: 34%; } .qstab td:first-child { border-radius: 8px 0 0 8px; } .qstab td:last-child { border-radius: 0 8px 8px 0; }
+.qstab td.lead { color: var(--good); font-weight: 800; background: rgba(48,209,88,.1); } .qstab td.tie { font-style: italic; }

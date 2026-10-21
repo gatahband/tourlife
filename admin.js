@@ -10,8 +10,33 @@ const adminEvents = () => readJSON(ADMIN_EVENTS) || [];
 let adminTab = 'events';
 
 async function sha256(text) {
+  if (!(window.crypto && crypto.subtle)) return sha256Plain(text); // plain http (the local test link) has no crypto.subtle
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// The same SHA-256 in plain JavaScript, for pages served without https.
+function sha256Plain(text) {
+  const K = [], H = [], isPrime = n => { for (let d = 2; d * d <= n; d++) if (n % d === 0) return false; return true; };
+  for (let n = 2, i = 0; i < 64; n++) if (isPrime(n)) { if (i < 8) H[i] = (Math.pow(n, 1 / 2) % 1) * 2 ** 32 | 0; K[i++] = (Math.pow(n, 1 / 3) % 1) * 2 ** 32 | 0; }
+  const bytes = [...new TextEncoder().encode(text)], len = bytes.length * 8;
+  bytes.push(0x80); while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 7; i >= 0; i--) bytes.push(i > 3 ? 0 : (len >>> (i * 8)) & 255);
+  const rot = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < bytes.length; o += 64) {
+    const w = [];
+    for (let i = 0; i < 64; i++) {
+      if (i < 16) w[i] = (bytes[o + i * 4] << 24) | (bytes[o + i * 4 + 1] << 16) | (bytes[o + i * 4 + 2] << 8) | bytes[o + i * 4 + 3];
+      else { const a = w[i - 15], b = w[i - 2]; w[i] = (w[i - 16] + (rot(a, 7) ^ rot(a, 18) ^ (a >>> 3)) + w[i - 7] + (rot(b, 17) ^ rot(b, 19) ^ (b >>> 10))) | 0; }
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (rot(e, 6) ^ rot(e, 11) ^ rot(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rot(a, 2) ^ rot(a, 13) ^ rot(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((v, i) => { H[i] = (H[i] + v) | 0; });
+  }
+  return H.map(v => (v >>> 0).toString(16).padStart(8, '0')).join('');
 }
 
 // --- Entry point -------------------------------------------------------------------
@@ -38,11 +63,13 @@ function renderAdmin() {
   $('admin').innerHTML = `<header><h1>Admin</h1><p class="sub">Your real players and tournaments.</p></header>` +
     `<div class="seg two tltabs"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
     `<button type="button" data-t="players" class="${adminTab === 'players' ? 'on' : ''}">Players (${n})</button></div>` +
-    `<div id="adBody"></div><button type="button" class="link" id="adExit">Back to the game</button>`;
+    `<div id="adBody"></div><button type="button" class="btn ghost" id="adStudy">📚 Study Room (Quick Sim)</button>` +
+    `<button type="button" class="link" id="adExit">Back to the game</button>`;
   $('admin').querySelector('.tltabs').onclick = e => {
     const b = e.target.closest('[data-t]');
     if (b) { adminTab = b.dataset.t; renderAdmin(); }
   };
+  $('adStudy').onclick = () => openStudy();
   $('adExit').onclick = () => { history.replaceState(null, '', location.pathname); location.reload(); };
   if (adminTab === 'players') renderAdPlayers(); else renderAdEvents();
 }

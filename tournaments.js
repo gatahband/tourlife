@@ -620,7 +620,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const coach = hasTeam(c, 'coach'), lvl = coach ? teamLevel(c, 'coach') : 0;
   const near = v => lvl >= 3 ? Math.round(v) : Math.round(v / 2) * 2;
   const know = `<div class="sboxes">${box('💪 Strengths', r.strengths, 'up')}${box('🩹 Weaknesses', r.weaknesses, 'down')}</div>` +
-    (hasPrep(current.entry, 'scout') ? scoutDetailHtml(opp) : '') +
+    (hasPrep(current.entry, 'scout') ? scoutDetailHtml(opp) : '') + realStatsHtml(opp) +
     (r.tendencies.length ? `<h4 class="sh4">Their Habits</h4><div class="chips">${r.tendencies.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '') +
     (lvl >= 2 ? `<h4 class="sh4">Ratings (Your Coach's Read)</h4>${coachCompare(me, opp, near, lvl >= 3)}` : '');
   // How to beat them: nothing without a coach; better coaches see more (the Master adds the full scouting counters).
@@ -672,6 +672,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
 
 function bindPrematch(entry, oi, rerender) {
   const opp = entry.entrants[oi], ev = eventOf(entry);
+  bindRealMatches(document);
   if ($('vidUse')) $('vidUse').onclick = () => {
     const v = current.career.videoPlans[opp.id], lv = teamLevel(current.career, 'coach');
     for (const g of GAME_PLAN) if ((!g.coach || lv >= g.coach) && v.plan[g.key]) eventPlan(entry)[g.key] = v.plan[g.key];

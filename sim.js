@@ -577,6 +577,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     - (fatigue(m, A) - fatigue(m, B)) * (typeof wxOf === 'function' ? wxOf(ev).heat : 1) - tiredness(A) + tiredness(B)
     - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
     + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
+    + (A.serveEdge || 0) - (B.returnEdge || 0) // a real player's own serve and return numbers (realstats.js)
     + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch) // advanced plan (coach unlocks)
     + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
     - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength

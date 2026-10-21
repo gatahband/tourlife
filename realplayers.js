@@ -120,7 +120,11 @@ function realLevel(rank, name) {
 function nameHash(s) { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; }
 
 function realPlayer([rank, name, nation, hand, age, style]) {
-  const lvl = realLevel(rank, name), st = REAL_STYLE[style] || REAL_STYLE['Aggressive Baseliner'];
+  // This season's form (realstats.js): a player playing below their ranking uses the lower OVR, and the ranking
+  // OVR becomes their ceiling. Their real serve and return numbers become small edges on those points (sim.js).
+  const rst = typeof REAL_STATS !== 'undefined' ? REAL_STATS[name] : null;
+  const top = realLevel(rank, name), lvl = rst && rst.ovr ? rst.ovr : top;
+  const st = REAL_STYLE[style] || REAL_STYLE['Aggressive Baseliner'];
   const trait = REAL_TRAIT[name], ts = REAL_TRAIT_SHAPE[trait] || { bias: [0, 0, 0, 0, 0, 0, 0], plan: {} };
   const bias = st.bias.map((b, i) => b + ts.bias[i]);
   const elite = REAL_ELITE.has(name);
@@ -133,8 +137,55 @@ function realPlayer([rank, name, nation, hand, age, style]) {
     age, attrs, atp: true, atpRank: rank, temperament: REAL_TEMPER[name] || ['stoic', 'fiery', 'robotic', 'stoic'][nameHash(name) % 4],
     fav, worst: fav === 'clay' ? 'grass' : 'clay', curve: 'peak', formSd: 0.018,
     plan: { ...DEFAULT_PLAN, ...st.plan, ...ts.plan, ...((typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[name] && REAL_SCOUT[name].plan) || {}) }, seed: null,
+    ceiling: lvl < top ? top - lvl : undefined, serveEdge: (rst && rst.se) || undefined, returnEdge: (rst && rst.re) || undefined,
     legend: LEGENDS.has(name) || undefined, realStyle: style, realTrait: trait || null, provisional: REAL_PROVISIONAL.has(name) || undefined,
   };
+}
+
+// This season's real numbers for a real player, for the Study Room and the scouting report. The ceiling is the
+// OVR they'd have at their ranking; it shows only when current form is below it.
+function realCeiling(p) { return p && p.ceiling ? overall(p) + p.ceiling : null; }
+function realStatsHtml(p, { form = true, vs = null } = {}) {
+  const S = p => p && p.atpRank && typeof REAL_STATS !== 'undefined' ? REAL_STATS[p.name] : null;
+  const s = S(p), o = S(vs);
+  if (!s) return '';
+  // With an opponent alongside (Study Room), the better number of the two is highlighted; ties in italics.
+  const cmp = (a, b, low) => a == null || b == null ? '' : a === b ? 'tie' : (low ? a < b : a > b) ? 'lead' : '';
+  const cell = (label, v, key, low = false) => s[key] == null ? '' :
+    `<div class="${o ? cmp(s[key], o[key], low) : ''}"><b>${v}</b><small>${label}</small></div>`;
+  const pct = k => s[k] + '%';
+  const rec = x => x.w / Math.max(1, x.w + x.l);
+  const ceil = realCeiling(p);
+  return `<div class="rstats"><p class="rshead">2026 Season <small>To ${REAL_STATS_DATE}</small></p>` +
+    (ceil && form ? `<p class="rsform">Playing below their best: ${overall(p).toFixed(1)} now, Ceiling ${ceil.toFixed(1)}</p>` : '') +
+    `<div class="rsgrid"><div class="${o ? cmp(rec(s), rec(o)) : ''}"><b>${s.w}–${s.l}</b><small>Record</small></div>` +
+    `${cell('Hold', pct('hold'), 'hold')}${cell('Break', pct('brk'), 'brk')}` +
+    `${cell('1st Serve In', pct('s1in'), 's1in')}${cell('1st Serve Won', pct('s1won'), 's1won')}${cell('2nd Serve Won', pct('s2won'), 's2won')}` +
+    `${cell('Return Pts Won', pct('rpw'), 'rpw')}${cell('Aces', pct('ace'), 'ace')}${cell('Double Faults', pct('df'), 'df', true)}</div>` +
+    `<details class="rsm" data-rm="${esc(p.name)}"><summary>📋 Real Matches (${s.w + s.l})</summary><div class="rsmlist"><p class="hint">Loading…</p></div></details></div>`;
+}
+
+// The real match list folds open on demand; realmatches.js (about 200 KB) is only fetched the first time.
+let realMatchesLoad = null;
+function bindRealMatches(root) {
+  root.querySelectorAll('details.rsm').forEach(d => { d.ontoggle = () => {
+    if (!d.open || d.dataset.done) return;
+    realMatchesLoad = realMatchesLoad || new Promise((ok, no) => {
+      const sc = document.createElement('script'); sc.src = 'realmatches.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc);
+    });
+    realMatchesLoad.then(() => { d.dataset.done = 1; d.querySelector('.rsmlist').innerHTML = realMatchesHtml(d.dataset.rm); })
+      .catch(() => { realMatchesLoad = null; d.querySelector('.rsmlist').innerHTML = '<p class="hint">Couldn\'t load the matches. Try again.</p>'; });
+  }; });
+}
+function realMatchesHtml(name) {
+  const rows = (typeof REAL_MATCHES !== 'undefined' && REAL_MATCHES[name]) || [];
+  if (!rows.length) return '<p class="hint">No matches found.</p>';
+  const MON = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const SURF = { H: 'Hard', C: 'Clay', G: 'Grass' };
+  return `<ul>` + rows.map(([mo, d, e, sf, rd, opp, sc, won, ace, df, sp, rp]) =>
+    `<li class="${won ? 'w' : 'l'}"><div class="rmtop"><b>${won ? 'W' : 'L'}</b><span>vs ${esc(opp)}</span><em>${esc(sc)}</em></div>` +
+    `<small>${MON[mo]} ${d} · ${esc(REAL_EVENTS[e])} · ${SURF[sf] || sf} · ${esc(rd)}</small>` +
+    (sp != null ? `<small>Aces ${ace} · Double Faults ${df} · Serve Pts Won ${sp}% · Return Pts Won ${rp}%</small>` : '') + `</li>`).join('') + `</ul>`;
 }
 
 // Swap generated players for real ones at ATP 250s and above. Stronger events draw more of the top

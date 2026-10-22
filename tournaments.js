@@ -368,7 +368,7 @@ function renderTournaments(player) {
     if (conf) {
       const ev = evs.find(x => x.id === conf.dataset.confirm), md = conf.dataset.mode;
       if (md === 'wc') { c.perks.wildcards--; writeJSON(CAREER_KEY, c); }
-      enterEvent(ev, false, md === 'wc' ? 'main' : md); return;
+      travelScreen(c, current.player, ev, md === 'wc' ? 'main' : md, () => enterEvent(ev, false, md === 'wc' ? 'main' : md)); return;
     }
     if (e.target.closest('[data-close]')) { const pnl = e.target.closest('.evpanel'); pnl.hidden = true; return; }
     const b = e.target.closest('[data-enter],[data-look]');
@@ -457,6 +457,45 @@ function eventPreview(ev, mode, canEnter) {
     routeHtml(c.location || p.nation, ev.nation) +
     (canEnter ? `<div class="shrow"><button type="button" class="btn small" data-confirm="${ev.id}" data-mode="${mode}">${wc ? `🎟️ Use a Wildcard (${c.perks.wildcards} Left)` : mode === 'qual' ? 'Enter Qualifying' : 'Enter This Event'}</button><button type="button" class="btn small ghost" data-close="1">Not This One</button></div>` : '') +
     weekBudgetHtml(c, ev, wc ? 'main' : mode, canEnter);
+}
+
+// After entering: a short travel screen. The plane flies the route on the map (no flight if you're already there)
+// while your balance counts down by the trip's cost, then on to the tournament. Tap to skip.
+function travelScreen(c, p, ev, mode, done) {
+  const from = c.location || p.nation, to = ev.nation, cost = tripCost(c, ev, mode), fly = from !== to;
+  const name = n => (nationInfo(n) || [n, '', n])[2];
+  const box = document.createElement('div');
+  box.className = 'travelcover';
+  box.innerHTML = `<div class="tvcard"><div class="ldspin tvspin"></div>` +
+    `<b>${fly ? `✈️ Flying To ${esc(ev.city)}` : `🚗 Heading To ${esc(ev.city)}`}</b>` +
+    `<small>${fly ? `${flagOf(from)} ${esc(name(from))} → ${flagOf(to)} ${esc(name(to))}` : `${flagOf(to)} Already in ${esc(name(to))}: no flight needed`}</small>` +
+    (fly ? `<div class="tvmap">${mapHtml({ route: [from, to] })}</div>` : '') +
+    `<div class="tvmoney"><span id="tvBal">${money(c.money)}</span><em>−${money(cost)} ${fly ? 'Flights & Hotel' : 'Hotel & Food'}</em></div>` +
+    `<small class="tvskip">Tap to skip</small></div>`;
+  document.body.appendChild(box);
+  const t0 = performance.now(), dur = fly ? 2600 : 1600, start = c.money, end = c.money - cost;
+  let over = false;
+  const finish = () => { if (over) return; over = true; box.classList.add('out'); setTimeout(() => { box.remove(); done(); }, 250); };
+  box.onclick = finish;
+  // The plane: placed along the route's arc, nose pointing the way it's going.
+  const svg = box.querySelector('svg'), path = svg && svg.querySelector('.mroute');
+  let plane = null;
+  if (path) { // a small plane silhouette, nose pointing along +x
+    plane = document.createElementNS('http://www.w3.org/2000/svg', 'path'); plane.setAttribute('class', 'tvplane');
+    plane.setAttribute('d', 'M7 0 L-3 -1.2 L-5 -5.5 L-6.6 -5.5 L-5.2 -1.2 L-7.5 -1 L-8.6 -3 L-9.6 -3 L-8.8 0 L-9.6 3 L-8.6 3 L-7.5 1 L-5.2 1.2 L-6.6 5.5 L-5 5.5 L-3 1.2 Z');
+    svg.appendChild(plane); }
+  const step = now => {
+    if (over) return;
+    const t = Math.min(1, (now - t0) / dur), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    $('tvBal').textContent = money(Math.round(start + (end - start) * e));
+    if (plane) {
+      const L = path.getTotalLength(), a = path.getPointAtLength(L * e), b = path.getPointAtLength(Math.min(L, L * e + 1));
+      const ang = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+      plane.setAttribute('transform', `translate(${a.x.toFixed(1)},${a.y.toFixed(1)}) rotate(${ang.toFixed(0)})`);
+    }
+    if (t < 1) requestAnimationFrame(step); else setTimeout(finish, 450);
+  };
+  requestAnimationFrame(step);
 }
 
 // The whole week's money before you commit: the trip (flights, hotel, your travelling team), your team's wages and

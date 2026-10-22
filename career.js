@@ -338,8 +338,11 @@ function newSeason(c, p) {
   };
   poolAge(c);
   compactHistory(c);
+  // How you looked after yourself nudges when your game blooms: a top coach brings it forward, injuries push it back.
+  const bloom = bloomOf(c);
+  c.bloom = clamp(bloom + (c.injuriesThisSeason >= 2 ? 0.3 : 0) - (teamLevel(c, 'coach') >= 3 ? 0.25 : 0), BLOOM_MIN - 0.5, BLOOM_MAX + 1);
   const ageDelta = agePlayer(p);
-  review.age = p.age; review.ageDelta = ageDelta;
+  review.age = p.age; review.ageDelta = ageDelta; review.phase = maturityPhase(p.age, c.bloom);
   c.seasons = [...(c.seasons || []), review];
   c.goals = makeGoals(c, p);
   c.goalSeason = seasonOfWeek(c.week);
@@ -350,6 +353,13 @@ function newSeason(c, p) {
   writeJSON(SAVE_KEY, p);
 }
 
+// A hint about where you are in your career arc, never the number itself.
+function maturityPhase(age, bloom) {
+  if (age < bloom - 3) return 'Your game is still maturing. The best years are ahead of you: keep building.';
+  if (age < bloom) return 'Something is starting to click. Your coach thinks your prime is close.';
+  if (age <= bloom + 2) return "You're in your prime. This is your window.";
+  return 'Experience is your weapon now: you know how to win.';
+}
 function openSeasonReview(c) {
   const r = c.seasons[c.seasons.length - 1];
   c.pendingReview = false;
@@ -357,24 +367,144 @@ function openSeasonReview(c) {
   const tile = (label, value, sub = '') => `<div class="rcell"><span>${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const met = r.goals.filter(g => g.done).length;
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
-    `<h2 class="itop">Season ${r.season} review</h2>` +
+    `<h2 class="itop">Season ${r.season} Review</h2>` +
     `<div class="ovrexp review">` +
       tile('Ranking', rankText(r.rankEnd), r.rankStart ? `started ${rankText(r.rankStart)}` : 'started unranked') +
       tile('Record', `${r.wins}–${r.losses}`, `${r.events} events`) +
       tile('Titles', r.titles.length, r.titles.slice(0, 2).join(', ')) +
-      tile('Prize money', money(r.prize), `bank ${money(r.money)}`) +
+      tile('Prize Money', money(r.prize), `bank ${money(r.money)}`) +
       tile('OVR', r.ovrEnd.toFixed(1), `${r.ovrEnd >= r.ovrStart ? '+' : ''}${(r.ovrEnd - r.ovrStart).toFixed(1)} this season`) +
       tile('Rivals', r.rivals, r.rivalsNew > 0 ? `${r.rivalsNew} new` : '') +
     `</div>` +
-    (r.best ? `<p class="big center">Best result: <b>${esc(r.best)}</b></p>` : '') +
+    (r.best ? `<p class="big center">Best Result: <b>${esc(r.best)}</b></p>` : '') +
     `<h3 class="ssec">Goals: ${met} of ${r.goals.length} met</h3><ul class="goals">${r.goals.map(g => `<li>${g.done ? '✅' : '❌'} ${g.text}</li>`).join('')}</ul>` +
-    `<h3 class="ssec">Season ${r.season + 1} goals</h3><ul class="goals">${c.goals.map(g => `<li>🎯 ${g.text}<small class="grew">🎁 ${g.rtext}</small></li>`).join('')}</ul>` +
+    `<h3 class="ssec">Season ${r.season + 1} Goals</h3><ul class="goals">${c.goals.map(g => `<li>🎯 ${g.text}<small class="grew">🎁 ${g.rtext}</small></li>`).join('')}</ul>` +
+    (r.phase ? `<p class="big center">🌱 ${r.phase}</p>` : '') +
     `<p class="hint center">You're now ${r.age}.${Math.abs(r.ageDelta) >= 0.05 ? ` Your body ${r.ageDelta > 0 ? 'filled out a little' : 'is starting to slow down'} (OVR ${r.ageDelta > 0 ? '+' : ''}${r.ageDelta.toFixed(1)}).` : ''}` +
       `${c.forcedRetire ? ' At this age it is time to hang up the racket.' : ''}</p>` +
-    `<button type="button" class="btn" id="srGo">${c.forcedRetire ? 'Retire' : `Start season ${r.season + 1}`}</button>`,
+    (!c.forcedRetire && canRespec(c) ? `<button type="button" class="btn ghost" id="srRespec">🔁 Rebuild My Game</button>` +
+      `<p class="hint center">Move your points into a different build for next season. Your body needs ${REBUILD_WEEKS} weeks to get used to it.</p>` : '') +
+    `<button type="button" class="btn" id="srGo">${c.forcedRetire ? 'Retire' : `Start Season ${r.season + 1}`}</button>`,
     { wide: true, onClose: () => { if (c.forcedRetire) retire(); } });
   $('mx').onclick = closeModal;
   $('srGo').onclick = closeModal;
+  if ($('srRespec')) $('srRespec').onclick = () => openRespec(c, current.player, null, { review: true });
+}
+
+// --- Rebuild Camp ------------------------------------------------------------------------
+// Twice a season (REBUILDS_PER_SEASON), whenever you like: move your stat points into a different build. Same points (your OVR can't go up
+// this way: stats that count more cost more), and the new game takes REBUILD_WEEKS weeks to bed in. At the season
+// review the off-season covers the camp; mid-season you first sit out CAMP_WEEKS weeks (no tournaments) to rebuild.
+const REBUILD_WEEKS = 6, CAMP_WEEKS = 3, RESPEC_MIN = 30;
+const REBUILDS_PER_SEASON = 2;
+// Rebuilds left this season (older saves stored just the season of their one rebuild).
+const rebuildsLeft = c => { const r = c.respecUsed, season = seasonOfWeek(c.week);
+  const used = r && typeof r === 'object' ? (r.season === season ? r.n : 0) : r === season ? 1 : 0; return Math.max(0, REBUILDS_PER_SEASON - used); };
+const canRespec = c => rebuildsLeft(c) > 0 && !(c.camp && c.camp.weeks > 0) && !c.injury && !current.entry;
+const rebuildPen = c => c && c.rebuild && c.rebuild.weeks > 0 ? 0.03 * c.rebuild.weeks / REBUILD_WEEKS : 0;
+function openRespec(c, p, draft = null, opts = {}) {
+  const orig = { ...p.attrs }, d = draft || { ...orig };
+  // Stats that count more toward OVR cost more to raise and give back more when lowered, so your OVR stays put.
+  const avgW = OVR_TOTAL / ATTR_KEYS.length, cost = k => OVR_WEIGHTS[k] / avgW;
+  const left = Math.round(ATTR_KEYS.reduce((a, k) => a + cost(k) * (orig[k] - d[k]), 0) * 100) / 100;
+  const minCost = Math.min(...ATTR_KEYS.map(cost));
+  const ovr0 = overall({ attrs: orig }), ovr1 = overall({ attrs: d });
+  const changed = ATTR_KEYS.some(k => Math.abs(d[k] - orig[k]) > 0.001);
+  const row = ([k, label]) => `<div class="rsrow"><span>${label}<small>${cost(k).toFixed(1)} pts each</small></span>` +
+    `<button type="button" class="btn ghost" data-k="${k}" data-d="-1" ${d[k] - 1 < RESPEC_MIN ? 'disabled' : ''} aria-label="Lower ${label}">−</button>` +
+    `<b class="${d[k] > orig[k] + 0.001 ? 'up' : d[k] < orig[k] - 0.001 ? 'down' : ''}">${Math.round(d[k])}</b>` +
+    `<button type="button" class="btn ghost" data-k="${k}" data-d="1" ${left < cost(k) - 0.001 || d[k] + 1 > STAT_CAP ? 'disabled' : ''} aria-label="Raise ${label}">+</button></div>`;
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🔁 Rebuild My Game</h2>` +
+    `<p class="hint center">Lower one part of your game to free up points, then put them somewhere else. Stats that matter more cost more, so your OVR stays the same.</p>` +
+    `<div class="rsinfo"><div><b>${left.toFixed(1)}</b><small>Points To Place</small></div><div><b>${ovr1.toFixed(1)}</b><small>OVR (Was ${ovr0.toFixed(1)})</small></div>` +
+    `<div><b>${esc(styleOf({ ...p, attrs: d, plan: { ...(p.plan || {}), ...(opts.plan || {}) } }).name)}</b><small>New Playstyle</small></div></div>` +
+    (opts.plan && Object.keys(opts.plan).length ? `<p class="hint center">📋 This style also sets your game plan: ${Object.entries(opts.plan).map(([k, v]) => planLabel(k, v)).join(', ')}.</p>` : '') +
+    `<div class="rsrows">${ATTRS.map(row).join('')}</div>` +
+    `<button type="button" class="btn ghost" id="rsPreview">🎬 Preview Playstyles</button>` +
+    respecStylesHtml({ ...p, plan: { ...(p.plan || {}), ...(opts.plan || {}) } }, d) +
+    (left >= minCost - 0.001 ? `<p class="hint center">Place your points before locking in.</p>` : '') +
+    `<button type="button" class="btn" id="rsGo" ${!changed || left >= minCost - 0.001 ? 'disabled' : ''}>Lock In New Build</button>` +
+    `<button type="button" class="link" id="rsBack">‹ Keep My Current Build</button>`, { wide: true, onClose: () => { if (opts.review && canRespec(c)) { c.pendingReview = true; openSeasonReview(c); } else if (!opts.review) renderTournaments(current.player); } });
+  $('mx').onclick = closeModal;
+  $('rsBack').onclick = closeModal;
+  // Preview a playstyle on court, then come straight back to this rebuild (nothing locked in).
+  $('sheet').querySelectorAll('[data-style]').forEach(b => { b.onclick = () => openRespec(c, p, autoBuild(p, orig, b.dataset.style), { ...opts, plan: stylePlanBits(b.dataset.style) }); });
+  $('rsPreview').onclick = () => { modalClose = null; openStylePreview(p, d, styleOf({ ...p, attrs: d }).name, () => setTimeout(() => openRespec(c, p, d, opts), 0)); };
+  $('sheet').querySelectorAll('[data-k]').forEach(b => { b.onclick = () => {
+    const k = b.dataset.k, step = +b.dataset.d;
+    d[k] = Math.round((d[k] + step) * 1000) / 1000;
+    openRespec(c, p, d, opts);
+  }; });
+  $('rsGo').onclick = () => {
+    if (!$('rsConfirm')) { respecConfirm(opts, () => $('rsGo').click()); return; }
+    $('rsConfirm').remove();
+    p.attrs = { ...d };
+    if (opts.plan) p.plan = { ...(p.plan || {}), ...opts.plan };
+    p.playstyle = styleOf(p).name;
+    c.rebuild = { weeks: REBUILD_WEEKS };
+    c.respecUsed = { season: seasonOfWeek(c.week), n: REBUILDS_PER_SEASON - rebuildsLeft(c) + 1 };
+    if (!opts.review) c.camp = { weeks: CAMP_WEEKS };
+    writeJSON(SAVE_KEY, p);
+    writeJSON(CAREER_KEY, c);
+    closeModal();
+    toast(opts.review ? `🔁 New build locked in: ${p.playstyle}. Give it ${REBUILD_WEEKS} weeks to bed in.`
+      : `🔁 Off to Rebuild Camp: ${CAMP_WEEKS} weeks to learn your new ${p.playstyle} game.`);
+  };
+}
+// "Are you sure?" on top of the rebuild window, spelling out what the rebuild costs.
+function respecConfirm(opts, yes) {
+  const box = document.createElement('div');
+  box.id = 'rsConfirm'; box.className = 'rsconfirm';
+  box.innerHTML = `<div class="rscard" role="dialog" aria-modal="true"><h3>⚠️ Are You Sure?</h3>` +
+    (opts.review
+      ? `<p>Your new build takes <b>${REBUILD_WEEKS} weeks</b> to bed in. Until then you'll play a little below your best.</p>`
+      : `<p>A mid-season rebuild means <b>${CAMP_WEEKS} weeks out of tournaments</b> at a Rebuild Camp.</p><p>After that, your new build takes <b>${REBUILD_WEEKS} more weeks</b> to bed in, playing a little below your best.</p>`) +
+    `<p>You get ${REBUILDS_PER_SEASON} rebuilds per season. ${rebuildsLeft(current.career) === 1 ? 'This is your last one this season.' : `After this you'll have ${rebuildsLeft(current.career) - 1} left.`}</p>` +
+    `<div class="pbtns"><button type="button" class="btn ghost" id="rsNo">No, Go Back</button><button type="button" class="btn" id="rsYes">Yes, Rebuild</button></div></div>`;
+  document.body.appendChild(box);
+  $('rsNo').onclick = () => box.remove();
+  box.onclick = e => { if (e.target === box) box.remove(); };
+  $('rsYes').onclick = yes;
+}
+
+// One button per playstyle: tap one and your points are shaped into that build automatically.
+function respecStylesHtml(p, d) {
+  const cur = styleOf({ ...p, attrs: d }).name;
+  return `<p class="tbshead rsshead">Build Me A Playstyle</p><p class="hint center">Tap a style and your points are shaped into it. You can still fine-tune with − and + after.</p>` +
+    `<div class="rsstylebtns">${STYLES.map(s => `<button type="button" class="btn ghost ${s.name === cur ? 'on' : ''}" data-style="${esc(s.name)}">${esc(s.name)}</button>`).join('')}</div>`;
+}
+// Shape the same points into a playstyle: its key stats go up first (to the cap if the points allow), everything else
+// gets a sensible share that suits the style, nothing drops below RESPEC_MIN, and the OVR stays the same.
+function autoBuild(p, orig, styleName) {
+  const st = STYLES.find(x => x.name === styleName), avgW = OVR_TOTAL / ATTR_KEYS.length, cost = k => OVR_WEIGHTS[k] / avgW;
+  const budget = ATTR_KEYS.reduce((a, k) => a + cost(k) * orig[k], 0);
+  const w = st && st.w ? st.w : ATTR_KEYS.map(() => 0);
+  const shape = (spread) => {
+    const at = L => Object.fromEntries(ATTR_KEYS.map((k, i) => [k, clamp(L + spread * w[i], RESPEC_MIN, STAT_CAP)]));
+    let lo = 0, hi = 120;
+    for (let n = 0; n < 50; n++) { const mid = (lo + hi) / 2, a = at(mid); (ATTR_KEYS.reduce((x, k) => x + cost(k) * a[k], 0) > budget ? hi = mid : lo = mid); }
+    const a = at(lo);
+    return Object.fromEntries(ATTR_KEYS.map(k => [k, Math.round(a[k] * 1000) / 1000]));
+  };
+  // Start gentle and widen the gap between key and other stats only as far as it takes to land on the style
+  // (with the game plan that style plays: patient, topspin or flat, see stylePlanBits).
+  const plan = { ...(p.plan || {}), ...stylePlanBits(styleName) };
+  let best = shape(5);
+  for (const spread of [5, 6, 7, 8, 10, 12]) { const a = shape(spread); best = a; if (styleOf({ ...p, attrs: a, plan }).name === styleName) break; }
+  return best;
+}
+// Some playstyles are as much a way of playing as a set of stats: these are the game plan settings they need.
+const stylePlanBits = name => { const st = STYLES.find(x => x.name === name) || {}; return { ...(st.agg ? { aggression: st.agg } : {}), ...(st.spin ? { spin: st.spin } : {}) }; };
+
+// A week at Rebuild Camp: no events, training the new game, plenty of rest.
+function campWeek() {
+  const c = current.career, p = current.player;
+  p.fatigue = clamp((p.fatigue || 0) - 25, 0, 100);
+  c.camp.weeks--;
+  if (c.camp.weeks <= 0) { c.notice = `🔁 Rebuild Camp is done. Your new ${p.playstyle} game needs ${REBUILD_WEEKS} weeks of matches to bed in.`; c.camp = null; }
+  writeJSON(SAVE_KEY, p);
+  writeJSON(CAREER_KEY, c);
+  advanceWeek();
 }
 
 // --- Retirement -------------------------------------------------------------------------
@@ -399,7 +529,7 @@ function careerSummaryHtml(c, p) {
     .map(id => `${flagOf(c.pool[id].nation)} ${esc(c.pool[id].name)} (${c.h2h[id].w}–${c.h2h[id].l})`);
   const tile = (label, value) => `<div class="rcell"><span>${label}</span><b>${value}</b></div>`;
   return `<div class="ovrexp review">` + tile('Career high', c.bestRank ? `#${c.bestRank}` : '—') + tile('Titles', c.titles.length) +
-    tile('Record', `${wins}–${losses}`) + tile('Prize money', money(prize)) + tile('Seasons', seasonOfWeek(c.week)) + tile('Peak OVR', (c.peakOvr || overall(p)).toFixed(1)) + `</div>` +
+    tile('Record', `${wins}–${losses}`) + tile('Prize Money', money(prize)) + tile('Seasons', seasonOfWeek(c.week)) + tile('Peak OVR', (c.peakOvr || overall(p)).toFixed(1)) + `</div>` +
     (big.length ? `<p class="big center">Tour titles: ${big.map(t => `${esc(t.city)} (${TIERS[t.tier].label})`).join(', ')}</p>` : '') +
     (rivals.length ? `<p class="hint center">Rivals: ${rivals.join(' · ')}</p>` : '');
 }
@@ -451,8 +581,9 @@ function renderCareerBits(c, p) {
       `<details class="teamextra" ${foldOpen('h-staff') ? 'open' : ''} data-fold="h-staff"><summary><b>More Staff & Upgrades</b><small>${hired ? `${hired} hired` : 'Fitness, mental coach, hitting partner, stringer, hotel, agent'}</small></summary>${extra.map(row).join('')}</details>` +
       (crew ? `<p class="hint">🧳 Your travelling team (${crew}) flies and stays with you: about ${money(crew * (FLIGHTS[2] * (c.business ? 3 : 1.5) + 150))} extra on a long-haul trip, added to each trip's cost.</p>` : '');
     })() +
-    `<label class="teamrow bizrow"><input type="checkbox" id="hBiz" ${c.business ? 'checked' : ''}><span class="ticon">✈️</span><div class="teammain"><b>Fly business class</b>` +
-    `<small>Flights cost 3× as much, but long trips tire you half as much.</small></div></label>` +
+    `<button type="button" class="bizcard ${c.business ? 'on' : ''}" id="hBiz" aria-pressed="${!!c.business}"><span class="bzicon">✈️</span>` +
+    `<span class="bzmain"><b>Fly Business Class</b><small>Flights cost 3× as much, but long trips tire you half as much.</small>` +
+    `<em>${c.business ? 'On: travelling in comfort' : 'Off: flying economy'}</em></span><span class="bztoggle" aria-hidden="true"></span></button>` +
     `<p class="hint">Main-draw players at Challengers and tour events get a hotel; qualifiers pay their own.</p></div>` + sponsorsHtml(c) +
     (last.length ? `<ul class="ledger">${last.map(l => `<li><span>W${weekInSeason(l.week)} · ${esc(l.why)}</span><b class="${l.amount >= 0 ? 'up' : 'down'}">${l.amount >= 0 ? '+' : '−'}${money(Math.abs(l.amount))}</b></li>`).join('')}</ul>` : '') +
     `<p class="hint">Prize money comes in by round reached. Flights and the week's hotel are paid when you enter.</p>` +
@@ -472,7 +603,7 @@ function renderCareerBits(c, p) {
     renderCareerBits(c, p);
   };
   if ($('hOffer')) $('hOffer').onclick = () => openOffer(c);
-  $('hBiz').onchange = e => { c.business = e.target.checked; writeJSON(CAREER_KEY, c); renderTournaments(p); };
+  $('hBiz').onclick = () => { c.business = !c.business; writeJSON(CAREER_KEY, c); renderTournaments(p); };
   if ($('hRetire')) $('hRetire').onclick = () => { if (confirm(`Retire ${p.name} for good? This ends the career.`)) retire(); };
   if (window.saveFailed) c.notice = "⚠️ Your browser's storage is full, so progress may not be saving. Save a copy (Back up or move my career), then delete old saved careers.";
   if (c.notice) { $('hNotice').textContent = c.notice; $('hNotice').hidden = false; c.notice = null; writeJSON(CAREER_KEY, c); }
@@ -485,6 +616,14 @@ function renderCareerBits(c, p) {
     $('eventsTitle').textContent = 'Retired';
     box.innerHTML = careerSummaryHtml(c, p) + `<button type="button" class="btn" id="hNew">Start a new career</button>`;
     $('hNew').onclick = newCareer;
+    return true;
+  }
+  if (c.camp && c.camp.weeks > 0 && !current.entry) {
+    $('eventsTitle').textContent = `Week ${weekInSeason(c.week)} · ${monthOf(c.week)} — Rebuild Camp`;
+    box.innerHTML = `<div class="event row-ev"><div><div class="ev-city">🔁 Rebuild Camp</div>` +
+      `<div class="ev-meta">Learning your new ${esc(p.playstyle || styleOf(p).name)} game. ${c.camp.weeks} week${c.camp.weeks === 1 ? '' : 's'} to go, no tournaments.</div></div>` +
+      `<button type="button" class="btn small" id="hCamp">Camp Week</button></div>`;
+    $('hCamp').onclick = campWeek;
     return true;
   }
   if (c.injury && !current.entry) {

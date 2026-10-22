@@ -97,12 +97,30 @@ function openOffer(c) {
   $('mx').onclick = closeModal;
 }
 
+// One card per category: your deal (pay, how long is left on it, what it gives you) or an open slot with who'll
+// talk to you. Fills the width on big screens, stacks on phones.
 function sponsorsHtml(c) {
-  const ds = activeDeals(c);
+  const ds = activeDeals(c), rank = currentRank(c);
+  const total = ds.reduce((a, d) => a + dealPay(c, d), 0);
+  const cats = Object.keys(CAT_MIN_RANK).sort((a, b) => CAT_MIN_RANK[b] - CAT_MIN_RANK[a]);
+  const card = cat => {
+    const d = ds.find(x => x.cat === cat);
+    if (!d) {
+      const ok = rank && rank <= CAT_MIN_RANK[cat];
+      return `<div class="spcard open"><div class="sptop"><span class="spcat">${CAT_LABEL[cat]}</span></div>` +
+        `<b class="spopen">Open Slot</b><small>${ok ? 'Brands are watching. Keep winning and an offer will come.' : `Brands talk to players in the top ${CAT_MIN_RANK[cat].toLocaleString('en-US')}.`}</small></div>`;
+    }
+    const b = brandOf(d.brand), pay = dealPay(c, d), rb = cat === 'racket' ? racketBoost(c) : null;
+    const len = Math.max(1, d.until - (d.signed || d.until - 52)), left = d.until - c.week;
+    return `<div class="spcard"><div class="sptop">${brandBadge(b)}<span class="spcat">${CAT_LABEL[cat]}</span></div>` +
+      `<div class="sppay"><b>${money(pay)}</b><span>/week${pay > d.weekly ? ' 📈' : ''}</span></div>` +
+      `<div class="spbar"><i style="width:${clamp(100 * left / len, 3, 100).toFixed(0)}%"></i></div>` +
+      `<small>${left} week${left === 1 ? '' : 's'} left on the deal${left <= 4 ? ' · ending soon' : ''}</small>` +
+      (rb ? `<small class="spperk">🎾 ${boostText(rb.stat, rb.pct, rb.frame)}</small>` : '') +
+      `<small class="spline">“${esc(b.line)}”</small></div>`;
+  };
   return `<div class="deals"><h3 class="ssec">Sponsors</h3>` +
-    (ds.length ? ds.map(d => { const b = brandOf(d.brand);
-      const pay = dealPay(c, d), rb = d.cat === 'racket' ? racketBoost(c) : null;
-      return `<div class="deal">${brandBadge(b)}<span>${CAT_LABEL[d.cat]} · <b>${money(pay)}/week</b>${pay > d.weekly ? ' 📈' : ''} · ${d.until - c.week} weeks left${rb ? `<br><small>🎾 ${boostText(rb.stat, rb.pct, rb.frame)}</small>` : ''}</span></div>`; }).join('')
-      : `<p class="hint">No deals yet. Break into the top 1,000 and brands will start calling.</p>`) +
-    (c.offer ? `<button type="button" class="btn small" id="hOffer">📩 You have an offer from ${brandOf(c.offer.brand).name}</button>` : '') + `</div>`;
+    `<div class="spsum"><div><b>${money(total)}</b><small>A Week From Sponsors</small></div><div><b>${ds.length} / ${cats.length}</b><small>Deals Signed</small></div></div>` +
+    (c.offer ? `<button type="button" class="btn small" id="hOffer">📩 You have an offer from ${brandOf(c.offer.brand).name}</button>` : '') +
+    `<div class="spgrid">${cats.map(card).join('')}</div></div>`;
 }

@@ -655,7 +655,8 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
     `<div><span>🩹</span><b>Weakness</b><em>${r.weaknesses[0] || 'No clear hole'}</em></div>` +
     `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : 'Hire a coach for a read on them'}</em></div></div>`;
   const pe = prepEdges(current.entry, opp);
-  const prepTags = pe.tags.length ? `<div class="preptags">${pe.tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '';
+  const tags = [...pe.tags, ...(rebuildPen(c) ? [`🔁 New build bedding in (${c.rebuild.weeks} week${c.rebuild.weeks === 1 ? '' : 's'} left)`] : [])];
+  const prepTags = tags.length ? `<div class="preptags">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '';
   const mo = moraleData ? `${moraleWord(moraleData.edge, moraleData.cap)[0]} · ${moraleData.edge >= 0 ? '+' : '−'}${(Math.abs(moraleData.edge) * 100).toFixed(1)}% on points` : '';
   const scouted = hasPrep(current.entry, 'scout'), qn = quirksOf(opp).length;
   const wx = ev.weather && WEATHER[ev.weather] ? `${wxLabel(ev)} · ` : '';
@@ -1082,7 +1083,7 @@ async function playOneSet(animate = true) {
     ps[me].attrs[dip] = ps[me].attrs[dip] * 0.985;
   }
   ps[me].fitCamp = !!(pr.items && pr.items.includes('pcfit'));
-  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge + dayEdge(entry) + (hasTeam(current.career, 'hitting') ? 0.006 : 0) + (hasTeam(current.career, 'stringer') ? 0.003 : 0);
+  { const pe = prepEdges(entry, ps[op]); ps[me].prepEdge = pe.edge - rebuildPen(current.career) + dayEdge(entry) + (hasTeam(current.career, 'hitting') ? 0.006 : 0) + (hasTeam(current.career, 'stringer') ? 0.003 : 0);
     ps[me].prepClutch = pe.clutch + (hasTeam(current.career, 'mental') ? 0.012 : 0); ps[me].calmCoach = hasTeam(current.career, 'mental'); } // this week's preparation
   ps[me].advLevel = teamLevel(current.career, 'coach');
   showPlanOnCourt(ps[me]);
@@ -1159,7 +1160,7 @@ async function playOneSet(animate = true) {
       lastSim = sim;
       ps[me].focusPen = fixedPen + sim;
       // Win-probability meter (before each point): the score plus each player's serve record so far.
-      { const sv = i => servePct((m.stats[i].firstWon || 0) + (m.stats[i].secondWon || 0), m.stats[i].servePts || 0, 0.62 + (overall(ps[i]) - overall(ps[1 - i])) * 0.002);
+      { const sv = i => servePct((m.stats[i].firstWon || 0) + (m.stats[i].secondWon || 0), m.stats[i].servePts || 0, SERVE_BASE + (overall(ps[i]) - overall(ps[1 - i])) * 0.002);
         const won = i => m.sets.filter(x => x.games[i] > x.games[1 - i]).length, mt = $('mMeter');
         if (mt) setMeter(mt, winProbability({ pA: sv(me), pB: sv(op), setsA: won(me), setsB: won(op), toWin: setsToWin(m), gA: m.games[me], gB: m.games[op],
           ptsA: (info.pts || [0, 0])[me], ptsB: (info.pts || [0, 0])[op], serverA: info.s === me, tb: !!info.tb }), ['You', shortName(ps[op])]); }

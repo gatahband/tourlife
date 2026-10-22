@@ -639,10 +639,23 @@ button.rvrow:hover { background: var(--field); }
 .teammain { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .teammain b { color: var(--text); font-size: 14px; } .teammain small { color: var(--muted); font-size: 12px; }
 .teammain .seg { margin-top: 6px; }
-.teammain .seg button { padding: 5px 4px; font-size: 12px; line-height: 1.2; }
-.teammain .seg button small { display: block; font-size: 10px; color: inherit; opacity: .8; }
-.bizrow { cursor: pointer; align-items: center; }
-.bizrow input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.teammain .seg { gap: 6px; background: none; padding: 0; }
+.teammain .seg button { padding: 9px 4px; font-size: 14px; font-weight: 600; line-height: 1.2; color: var(--text); border: 1px solid var(--line); background: var(--bg); }
+.teammain .seg button:hover { border-color: var(--accent); }
+.teammain .seg button.on { border-color: var(--accent); background: var(--accent); }
+.teammain .seg button small { display: block; font-size: 12px; font-weight: 500; color: inherit; opacity: .75; margin-top: 2px; }
+/* Business class: a proper on/off card, not a checkbox */
+.bizcard { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-top: 8px; transition: .15s; }
+.bizcard:hover { border-color: var(--accent); }
+.bizcard.on { border-color: #ffd60a; background: linear-gradient(135deg, rgba(255,214,10,.14), rgba(255,214,10,.03)); box-shadow: 0 0 0 1px rgba(255,214,10,.35) inset; }
+.bizcard .bzicon { font-size: 30px; }
+.bizcard .bzmain { flex: 1; display: grid; gap: 3px; } .bizcard .bzmain b { font-size: 16px; } .bizcard .bzmain small { color: var(--muted); font-size: 13px; }
+.bizcard .bzmain small { text-transform: none; }
+.bizcard .bzmain em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--muted); } .bizcard.on .bzmain em { color: #ffd60a; }
+.bztoggle { width: 54px; height: 30px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: .15s; }
+.bztoggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: .15s; }
+.bizcard.on .bztoggle { background: #ffd60a; } .bizcard.on .bztoggle::after { left: 27px; }
 .ownerlink { display: block; text-align: center; font-size: 12px; opacity: .5; margin-top: 18px; }
 .warnline { color: #ff9f0a; }
 .sus { color: #ff9f0a !important; }
@@ -766,8 +779,18 @@ h2.ctr { text-align: center; }
 .brand { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-weight: 800; font-style: italic; letter-spacing: .02em; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 .brand i { font-style: normal; font-size: 13px; }
 .deals { margin-top: 12px; }
-.deal { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--muted); }
-.deal b { color: var(--text); }
+.spsum { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 10px; }
+.spsum div { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; display: grid; }
+.spsum b { font-size: 22px; } .spsum small { color: var(--muted); font-size: 12px; }
+.spgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 10px; }
+.spcard { background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; text-align: left; }
+.spcard.open { border-style: dashed; background: transparent; }
+.sptop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.spcat { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sppay b { font-size: 22px; } .sppay span { color: var(--muted); font-size: 13px; margin-left: 2px; }
+.spbar { height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; } .spbar i { display: block; height: 100%; background: var(--good); border-radius: 999px; }
+.spcard small { color: var(--muted); font-size: 12px; } .spcard .spperk { color: var(--text); } .spcard .spline { font-style: italic; opacity: .8; }
+.spopen { font-size: 18px; color: var(--muted); }
 .offer { text-align: center; }
 .offerbadge .brand { font-size: 26px; padding: 10px 18px; margin: 6px 0 4px; }
 .wallet { display: flex; justify-content: space-between; align-items: baseline; background: var(--card); border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
@@ -1433,3 +1456,27 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .qstab th { font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 6px; }
 .qstab td { background: var(--field); padding: 6px 4px; width: 34%; } .qstab td:first-child { border-radius: 8px 0 0 8px; } .qstab td:last-child { border-radius: 0 8px 8px 0; }
 .qstab td.lead { color: var(--good); font-weight: 800; background: rgba(48,209,88,.1); } .qstab td.tie { font-style: italic; }
+
+/* Rebuild Camp (season review) */
+.rsinfo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; text-align: center; }
+.rsinfo div { background: var(--field); border-radius: 10px; padding: 8px 4px; display: grid; } .rsinfo b { font-size: 18px; } .rsinfo small { font-size: 11px; color: var(--muted); }
+.rsrows { display: grid; gap: 6px; margin-bottom: 10px; }
+.rsrow { display: grid; grid-template-columns: 1fr 52px 48px 52px; gap: 8px; align-items: center; background: var(--field); border-radius: 10px; padding: 6px 10px; }
+.rsrow span { font-size: 15px; display: grid; } .rsrow span small { font-size: 11px; color: var(--muted); } .rsrow b { text-align: center; font-size: 18px; } .rsrow b.up { color: var(--good); } .rsrow b.down { color: var(--bad); }
+.rsrow .btn { padding: 8px 0; font-size: 20px; margin: 0; }
+.bad { color: var(--bad); }
+.rebuildnote { margin: 8px 0 0; padding: 8px 12px; background: var(--field); border-radius: 10px; font-size: 13px; color: var(--muted); text-align: center; display: grid; gap: 6px; justify-items: center; }
+.rebuildnote .btn { margin: 0; }
+#rsPreview { width: 100%; margin: 4px 0 6px; }
+/* Playstyle Preview */
+.pvtabs { margin: 8px 0; }
+.pvtext { background: var(--field); border-radius: 12px; padding: 10px 14px; margin: 8px 0; text-align: center; }
+.pvtext b { font-size: 17px; } .pvtext p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.rsshead { text-align: center; margin: 14px 0 2px; }
+.rsstylebtns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 12px; }
+@media (max-width: 560px) { .rsstylebtns { grid-template-columns: repeat(2, 1fr); } }
+.rsstylebtns .btn { margin: 0; padding: 10px 6px; font-size: 13px; line-height: 1.25; }
+.rsstylebtns .btn.on { border-color: var(--accent); background: rgba(10,132,255,.18); color: var(--text); }
+.rsconfirm { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.rscard { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.rscard h3 { margin: 0 0 10px; font-size: 22px; } .rscard p { margin: 0 0 10px; font-size: 16px; line-height: 1.4; } .rscard .pbtns { margin-top: 14px; }

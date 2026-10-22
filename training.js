@@ -196,6 +196,7 @@ function advanceWeek() {
   noteWeek(c);
   moraleWeek(c, p);
   noteMark();
+  if (c.rebuild && c.rebuild.weeks > 0 && !(c.camp && c.camp.weeks > 0)) c.rebuild.weeks--; // a new build bedding in, after any camp (career.js)
   c.week++;
   if (weekInSeason(c.week) === 1) newSeason(c, p);
   c.downtime = null;
@@ -270,15 +271,23 @@ function renderOvr(p) {
     (lv.next ? `<div class="ovrprog"><i style="width:${prog * 100}%"></i></div><small>${(lv.next.min - ovr).toFixed(1)} to ${lv.next.name} (${lv.next.min})</small>` : '') +
     `</div></div>` +
     // Your build at a glance: playstyle and the seven stats.
-    `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show my build <i class="foldchev" aria-hidden="true"></i></em></div>` +
-    `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary><div class="buildslot" id="hBuildSlot"></div></details>` +
+    `<details class="buildfold" data-fold="h-build" ${foldOpen('h-build') ? 'open' : ''}><summary class="ovrbuild"><div class="obstyle"><span>Playstyle</span><b>${st.name}</b><small>${st.desc}</small><em class="obmore">Show My Build <i class="foldchev" aria-hidden="true"></i></em></div>` +
+    `<div class="obbars">${ATTRS.map(([k]) => `<div title="${attrLabel(k)} ${p.attrs[k].toFixed(1)}"><i style="height:${(clamp((p.attrs[k] - 30) / 65, 0.06, 1) * 48).toFixed(1)}px"></i><span>${SHORT_ATTR[k]}</span><b>${Math.round(p.attrs[k])}</b></div>`).join('')}</div></summary>` +
+    `<div class="buildslot" id="hBuildSlot"></div></details>` +
+    `<div class="rebuildnote">${c.camp && c.camp.weeks > 0 ? `🔁 At Rebuild Camp: ${c.camp.weeks} week${c.camp.weeks === 1 ? '' : 's'} to go.`
+      : rebuildPen(c) ? `🔁 Your new build is bedding in: ${c.rebuild.weeks} week${c.rebuild.weeks === 1 ? '' : 's'} left.`
+      : canRespec(c) ? `<button type="button" class="btn ghost small" id="hRespec">🔁 Rebuild My Game</button><small>${rebuildsLeft(c)} of ${REBUILDS_PER_SEASON} left this season. Mid-season it costs ${CAMP_WEEKS} weeks out, then ${REBUILD_WEEKS} weeks below your best. No camp needed at the season review.</small>`
+      : !rebuildsLeft(c) ? `🔁 You've used both of this season's rebuilds. More from the season review.`
+      : `🔁 Rebuild My Game opens once you're between tournaments and fit.`}</div>` +
+
     tacticalHtml(c, p) +
     seasonStatsHtml(c) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     '';
+  if ($('hRespec')) $('hRespec').onclick = e => { e.preventDefault(); openRespec(c, p); };
   if (build) $('hBuildSlot').appendChild(build);
-  $('hOvr').querySelector('.buildfold').ontoggle = e => { const m = e.target.querySelector('.obmore'); if (m) m.firstChild.textContent = e.target.open ? 'Hide my build ' : 'Show my build '; };
-  if (foldOpen('h-build')) $('hOvr').querySelector('.obmore').firstChild.textContent = 'Hide my build ';
+  $('hOvr').querySelector('.buildfold').ontoggle = e => { const m = e.target.querySelector('.obmore'); if (m) m.firstChild.textContent = e.target.open ? 'Hide My Build ' : 'Show My Build '; };
+  if (foldOpen('h-build')) $('hOvr').querySelector('.obmore').firstChild.textContent = 'Hide My Build ';
   // Fill in any odds not worked out yet, one at a time so the page stays responsive.
   const todo = [...$('hOvr').querySelectorAll('[data-odds]')].filter(el => el.querySelector('b').textContent === '…');
   const next = () => {

@@ -13,6 +13,35 @@ const STAT_CAP = 95;
 // Tuned with tools/progress-sim.html: about 4–5 h of ITF, about 20 h to 95 for a player who plays their matches.
 const growthFactor = v => v >= STAT_CAP ? 0 : Math.max(0.06, Math.pow(clamp((STAT_CAP - v) / 45, 0, 1), 0.7));
 
+// Your game matures with age. Every career has its own bloom age (career.bloom, 23–30, never shown): the age your
+// game peaks. Until then there's a ceiling on how good you can be for your age. Everyone is held back early (no
+// breakout first seasons), then early bloomers take off in their early 20s and late bloomers grind until their late
+// 20s. Near the ceiling, gains slow right down; nothing is ever taken away.
+const BLOOM_MIN = 23, BLOOM_MAX = 30;
+const MATURE_EARLY = [[18, 56], [19, 64], [20, 70], [21, 75]]; // the same for everyone: OVR you can reach by each age
+function maturityCeiling(age, bloom) {
+  if (age <= 21) {
+    if (age <= 18) return MATURE_EARLY[0][1];
+    const i = Math.min(2, Math.floor(age - 18)), [a0, o0] = MATURE_EARLY[i], [a1, o1] = MATURE_EARLY[i + 1];
+    return o0 + (o1 - o0) * (age - a0) / (a1 - a0);
+  }
+  const x = clamp((age - 21) / (bloom - 21), 0, 1);
+  return 75 + 21 * x * x * (3 - 2 * x); // a smooth climb to 96 at the bloom age
+}
+// Share of a gain that sticks: full until 3 OVR below the ceiling, then tapering to a trickle at it.
+const maturityFactor = (ovr, ceil) => ovr <= ceil - 3 ? 1 : ovr >= ceil ? 0.08 : 1 - 0.92 * (ovr - (ceil - 3)) / 3;
+// A career's bloom age, rolled once from its seed and kept (most land around 26).
+function bloomOf(c) {
+  if (c.bloom === undefined) {
+    const r = typeof seeded === 'function' ? seeded(((c.seed || 1) * 2654435761) >>> 0) : Math.random;
+    c.bloom = Math.round((BLOOM_MIN + (BLOOM_MAX - BLOOM_MIN) * (r() + r()) / 2) * 10) / 10;
+  }
+  return c.bloom;
+}
+// Age in years, counting the weeks into this season.
+const careerAge = (c, p) => (p.age || 18) + ((c.week - 1) % 52) / 52;
+const maturityNow = (c, p) => maturityCeiling(careerAge(c, p), bloomOf(c));
+
 function applyGain(attrs, k, gain) { attrs[k] = gainedValue(attrs, k, gain); }
 // The value a stat would reach from a gain (growth slows near the cap and past your Tactical rating's cap).
 function gainedValue(attrs, k, gain) {
@@ -20,6 +49,9 @@ function gainedValue(attrs, k, gain) {
   // Your Tactical rating (reads.js) limits how far your stats grow: past its cap, gains slow to a trickle.
   if (typeof tacticalCap === 'function' && typeof current !== 'undefined' && current.career && current.player && current.player.attrs === attrs
     && overall({ attrs }) >= tacticalCap(current.career)) gain *= 0.1;
+  // Your game hasn't matured that far yet (see maturityCeiling).
+  if (typeof current !== 'undefined' && current.career && current.player && current.player.attrs === attrs)
+    gain *= maturityFactor(overall({ attrs }), maturityNow(current.career, current.player));
   return Math.min(STAT_CAP, Math.round(v * (1 + gain * growthFactor(v)) * 1000) / 1000);
 }
 

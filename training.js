@@ -70,18 +70,32 @@ function renderTraining() {
     const opt = (id, icon, title, desc, extra = '', disabled = false) =>
       `<button type="button" class="topt${disabled ? ' off' : ''}" data-choice="${id}" ${disabled ? 'disabled' : ''}><span class="ticon">${icon}</span>` +
       `<span><b>${title}</b><small>${desc}</small>${extra}</span></button>`;
-    box.innerHTML = `<h2>How do you want to use the days?</h2><div class="topts">` +
-      opt('here', '🏟️', `Train here`, `${left} training day${left === 1 ? '' : 's'}. +0.4–1.3% per stat each day.`) +
+    box.innerHTML = `<h2>How Do You Want To Use The Days?</h2><div class="topts">` +
+      opt('here', '🏟️', `Train Here`, `${left} training day${left === 1 ? '' : 's'}. +0.4–1.3% per stat each day.`) +
       nextEvs.map((e, i) => {
-        const t = travelDays(dt.at, e.nation), stay = left - t;
-        return opt(`go${i}`, '✈️', `Travel early to ${flagOf(e.nation)} ${e.city}`,
+        const t = travelDays(dt.at, e.nation), stay = left - t, cost = tripCost(c, e, e.mode), broke = cost > c.money;
+        // What the trip costs, paid when you choose it, and a Preview of your chances and the week's money.
+        return `<div class="toptwrap">` + opt(`go${i}`, '✈️', `Travel Early To ${flagOf(e.nation)} ${e.city}`,
           stay > 0 ? `${t ? `${t} travel day${t === 1 ? '' : 's'}, then ` : ''}${stay} practice day${stay === 1 ? '' : 's'} on site: better gains (usually 0.8–1.3%) and a comfort boost on those courts. You'll be entered automatically.`
             : `Too far to arrive early (${t} travel days).`,
-          `<em class="tag2">${tierLabel(e.tier)}${e.mode === 'qual' ? ' qualifying' : ''} · ${surfaceLabel(e.surface)}${e.indoor ? ' · Indoor' : ''}</em>`, stay <= 0);
+          `<em class="tag2">${tierLabel(e.tier)}${e.mode === 'qual' ? ' qualifying' : ''} · ${surfaceLabel(e.surface)}${e.indoor ? ' · Indoor' : ''}</em>` +
+          `<em class="tcost ${broke ? 'down' : ''}">💸 Trip: <b>${money(cost)}</b> (flights &amp; hotel${crewTripCost(c, e) ? ', incl. your team' : ''}) · you'd have ${money(c.money - cost)} left${broke ? ': not enough money' : ''}</em>`,
+          stay <= 0 || broke) +
+          `<button type="button" class="btn small ghost tprev" data-prev="${i}">🔍 Preview</button><div class="evpanel" data-panel="${i}" hidden></div></div>`;
       }).join('') +
-      opt('rest', '🛌', 'Rest the whole time', 'Full recovery. No gains.') + `</div>` +
+      opt('rest', '🛌', 'Rest The Whole Time', 'Full recovery. No gains.') + `</div>` +
       (nextEvs.length ? '' : '<p class="hint">Next week is the off-season, so there is no event to travel to.</p>');
     box.onclick = e => {
+      const pv = e.target.closest('[data-prev]');
+      if (pv) { // your chances there and the whole week's money, before you commit to the trip
+        const pnl = box.querySelector(`[data-panel="${pv.dataset.prev}"]`);
+        if (!pnl.hidden) { pnl.hidden = true; return; }
+        box.querySelectorAll('[data-panel]').forEach(x => { x.hidden = true; });
+        pnl.hidden = false; pnl.innerHTML = '<p class="hint">Working out your chances…</p>';
+        const ev = nextEvs[+pv.dataset.prev];
+        setTimeout(() => { pnl.innerHTML = eventPreview(ev, ev.mode, false); }, 30);
+        return;
+      }
       const b = e.target.closest('[data-choice]');
       if (!b || b.disabled) return;
       const ch = b.dataset.choice;

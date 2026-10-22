@@ -1535,3 +1535,9 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 @keyframes ldbounce { 0% { transform: translateY(-26px); } 85% { transform: translateY(0) scale(1, 1); } 100% { transform: translateY(0) scale(1.15, .85); } }
 @keyframes ldshadow { 0% { transform: scale(.5); opacity: .35; } 100% { transform: scale(1); opacity: .8; } }
 @media (prefers-reduced-motion: reduce) { .ldball i, .ldball span { animation-duration: 1.6s; } }
+.toptwrap { display: grid; gap: 6px; }
+.toptwrap .tprev { justify-self: end; margin: -2px 0 4px; }
+.topt .tcost { display: block; font-style: normal; font-size: 13px; margin-top: 4px; color: var(--text); } .topt .tcost.down { color: var(--bad); }
+.toptwrap .evpanel { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.topt small, .topt .tcost { text-transform: none; }
+.topt .tcost b { display: inline; font-size: inherit; }

@@ -1502,3 +1502,10 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 #cPreview { display: block; width: 100%; margin: 4px 0 12px; border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; font-weight: 700; }
 #cPreview:hover { box-shadow: 0 0 14px rgba(191,90,242,.45); }
 .prow.sigrow { border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; border-radius: 12px; padding: 8px 10px; }
+.wkbudget { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 10px; text-align: left; }
+.wbhead { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.wbrow { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 3px 0; color: var(--muted); }
+.wbrow.down b { color: var(--bad); } .wbrow.up b { color: var(--good); }
+.wbrow.total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; color: var(--text); font-weight: 700; }
+.wbrow.total b.down { color: var(--bad); } .wbrow.total b.up { color: var(--good); }
+.wkbudget .hint { margin: 6px 0 0; }

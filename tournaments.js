@@ -455,9 +455,25 @@ function eventPreview(ev, mode, canEnter) {
   return `<div class="evchances"><div><b>${pct(qf)}</b><span>Reach the Quarter-Finals</span></div><div><b>${pct(title)}</b><span>Win the Title</span></div></div>` +
     `<p class="big">${verdict}</p><ul class="evnotes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` +
     routeHtml(c.location || p.nation, ev.nation) +
-    (canEnter ? `<div class="shrow"><button type="button" class="btn small" data-confirm="${ev.id}" data-mode="${mode}">${wc ? `🎟️ Use a wildcard (${c.perks.wildcards} left)` : mode === 'qual' ? 'Enter qualifying' : 'Enter this event'}</button><button type="button" class="btn small ghost" data-close="1">Not this one</button></div>` +
-      `<p class="tripcost">This week costs <b>${money(cost)}</b> (flights and hotel). You'd have <b class="${c.money - cost < 0 ? 'down' : ''}">${money(c.money - cost)}</b> left.</p>`
-      : `<p class="tripcost">The trip would cost <b>${money(cost)}</b> (flights and hotel); you have <b>${money(c.money)}</b> now. Simulated for a typical draw; it opens next week.</p>`);
+    (canEnter ? `<div class="shrow"><button type="button" class="btn small" data-confirm="${ev.id}" data-mode="${mode}">${wc ? `🎟️ Use a Wildcard (${c.perks.wildcards} Left)` : mode === 'qual' ? 'Enter Qualifying' : 'Enter This Event'}</button><button type="button" class="btn small ghost" data-close="1">Not This One</button></div>` : '') +
+    weekBudgetHtml(c, ev, wc ? 'main' : mode, canEnter);
+}
+
+// The whole week's money before you commit: the trip (flights, hotel, your travelling team), your team's wages and
+// your sponsors' pay (after your agent's cut). Prize money comes on top, by round reached.
+function weekBudgetHtml(c, ev, mode, now) {
+  const trip = tripCost(c, ev, mode), crew = crewTripCost(c, ev), wages = weeklyBill(c);
+  const deals = activeDeals(c).filter(d => d.until >= c.week + (now ? 0 : 1));
+  const spons = deals.reduce((a, d) => a + dealPay(c, d), 0), cut = hasTeam(c, 'agent') ? Math.round(spons * AGENT_CUT) : 0;
+  const net = spons - cut - trip - wages, after = c.money + net;
+  const line = (label, v, cls = '') => `<div class="wbrow ${cls}"><span>${label}</span><b>${v >= 0 ? '+' : '−'}${money(Math.abs(v))}</b></div>`;
+  return `<div class="wkbudget"><div class="wbhead">💰 This Week's Money${now ? '' : ' (Next Week)'}</div>` +
+    line(`✈️ Flights & Hotel${crew ? ' (Incl. Your Team)' : ''}`, -trip, 'down') +
+    (wages ? line('👥 Team Wages', -wages, 'down') : '') +
+    (spons ? line('🤝 Sponsors', spons, 'up') : '') +
+    (cut ? line("💼 Agent's Cut", -cut, 'down') : '') +
+    `<div class="wbrow total"><span>Week Total (Before Prize Money)</span><b class="${net < 0 ? 'down' : 'up'}">${net >= 0 ? '+' : '−'}${money(Math.abs(net))}</b></div>` +
+    `<p class="hint">You have <b>${money(c.money)}</b> now. After this week you'd have <b class="${after < 0 ? 'down' : ''}">${money(after)}</b>, plus any prize money.${now ? '' : ' Simulated for a typical draw; it opens next week.'}</p></div>`;
 }
 
 // Enter / Enter qualifying / Locked, depending on your ranking.

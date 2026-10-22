@@ -473,7 +473,7 @@ function travelScreen(c, p, ev, mode, done) {
     `<div class="tvmoney"><span id="tvBal">${money(c.money)}</span><em>−${money(cost)} ${fly ? 'Flights & Hotel' : 'Hotel & Food'}</em></div>` +
     `<small class="tvskip">Tap to skip</small></div>`;
   document.body.appendChild(box);
-  const t0 = performance.now(), dur = fly ? 2600 : 1600, start = c.money, end = c.money - cost;
+  const t0 = performance.now(), dur = 3300, start = c.money, end = c.money - cost; // plus a short hold: about 3.75 s in all
   let over = false;
   const finish = () => { if (over) return; over = true; box.classList.add('out'); setTimeout(() => { box.remove(); done(); }, 250); };
   box.onclick = finish;

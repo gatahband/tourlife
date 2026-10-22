@@ -776,10 +776,10 @@ function createCourt() {
     marks.forEach((m, i) => {
       if (isFps() && camSpace(m.x, m.y, 0).d < NEAR + 0.3) return;
       const age = marks.length - 1 - i;
-      const a = Math.max(0.25, 0.9 - age * 0.12);
+      const a = Math.max(0.15, 0.85 - age * 0.12);
       const [x, y, k] = P(m.x, m.y);
-      // Just a touch bigger than the ball.
-      const r = top ? Math.max(2.5, S * 0.2) * 1.3 : clamp(k * 0.15, 2.2, 12);
+      // Small, about ball-sized, so a long rally doesn't cover the court in dots (older ones fade further).
+      const r = top ? Math.max(1.6, S * 0.13) * 1.3 : clamp(k * 0.09, 1.4, 7);
       ctx.fillStyle = m.out ? `rgba(255,69,58,${a})` : `rgba(${look.mark},${a * 0.8})`;
       ctx.beginPath(); ctx.ellipse(x, y, r * 1.15, top ? r : r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
       if (m.out && age === 0) {

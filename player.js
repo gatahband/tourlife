@@ -17,41 +17,53 @@ const HANDS = [['right', 'Right-handed'], ['left', 'Left-handed']];
 
 // Game plan settings (effects live in sim.js). Each one helps or hurts depending on your stats and your opponent's.
 const GAME_PLAN = [
-  { key: 'serve', label: 'First serve', opts: [['safe', 'Safe'], ['balanced', 'Balanced'], ['big', 'Big']],
+  { key: 'serve', label: 'First Serve', opts: [['safe', 'Safe'], ['balanced', 'Balanced'], ['big', 'Big']],
     hint: 'Big: fewer first serves in, more aces and free points. Pays off with high Serve Power.' },
-  { key: 'returnPos', label: 'Return position', opts: [['deep', 'Deep'], ['normal', 'Normal'], ['inside', 'Inside']],
+  { key: 'returnPos', label: 'Return Position', opts: [['deep', 'Deep'], ['normal', 'Normal'], ['inside', 'Inside']],
     hint: 'Deep: blunts big servers but gives up second-serve points. Inside: attacks second serves, risky against big serves.' },
-  { key: 'aggression', label: 'Rally style', opts: [['patient', 'Patient'], ['balanced', 'Balanced'], ['aggressive', 'Aggressive']],
+  { key: 'aggression', label: 'Rally Style', opts: [['patient', 'Patient'], ['balanced', 'Balanced'], ['aggressive', 'Aggressive']],
     hint: 'Aggressive: more winners and more errors. Needs strong Groundstrokes. Patient: longer rallies. Suits Stamina and Tennis IQ.' },
   { key: 'spin', label: 'Spin', opts: [['topspin', 'Heavy Topspin'], ['mixed', 'Mixed'], ['flat', 'Flat']],
     hint: 'Flat: faster, more winners and more errors. Needs strong Groundstrokes; best on grass and indoors. Heavy topspin: safer, higher balls, longer rallies. Suits Stamina; best on clay.' },
-  { key: 'net', label: 'Net approaches', opts: [['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']],
+  { key: 'net', label: 'Net Approaches', opts: [['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']],
     hint: 'Works with Net Proficiency, best on grass. Come in too often and you get passed.' },
-  { key: 'drops', label: 'Drop shots', opts: [['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']],
+  { key: 'drops', label: 'Drop Shots', opts: [['rarely', 'Rarely'], ['sometimes', 'Sometimes'], ['often', 'Often']],
     hint: 'Works with Tennis IQ and Net Proficiency, on clay, and against tired opponents. A poor one hands away the point.' },
-  { key: 'underarm', label: 'Underarm serve', opts: [['never', 'Never'], ['rarely', 'Rarely'], ['sometimes', 'Sometimes']],
+  { key: 'underarm', label: 'Underarm Serve', opts: [['never', 'Never'], ['rarely', 'Rarely'], ['sometimes', 'Sometimes']],
     hint: 'Cheeky. Catches returners standing deep. A smart, quick returner punishes it, and it works less each time you try it in a match.' },
+  // Your playstyle's signature play (sim.js SIGNATURE); label and hint come from your style. Creative Shotmakers use the underarm serve instead.
+  { key: 'sig', label: 'Signature Play', opts: [['off', 'Off'], ['on', 'On']], hint: '' },
   // Unlocked by the Master coach.
-  { key: 'wing', label: 'Target wing', coach: 4, opts: [['fh', 'Forehand'], ['neutral', 'Neutral'], ['bh', 'Backhand']],
+  { key: 'wing', label: 'Target Wing', coach: 4, opts: [['fh', 'Forehand'], ['neutral', 'Neutral'], ['bh', 'Backhand']],
     hint: 'Send most rally balls to one side. Pick on their weaker wing (your coach can tell you which). Smart players adjust as the match goes on.' },
-  { key: 'depth', label: 'Shot depth & margin', coach: 4, opts: [['high', 'High Margin'], ['balanced', 'Balanced'], ['deep', 'Deep & Driving']],
+  { key: 'depth', label: 'Shot Depth & Margin', coach: 4, opts: [['high', 'High Margin'], ['balanced', 'Balanced'], ['deep', 'Deep & Driving']],
     hint: 'High margin: moonballs over the net, safe and great on clay against big hitters, but net rushers feast. Deep & driving: pins them back. Needs strong Groundstrokes, best on quick courts.' },
-  { key: 'energy', label: 'Energy pacing', coach: 4, opts: [['conserve', 'Conserve'], ['normal', 'Normal'], ['hustle', 'All-Out Hustle']],
+  { key: 'energy', label: 'Energy Pacing', coach: 4, opts: [['conserve', 'Conserve'], ['normal', 'Normal'], ['hustle', 'All-Out Hustle']],
     hint: 'Hustle wins more points but tires you much faster (worse in the heat) and leaves you more tired after. Conserve saves your legs for later rounds.' },
-  { key: 'pressure', label: 'Big-point risk', coach: 4, opts: [['safe', 'Safe & Solid'], ['standard', 'Standard'], ['broke', 'Go For Broke']],
+  { key: 'pressure', label: 'Big-Point Risk', coach: 4, opts: [['safe', 'Safe & Solid'], ['standard', 'Standard'], ['broke', 'Go For Broke']],
     hint: 'On break points, set points and tiebreaks. Go for broke against a nervous, fragile opponent; stay safe and solid against a tough one.' },
 ];
 
 // Renders the plan settings into el; calls onChange(plan) after each change. Coach-only settings show
 // locked until your coach is good enough.
+// The plan rows a player of this style gets: the underarm serve only for Creative Shotmakers, and the signature play
+// (labelled for the style) for everyone else.
+function planRows(styleName) {
+  return GAME_PLAN.filter(g => g.key === 'underarm' ? styleName === 'Creative Shotmaker' : g.key === 'sig' ? !!SIGNATURE[styleName] : true)
+    .map(g => g.key === 'sig' ? { ...g, label: `⭐ ${SIGNATURE[styleName].label}`, hint: `Your ${styleName} signature play. ${SIGNATURE[styleName].hint}` }
+      : g.key === 'underarm' ? { ...g, label: '⭐ Underarm Serve', hint: `Your Creative Shotmaker signature play. ${g.hint}` } : g);
+}
+const myStyleName = () => typeof current !== 'undefined' && current.player ? styleOf(current.player).name : (typeof state !== 'undefined' && state.attrs ? detectStyles(state.attrs, state.fav, state.plan)[0].name : '');
+
 function planEditor(el, plan, onChange) {
   const draw = () => {
     const lv = typeof teamLevel === 'function' && current.career ? teamLevel(current.career, 'coach') : 0;
+    const rows = planRows(myStyleName());
     // Basic settings first, then the coach-unlocked tier under its own heading.
-    el.innerHTML = GAME_PLAN.map((g, i) => {
+    el.innerHTML = rows.map((g, i) => {
       const locked = g.coach && lv < g.coach;
-      return (g.coach && !(GAME_PLAN[i - 1] || {}).coach ? `<div class="pctier">🎓 Master Coach Options</div>` : '') +
-        `<div class="prow${locked ? ' locked' : ''}"><div class="plabel"><b>${g.label}</b><small>${locked ? `🔒 Unlocks with a ${TEAM.coach.levels[g.coach].name}. ${g.hint}` : g.hint}</small></div>` +
+      return (g.coach && !(rows[i - 1] || {}).coach ? `<div class="pctier">🎓 Master Coach Options</div>` : '') +
+        `<div class="prow${locked ? ' locked' : ''}${g.key === 'sig' || g.key === 'underarm' ? ' sigrow' : ''}"><div class="plabel"><b>${g.label}</b><small>${locked ? `🔒 Unlocks with a ${TEAM.coach.levels[g.coach].name}. ${g.hint}` : g.hint}</small></div>` +
         `<div class="seg" data-key="${g.key}">${g.opts.map(([v, l]) =>
           `<button type="button" data-v="${v}" class="${(plan[g.key] || DEFAULT_PLAN[g.key]) === v ? 'on' : ''}" ${locked ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>`;
     }).join('');
@@ -74,6 +86,7 @@ function planSummary(plan) {
     planLabel('aggression', plan.aggression),
     ...(plan.spin && plan.spin !== 'mixed' ? [planLabel('spin', plan.spin)] : []), `Net: ${planLabel('net', plan.net)}`, `Drops: ${planLabel('drops', plan.drops)}`,
     ...(plan.underarm && plan.underarm !== 'never' ? [`Underarm: ${planLabel('underarm', plan.underarm)}`] : []),
+    ...(plan.sig === 'on' ? ['⭐ Signature Play'] : []),
     ...['wing', 'depth', 'energy', 'pressure'].filter(k => plan[k] && plan[k] !== DEFAULT_PLAN[k]).map(k => `${GAME_PLAN.find(g => g.key === k).label}: ${planLabel(k, plan[k])}`)].join(' · ');
 }
 

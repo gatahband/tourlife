@@ -136,7 +136,8 @@ function realPlayer([rank, name, nation, hand, age, style]) {
     id: `atp-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`, name, nation, hand: hand === 'L' ? 'left' : 'right',
     age, attrs, atp: true, atpRank: rank, temperament: REAL_TEMPER[name] || ['stoic', 'fiery', 'robotic', 'stoic'][nameHash(name) % 4],
     fav, worst: fav === 'clay' ? 'grass' : 'clay', curve: 'peak', formSd: 0.018,
-    plan: { ...DEFAULT_PLAN, ...st.plan, ...ts.plan, ...((typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[name] && REAL_SCOUT[name].plan) || {}) }, seed: null,
+    // Real players always bring their signature play (sim.js SIGNATURE).
+    plan: { ...DEFAULT_PLAN, ...st.plan, ...ts.plan, ...((typeof REAL_SCOUT !== 'undefined' && REAL_SCOUT[name] && REAL_SCOUT[name].plan) || {}), sig: 'on' }, seed: null,
     ceiling: lvl < top ? top - lvl : undefined, serveEdge: (rst && rst.se) || undefined, returnEdge: (rst && rst.re) || undefined,
     legend: LEGENDS.has(name) || undefined, realStyle: style, realTrait: trait || null, provisional: REAL_PROVISIONAL.has(name) || undefined,
   };

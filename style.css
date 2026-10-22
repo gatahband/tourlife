@@ -1501,3 +1501,4 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .rsrow .btn.ghost { border-color: var(--line); }
 #cPreview { display: block; width: 100%; margin: 4px 0 12px; border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; font-weight: 700; }
 #cPreview:hover { box-shadow: 0 0 14px rgba(191,90,242,.45); }
+.prow.sigrow { border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; border-radius: 12px; padding: 8px 10px; }

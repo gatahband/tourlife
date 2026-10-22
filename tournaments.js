@@ -632,9 +632,10 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
 
   // Your plan, with the coach's suggestion beside each setting.
   const rec = coach ? coachPlan(opp, ev, me) : null, theirs = planOf(opp);
-  const diffs = rec ? GAME_PLAN.filter(g => (!g.coach || lvl >= g.coach) && rec[g.key] !== (plan[g.key] || DEFAULT_PLAN[g.key])) : [];
+  const myRows = planRows(styleOf(me).name);
+  const diffs = rec ? myRows.filter(g => (!g.coach || lvl >= g.coach) && rec[g.key] !== (plan[g.key] || DEFAULT_PLAN[g.key])) : [];
   const pv = k => plan[k] || DEFAULT_PLAN[k];
-  const rows = GAME_PLAN.filter(g => !g.coach || lvl >= g.coach).map((g, i, arr) => {
+  const rows = myRows.filter(g => !g.coach || lvl >= g.coach).map((g, i, arr) => {
     const d = rec && rec[g.key] !== pv(g.key);
     return (g.coach && !(arr[i - 1] || {}).coach ? `<tr class="ptier"><th colspan="4">🎓 Master Coach Options</th></tr>` : '') + `<tr class="${d ? 'diff' : ''}"><th>${g.label}</th><td>${planLabel(g.key, pv(g.key))}</td>` +
       (coach ? `<td>${d ? `<b>${planLabel(g.key, rec[g.key])}</b>` : '<span class="ok">✓</span>'}</td>` : '') +

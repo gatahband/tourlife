@@ -704,7 +704,18 @@ function coachReads(o, ev, me) {
 const COACH_READS = [0, 1, 3, 5, 99];
 function coachPlan(o, ev, me) {
   const n = COACH_READS[typeof teamLevel === 'function' ? teamLevel(current.career, 'coach') : 0] || 0;
-  return { ...DEFAULT_PLAN, ...planOf(me), ...Object.fromEntries(coachReads(o, ev, me).slice(0, n).map(x => [x.key, x.val])) };
+  const rec = { ...DEFAULT_PLAN, ...planOf(me), ...Object.fromEntries(coachReads(o, ev, me).slice(0, n).map(x => [x.key, x.val])) };
+  // Any coach weighs up your signature play for this opponent and these conditions.
+  const st = styleOf(me).name;
+  if (n && SIGNATURE[st]) rec.sig = sigWorth(st, { ...me, plan: { ...planOf(me), sig: 'on' } }, o, ev) > 0.002 ? 'on' : 'off';
+  return rec;
+}
+// Roughly what your signature play is worth against this opponent (rally edge plus the serve-and-return ones).
+function sigWorth(st, me, o, ev) {
+  const m0 = { styles: [st, styleOf(o).name], sets: [], exec: [1, 1] };
+  const serveOnes = { 'Serve +1 Attacker': 0.008, 'First-Strike Attacker': o.attrs.serve >= me.attrs.ret + 6 ? -0.004 : 0.007,
+    'Serve-and-Volley': o.attrs.serve >= me.attrs.ret + 6 ? -0.003 : 0.006, 'Serve-Dominant': me.attrs.serve >= 78 ? 0.006 : -0.004 };
+  return sigRally(m0, [me, o], 0, ev) + (serveOnes[st] || 0);
 }
 // Video analysis: the full read on an opponent (not limited by your coach's level).
 const advCoachFull = o => { const g = wingGap(o); return { wing: g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : 'neutral' }; };
@@ -737,6 +748,8 @@ function counters(key, cur) {
       { short: 'Attack Earlier', label: 'Shorten the points: attack earlier', plan: { aggression: 'aggressive' } }],
     drops: [{ short: 'Save The Drops', label: 'Save the drop shot for the big moments', plan: { drops: 'rarely' } },
       { short: 'Deep, Then Drop', label: 'Push them deep first, then drop', plan: { depth: 'deep' } }],
+    sig: [{ short: 'Switch It Off', label: 'Switch your signature play off for now and win some other way', plan: { sig: 'off' } },
+      { short: 'Change The Rhythm', label: 'Keep the signature, but change the rhythm around it', plan: { aggression: cur.aggression === 'aggressive' ? 'balanced' : 'aggressive' } }],
     returnPos: [{ short: 'Normal Return', label: 'Step back to a normal return position', plan: { returnPos: 'normal' } },
       { short: 'Deep Return', label: 'Stand deep and start the rally neutral', plan: { returnPos: 'deep' } }],
   })[key] || [{ short: 'Switch Rally Style', label: 'Change the rhythm: switch your rally style', plan: { aggression: cur.aggression === 'aggressive' ? 'patient' : 'aggressive' } },

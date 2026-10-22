@@ -4,7 +4,7 @@ const ATTR_KEYS = ['serve', 'ground', 'ret', 'net', 'stam', 'mental', 'iq'];
 const LEFTY_SHARE = 0.13;
 
 // Game plan: five tactical settings. You choose yours; opponents get one that suits their stats.
-const DEFAULT_PLAN = { serve: 'balanced', returnPos: 'normal', aggression: 'balanced', net: 'sometimes', drops: 'sometimes', underarm: 'never', spin: 'mixed',
+const DEFAULT_PLAN = { serve: 'balanced', returnPos: 'normal', aggression: 'balanced', net: 'sometimes', drops: 'sometimes', underarm: 'never', sig: 'off', spin: 'mixed',
   wing: 'neutral', depth: 'balanced', energy: 'normal', pressure: 'standard' };
 const planOf = p => ({ ...DEFAULT_PLAN, ...(p.dropShots ? { drops: p.dropShots } : {}), ...p.plan });
 
@@ -494,6 +494,7 @@ function adaptTo(m, ps, who, target, set) {
     pl.spin === 'flat' && { key: 'spin', label: 'is slicing low so the flat balls have nothing to hit through' },
     pl.drops === 'often' && { key: 'drops', label: 'is reading the drop shot and staying closer' },
     pl.returnPos === 'inside' && { key: 'returnPos', label: 'is serving into the body to jam the return' },
+    sigOf(m, ps, target) && { key: 'sig', label: `is reading the ${SIGNATURE[sigOf(m, ps, target)].label.toLowerCase()} and sitting on it` },
   ].filter(Boolean);
   // Between two real players, they go after whatever is actually hurting them most so far (and something new each
   // time); against you, the order above stands.
@@ -501,7 +502,7 @@ function adaptTo(m, ps, who, target, set) {
   if (m.realPair && opts.length) {
     const st = m.stats[target], done = new Set((m.adapted || []).filter(a => a.who === who && a.against === target).map(a => a.key));
     const hurt = { serve: st.aces / Math.max(1, st.servePts) * 6, net: st.netWon / Math.max(1, st.points) * 8, drops: (st.dropWon || 0) / Math.max(1, st.points) * 14,
-      aggression: st.winners / Math.max(1, st.points) * 2.2, wing: 0.5, spin: 0.35, depth: 0.35, returnPos: 0.3 };
+      aggression: st.winners / Math.max(1, st.points) * 2.2, sig: 0.6, wing: 0.5, spin: 0.35, depth: 0.35, returnPos: 0.3 };
     const left = opts.filter(o => !done.has(o.key));
     if (left.length) pick = left.reduce((b, o) => (hurt[o.key] || 0.3) > (hurt[b.key] || 0.3) ? o : b);
   }
@@ -528,6 +529,7 @@ const ANSWER = {
   spin: 'is adding more shape to get the ball up above the slice',
   depth: 'is mixing the depth so they can\'t sit on it',
   returnPos: 'is standing a step further back to handle the body serve',
+  sig: 'is disguising the signature play and picking its moments',
   plan: 'has reworked the game plan',
 };
 function answerBack(m, ps, i, set, rng) {
@@ -608,6 +610,50 @@ function handEdge(A, B, ad) {
   return 0;
 }
 
+// --- Signature plays -------------------------------------------------------------------------------------------
+// One per playstyle (Creative Shotmaker's is the underarm serve). Each is a real choice: a clear upside in the right
+// matchup or conditions, and a cost or a counter in the wrong one. It only works while you play that style, and it
+// comes off as well as your plan is executing (opponents can read and sit on it, see adaptTo).
+const SIGNATURE = {
+  'Serve-Dominant':          { label: 'Ace Hunting', hint: 'Go for the lines on every first serve: more aces, but more double faults too.' },
+  'Serve +1 Attacker':       { label: 'First-Ball Forehand', hint: 'Every first serve sets up a forehand on the next ball. Deadly when the first serve lands, exposed on second serves.' },
+  'Serve-and-Volley':        { label: 'Chip-And-Charge', hint: 'Chip second-serve returns and rush the net. Rattles weak second serves, but first serves get past you more.' },
+  'Net Attacker':            { label: 'Approach Down The Line', hint: 'Approach behind deep down-the-line balls. Great against weak passers; good returners and baseliners pick you off.' },
+  'First-Strike Attacker':   { label: 'Return Pressure', hint: 'Stand in and attack second serves. Big gains on second serves, but big first serves rush you.' },
+  'Aggressive Baseliner':    { label: 'Inside-Out Forehand Hunting', hint: 'Run around the backhand to hit inside-out forehands. Rips through most players; fit, fast opponents run it down.' },
+  'Flat Attacker':           { label: 'Take It Early', hint: 'Stand on the baseline and take every ball early. Brilliant on grass, hard and indoors, a liability on slow clay.' },
+  'Heavy-Topspin Attacker':  { label: 'High Kick To The Backhand', hint: 'Heavy, high balls to the backhand. Crushes weak or one-handed backhands, less useful otherwise, and it sits up on grass.' },
+  'Heavy-Topspin Baseliner': { label: 'Moonball Reset', hint: 'Loop high and deep to reset any rally. Thrives on clay and against big hitters; quick courts punish the short ones.' },
+  'Solid Baseliner':         { label: 'Cross-Court Lock', hint: 'Lock into safe cross-court patterns. Steady against hitters, but net rushers take the net away from you.' },
+  'Counterpuncher':          { label: 'Bait The Net Rusher', hint: 'Invite them in, then pass or lob. Devastating against net players; a small cost against baseliners who stay back.' },
+  'Defensive Grinder':       { label: 'Extend The Rally', hint: 'Make every point long. Wins big against less fit opponents and costs you against fitter ones.' },
+  'Variety / Slice-Heavy':   { label: 'Slice-And-Drop Combo', hint: 'Slice low, then drop. Wrecks big, flat hitters; patient grinders handle it well.' },
+  'All-Court':               { label: 'Switch-Up', hint: 'Change your plan the moment you drop a set. Nothing before that, a real lift after it.' },
+};
+// The signature a player has running right now (their style's play, switched on in their plan), or null.
+const sigOf = (m, ps, i) => { const st = (m.styles || [])[i]; return st && SIGNATURE[st] && planOf(ps[i]).sig === 'on' ? st : null; };
+// Rally edge (on every point) from player i's signature, before execution.
+function sigRally(m, ps, i, ev) {
+  const st = sigOf(m, ps, i);
+  if (!st) return 0;
+  const me = ps[i], o = ps[1 - i], op = planOf(o), ost = (m.styles || [])[1 - i] || '';
+  const surf = ev.indoor ? 'indoor' : ev.surface;
+  switch (st) {
+    case 'Net Attacker': return clamp(0.012 - 0.0006 * Math.max(0, (attr(o, 'ret') + attr(o, 'ground')) / 2 - attr(me, 'net')), -0.008, 0.012);
+    case 'Aggressive Baseliner': return 0.011 - (attr(o, 'stam') > attr(me, 'ground') ? 0.009 : 0);
+    case 'Flat Attacker': return { grass: 0.013, indoor: 0.013, hard: 0.008, clay: -0.012 }[surf] || 0;
+    case 'Heavy-Topspin Attacker': return (wingGap(o) > 0.15 || o.backhand === 'one' ? 0.014 : 0.003) - (surf === 'grass' ? 0.006 : 0);
+    case 'Heavy-Topspin Baseliner': return ({ clay: 0.012, hard: 0.003, indoor: -0.006, grass: -0.008 }[surf] || 0) + (op.aggression === 'aggressive' ? 0.004 : 0);
+    case 'Solid Baseliner': return 0.005 + (op.aggression === 'aggressive' ? 0.004 : 0) - (op.net === 'often' ? 0.01 : 0);
+    case 'Counterpuncher': return op.net === 'often' || /Net Attacker|Serve-and-Volley/.test(ost) ? 0.016 : -0.005;
+    case 'Defensive Grinder': return clamp(0.0007 * (attr(me, 'stam') - attr(o, 'stam')), -0.01, 0.014);
+    case 'Variety / Slice-Heavy': return op.aggression === 'aggressive' || op.spin === 'flat' ? 0.012 : op.aggression === 'patient' ? -0.006 : 0.002;
+    case 'All-Court': return m.sets.some(x => x.games[1 - i] > x.games[i]) ? 0.016 : 0;
+    default: return 0;
+  }
+}
+const sigEx = (m, i) => clamp(m.exec ? m.exec[i] : 1, 0, 1.3);
+
 function pointProb(m, ps, ev, s, clutch, ad = false) {
   const r = 1 - s, A = ps[s], B = ps[r];
   let p = SERVE_BASE + 0.0034 * (serveRating(A, ev.surface) - returnRating(B, ev.surface))
@@ -618,6 +664,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     - (A.focusPen || 0) + (B.focusPen || 0) // autopilot: simming without watching (see tournaments.js)
     + (A.moraleEdge || 0) - (B.moraleEdge || 0) // morale (see morale.js)
     + (A.serveEdge || 0) - (B.returnEdge || 0) // a real player's own serve and return numbers (realstats.js)
+    + sigRally(m, ps, s, ev) * sigEx(m, s) - sigRally(m, ps, 1 - s, ev) * sigEx(m, 1 - s) // signature plays
     + advEdge(m, A, B, ev, clutch) - advEdge(m, B, A, ev, clutch) // advanced plan (coach unlocks)
     + (A.prepEdge || 0) - (B.prepEdge || 0) + (clutch ? (A.prepClutch || 0) - (B.prepClutch || 0) : 0) // week's preparation (prep.js)
     - 0.022 * (quirkHits(A, B).length - quirkHits(B, A).length) // walking into a hidden strength
@@ -743,7 +790,8 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const sp = planOf(A), rp = planOf(B), SP = SERVE_PLAN[sp.serve];
   const p = pointProb(m, ps, ev, s, clutch, ad);
   const a0 = clamp(0.62 - (A.attrs.serve - 50) * 0.0015 + (A.attrs.mental - 50) * 0.0015, 0.5, 0.75);
-  const df = clamp(0.07 + (A.attrs.serve - 50) * 0.0006 - (A.attrs.mental - 50) * 0.0008 + (clutch ? 0.015 : 0), 0.02, 0.14);
+  const df = clamp(0.07 + (A.attrs.serve - 50) * 0.0006 - (A.attrs.mental - 50) * 0.0008 + (clutch ? 0.015 : 0)
+    + (sigOf(m, ps, s) === 'Serve-Dominant' ? 0.02 : 0), 0.02, 0.16); // Ace Hunting: more double faults
   let w1 = Math.min(0.9, p + 0.08);
   let w2 = clamp((p - a0 * w1) / ((1 - a0) * (1 - df)), 0.2, 0.75);
   // Serve plan: big = fewer in but more damage (worth it with a big serve); safe = the reverse.
@@ -756,6 +804,11 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   if (rp.returnPos === 'inside') { w1 += 0.02 + Math.max(0, rel(A, 'serve')) * 0.002; w2 -= (0.035 + rel(B, 'ret') * 0.001 + (B.attrs.ret - A.attrs.serve) * 0.0008 - rel(A, 'serve') * 0.0008) * ex(m, r); }
   // Rally style applies to the points that become rallies.
   const edge = 0.8 * (rallyEdge(A, B, ev) * ex(m, s) - rallyEdge(B, A, ev) * ex(m, r));
+  // Signature plays that live on the serve and return.
+  const sgS = sigOf(m, ps, s), sgR = sigOf(m, ps, r), xS = sigEx(m, s), xR = sigEx(m, r);
+  if (sgS === 'Serve +1 Attacker') { w1 += 0.03 * xS; w2 -= 0.008; }
+  if (sgR === 'First-Strike Attacker') { w2 -= 0.055 * xR; w1 += 0.006; }
+  if (sgR === 'Serve-and-Volley') { w2 -= 0.04 * xR; w1 += 0.005; }
   w1 = clamp(w1 + edge, 0.3, 0.95);
   w2 = clamp(w2 + edge, 0.15, 0.85);
 
@@ -793,7 +846,7 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   const done = () => { if (w === s) pt.serve2 ? st.secondWon++ : st.firstWon++; return { w, pt }; };
   if (w === s) {
     const tr = m.traits || [];
-    const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_SERVER[tr[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (ACE_RETURNER[tr[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (typeof wxOf === 'function' ? wxOf(ev).ace : 1);
+    const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_SERVER[tr[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (ACE_RETURNER[tr[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (typeof wxOf === 'function' ? wxOf(ev).ace : 1) * (sigOf(m, ps, s) === 'Serve-Dominant' ? 1 + 0.45 * sigEx(m, s) : 1);
     if (!pt.serve2 && rng() < Math.max(0, A.attrs.serve - 30) / 280 * SP.ace * aceK) { st.aces++; pt.how = 'ace'; return done(); }
     if (rng() < (pt.serve2 ? 0.05 : 0.16) * aceK) { pt.how = 'unreturned'; return done(); }
   }
@@ -1002,6 +1055,8 @@ const UNDERARM_RATE = { never: 0, rarely: 0.007, sometimes: 0.02 };
 // Each one in a match is less of a surprise.
 function tryUnderarm(m, ps, s, rng) {
   const A = ps[s], B = ps[1 - s];
+  // The underarm serve is Creative Shotmaker's signature play (real players keep the ones they really use).
+  if (!A.atpRank && (m.styles || [])[s] && m.styles[s] !== 'Creative Shotmaker') return null;
   if (rng() >= UNDERARM_RATE[planOf(A).underarm || 'never']) return null;
   const st = m.stats[s];
   const used = st.underarm || 0;

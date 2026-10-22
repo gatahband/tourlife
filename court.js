@@ -1502,9 +1502,9 @@ function createCourt() {
       // After the bounce it carries straight on along the same line.
       const L = dist(from, bounce), ux = (bounce.x - from.x) / (L || 1), uy = (bounce.y - from.y) / (L || 1);
       const postTo = !final ? contact
-        // Heavy backspin: the drop bites and spins away sideways (sometimes right off the court).
-        : shot.spinAway ? { x: clamp(bounce.x + Math.sign(bounce.x || 1) * rand(1.8, 3.2), -DOUBLES - 1.5, DOUBLES + 1.5), y: bounce.y - uy * 0.5 }
-        : { x: bounce.x + ux * (goodDrop ? 0.4 : L * 0.35), y: bounce.y + uy * (goodDrop ? 0.4 : L * 0.35) };
+        // Heavy backspin: the drop bites, checks up and kicks a few inches sideways.
+        : shot.spinAway ? { x: bounce.x + Math.sign(bounce.x || 1) * rand(0.08, 0.2), y: bounce.y - uy * 0.06 }
+        : { x: bounce.x + ux * (goodDrop ? 0.15 : L * 0.35), y: bounce.y + uy * (goodDrop ? 0.15 : L * 0.35) };
       const preDist = dist(from, to0);
       // Share of the flight before the bounce, from the real distances (ball slows a little after the
       // bounce), so it never crawls the last metre to the racket.
@@ -1797,7 +1797,9 @@ function createCourt() {
         // Point over: the ball carries on from where it was (it never freezes mid-air).
         if (s.final && ball.on && s.bounce) {
           const post = Math.max(0.05, (s.realMs || 600) * (1 - s.tb) / 1000);
-          const vx = (s.postTo.x - s.bounce.x) / post, vy = (s.postTo.y - s.bounce.y) / post;
+          // A good drop shot dies where it lands: it barely rolls on.
+          const slow = s.goodDrop ? 0.12 : 1;
+          const vx = (s.postTo.x - s.bounce.x) / post * slow, vy = (s.postTo.y - s.bounce.y) / post * slow;
           const vz = s.goodDrop ? 0 : s.bounceH * 0.7 * Math.PI * Math.cos(0.7 * Math.PI) / post;
           await settle(vx, vy, vz, big ? 700 : 1100);
         }

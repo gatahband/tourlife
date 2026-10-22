@@ -757,12 +757,6 @@ function counters(key, cur) {
 }
 // The latest adjustment the opponent made against you this match, if any.
 const lastAdapt = (m, me) => (m.adapted || []).filter(a => a.against === me).slice(-1)[0] || null;
-// What a coach below Master tells you about it.
-function adaptNotice(m, ps, me) {
-  const a = lastAdapt(m, me), lv = teamLevel(current.career, 'coach');
-  if (!a || lv >= 4) return '';
-  return lv > 0 ? `🧑‍🏫 Your coach: "Something changed. ${esc(shortName(ps[1 - me]))} has adjusted to your plan, and it isn't working like before."` : '';
-}
 
 // This season's numbers (every match played this season): win rate, dominance ratio, hold %, break %,
 // return points won % and total points won %. Returns null before the first match.
@@ -806,46 +800,78 @@ function homeSums(c, p) {
 
 // Master coach, mid-match: reads how the match is actually going and suggests changes, with the reasons.
 // Returns { tips: [text], plan: {changes} }.
-function liveAdvice(m, ps, me, ev) {
-  const op = 1 - me, Y = m.stats[me], T = m.stats[op], A = ps[me], O = ps[op], cur = planOf(A);
+// The coach's read at a break: what's actually happening and why, with changes to make. Better coaches see more
+// and explain more: Club (1) a single read; Tour (2) one change with the numbers behind it; Elite (3) two changes
+// plus an answer to any adjustment they've made; Master (4) up to three, the advanced plan, and two answers.
+function liveAdvice(m, ps, me, ev, lv = 4) {
+  const op = 1 - me, Y = m.stats[me], T = m.stats[op], A = ps[me], O = ps[op], cur = planOf(A), on = shortName(O);
   const tips = [], plan = {};
-  // First: if they've adjusted to you, name it and give two counters.
+  const pct = (a, b) => (b ? a / b : 0), P = x => `${Math.round(x * 100)}%`;
+  const usable = k => { const g = GAME_PLAN.find(q => q.key === k); return !g || !g.coach || lv >= g.coach; };
+  const max = [0, 1, 1, 2, 3][lv] || 0;
+  const set = (k, v, why) => { if (tips.length < max && usable(k) && cur[k] !== v && plan[k] === undefined) { plan[k] = v; tips.push(why); } };
+  const note = why => { if (tips.length < max) tips.push(why); };
+  const totalPts = Y.points + T.points, myShare = pct(Y.points, totalPts);
+  // Their adjustment, read against what has actually happened since: it may be hurting you, or not yet.
   const ad = lastAdapt(m, me);
-  const cts = ad ? counters(ad.key, cur).map(c => ({ ...c, plan: Object.fromEntries(Object.entries(c.plan).filter(([k, v]) => cur[k] !== v)) })).filter(c => Object.keys(c.plan).length) : [];
-  if (ad && cts.length) tips.push(`${shortName(O)} ${ad.label}. Two ways to answer it (buttons below).`);
-  // A few games in, the Master coach spots any hidden strength you're playing into.
-  if (m.totalGames >= 4) for (const q of quirkHits(A, O)) {
-    const fix = q.key === 'wing' ? 'neutral' : DEFAULT_PLAN[q.key];
-    if (tips.length < 3 && plan[q.key] === undefined) { plan[q.key] = fix; tips.push(`Careful: ${shortName(O)} ${q.text}. Switch ${GAME_PLAN.find(g => g.key === q.key).label.toLowerCase()} to ${planLabel(q.key, fix).toLowerCase()}.`); }
+  let cts = [];
+  if (ad) {
+    const since = totalPts - (ad.at || 0), wonSince = Y.points - (ad.wonAt || 0), shareSince = since >= 6 ? wonSince / since : null;
+    const before = (ad.at || 0) ? (ad.wonAt || 0) / ad.at : null;
+    const hurting = shareSince !== null && before !== null && shareSince < before - 0.05;
+    const what = `${on} ${ad.label}`;
+    const read = shareSince === null ? `${what}. It's only just happened, so watch whether it starts costing you.`
+      : hurting ? `${what}, and it's working: you're winning ${P(shareSince)} of points since, down from ${P(before)}.`
+      : `${what}, but it hasn't hurt you yet (${P(shareSince)} of points since). Stay with your plan and keep an eye on it.`;
+    if (hurting || shareSince === null || lv >= 3) {
+      cts = lv >= 3 && hurting ? counters(ad.key, cur).map(c => ({ ...c, plan: Object.fromEntries(Object.entries(c.plan).filter(([k, v]) => cur[k] !== v && usable(k))) })).filter(c => Object.keys(c.plan).length).slice(0, lv >= 4 ? 2 : 1) : [];
+      note(read + (hurting && cts.length ? ` ${cts.length === 2 ? 'Two ways' : 'One way'} to answer it below.` : ''));
+    }
   }
-  const pct = (a, b) => (b ? a / b : 0);
-  const set = (k, v, why) => { if (tips.length < 3 && cur[k] !== v && plan[k] === undefined) { plan[k] = v; tips.push(why); } };
-  // Their serve is hurting you.
-  if (T.servePts >= 12 && (T.aces / T.servePts > 0.09 || pct(T.firstWon, T.firstIn) > 0.78)) set('returnPos', 'deep', `Their first serve is winning ${Math.round(pct(T.firstWon, T.firstIn) * 100)}% of points. Stand deeper to return.`);
-  else if (T.servePts >= 12 && pct(T.secondWon, T.servePts - T.firstIn) < 0.45) set('returnPos', 'inside', `Their second serve is weak (${Math.round(pct(T.secondWon, T.servePts - T.firstIn) * 100)}% won). Step in and attack it.`);
+  // A few games in, a Master coach spots any hidden strength you're playing into.
+  if (lv >= 4 && m.totalGames >= 4) for (const q of quirkHits(A, O)) {
+    const fix = q.key === 'wing' ? 'neutral' : DEFAULT_PLAN[q.key];
+    set(q.key, fix, `Careful: ${on} ${q.text}. Switch ${GAME_PLAN.find(g => g.key === q.key).label.toLowerCase()} to ${planLabel(q.key, fix).toLowerCase()}.`);
+  }
+  // Their serve.
+  const theirServe = pct(T.firstWon + T.secondWon, T.servePts);
+  if (T.servePts >= 12 && pct(T.firstWon, T.firstIn) > 0.78) set('returnPos', 'deep', `Their first serve is winning ${P(pct(T.firstWon, T.firstIn))} of points. Stand deeper so you get more returns back in play.`);
+  else if (T.servePts >= 12 && T.aces / T.servePts > 0.09 && theirServe > 0.62) set('returnPos', 'deep', `They've hit ${T.aces} aces and are winning ${P(theirServe)} on serve. Stand deeper to get more returns back.`);
+  else if (T.servePts >= 12 && pct(T.secondWon, T.servePts - T.firstIn) < 0.45) set('returnPos', 'inside', `They're winning only ${P(pct(T.secondWon, T.servePts - T.firstIn))} on their second serve. Step in and attack it.`);
   // Your serve.
-  if (Y.servePts >= 12 && pct(Y.firstIn, Y.servePts) < 0.55) set('serve', 'safe', `Only ${Math.round(pct(Y.firstIn, Y.servePts) * 100)}% of first serves are going in. Take some pace off and make them.`);
-  if (Y.df >= 4) set('serve', 'safe', `${Y.df} double faults already. Play safer on serve.`);
-  // Errors vs winners.
-  if (Y.ue >= T.ue + 4) { set('aggression', 'patient', `You've made ${Y.ue} unforced errors to their ${T.ue}. Be patient and make them play.`); set('depth', 'high', 'Give yourself more margin over the net until the errors stop.'); }
-  else if (T.ue >= Y.ue + 5) set('aggression', 'patient', `They're missing a lot (${T.ue} errors). Keep the ball in play and let them.`);
-  if (T.winners >= Y.winners + 6) set('depth', 'deep', `They've hit ${T.winners} winners. Push them back with deep balls so they can't attack.`);
-  // Net game.
-  if (Y.netPlayed >= 5 && pct(Y.netWon, Y.netPlayed) < 0.45) set('net', 'rarely', `You're only winning ${Math.round(pct(Y.netWon, Y.netPlayed) * 100)}% at the net. Stay back.`);
-  else if (Y.netPlayed >= 4 && pct(Y.netWon, Y.netPlayed) > 0.7) set('net', 'often', `You're winning ${Math.round(pct(Y.netWon, Y.netPlayed) * 100)}% at the net. Come in more.`);
+  if (Y.servePts >= 12 && pct(Y.firstIn, Y.servePts) < 0.55) set('serve', 'safe', `Only ${P(pct(Y.firstIn, Y.servePts))} of your first serves are going in, so they're feasting on second serves. Take some pace off and make them.`);
+  if (Y.df >= 4) set('serve', 'safe', `${Y.df} double faults already: that's free points. Play safer on serve.`);
+  // Errors and winners.
+  if (Y.ue >= T.ue + 4) { set('aggression', 'patient', `You've made ${Y.ue} unforced errors to their ${T.ue}: you're beating yourself. Be patient and make them play.`); set('depth', 'high', 'Give yourself more margin over the net until the errors stop.'); }
+  else if (T.ue >= Y.ue + 5) set('aggression', 'patient', `They've made ${T.ue} errors to your ${Y.ue}. They're giving you points: keep the ball in play and let them miss.`);
+  if (T.winners >= Y.winners + 6) set('depth', 'deep', `They've hit ${T.winners} winners to your ${Y.winners}. Push them back with deep balls so they can't attack.`);
+  // The net.
+  if (Y.netPlayed >= 5 && pct(Y.netWon, Y.netPlayed) < 0.45) set('net', 'rarely', `You're winning only ${P(pct(Y.netWon, Y.netPlayed))} of points at the net (${Y.netWon} of ${Y.netPlayed}): they're passing you. Stay back.`);
+  else if (Y.netPlayed >= 4 && pct(Y.netWon, Y.netPlayed) > 0.7) set('net', 'often', `You're winning ${P(pct(Y.netWon, Y.netPlayed))} at the net. Come in more.`);
   // Big points.
-  if (Y.bpChances >= 3 && pct(Y.bpWon, Y.bpChances) < 0.3 && attr(O, 'mental') < 60) set('pressure', 'broke', `You've taken ${Y.bpWon} of ${Y.bpChances} break points. They're nervous: go for it on the big ones.`);
+  if (Y.bpChances >= 3 && pct(Y.bpWon, Y.bpChances) < 0.3 && attr(O, 'mental') < 60) set('pressure', 'broke', `You've converted ${Y.bpWon} of ${Y.bpChances} break points, and they look nervous. Go for it on the big ones.`);
   else if (Y.bpFaced >= 3 && pct(Y.bpSaved, Y.bpFaced) < 0.5) set('pressure', 'safe', `You've saved only ${Y.bpSaved} of ${Y.bpFaced} break points. Stay solid when it's tight.`);
   // Legs.
-  if (m.totalGames >= 18 && attr(A, 'stam') < 62 && cur.energy === 'hustle') set('energy', 'conserve', 'This is getting long. Save your legs or you will fade.');
-  else if (m.totalGames >= 18 && attr(A, 'stam') >= 66 && attr(O, 'stam') < 56) set('energy', 'hustle', 'They are tiring. Raise the intensity and make every point physical.');
-  // Their weaker wing.
+  if (m.totalGames >= 18 && attr(A, 'stam') < 62 && cur.energy === 'hustle') set('energy', 'conserve', "This is getting long and you're the one who'll fade. Save your legs.");
+  else if (m.totalGames >= 18 && attr(A, 'stam') >= 66 && attr(O, 'stam') < 56) set('energy', 'hustle', "They're tiring. Raise the intensity and make every point physical.");
+  // Their weaker wing (a Master's read).
   const g = wingGap(O), want = g > 0.15 ? 'bh' : g < -0.1 ? 'fh' : null;
-  if (want) set('wing', want, `Keep going at their ${want === 'bh' ? 'backhand' : 'forehand'}: it is the weaker side.`);
-  // Nothing wrong: say so.
-  const won = m.games[me] - m.games[op] + m.sets.reduce((n, st) => n + (st.games[me] > st.games[op] ? 3 : -3), 0);
-  if (!tips.length) tips.push(won >= 0 ? "It's working. Change nothing." : "The plan is right; it's small margins. Stay with it.");
-  return { tips, plan, counters: cts };
+  if (want) set('wing', want, `Keep going at their ${want === 'bh' ? 'backhand' : 'forehand'}: it's the weaker side.`);
+  // Nothing to change: say why, from the numbers.
+  if (!tips.length) {
+    const sv = pct(Y.firstWon + Y.secondWon, Y.servePts), why = Y.servePts >= 10 ? ` You're winning ${P(sv)} on serve and ${P(myShare)} of all points.` : '';
+    const ahead = m.sets.reduce((n, st) => n + (st.games[me] > st.games[op] ? 1 : -1), 0) + Math.sign(m.games[me] - m.games[op]) * 0.5;
+    tips.push(ahead >= 0 ? `It's working. Change nothing.${why}` : `The plan is right; it's small margins.${why} Stay with it.`);
+  }
+  // A club coach tells you what they see; changing the plan is up to you.
+  return { tips, plan: lv >= 2 ? plan : {}, counters: cts, level: lv };
+}
+// Below a Master coach, between sets: the same honest read, with less detail.
+function adaptNotice(m, ps, me) {
+  const lv = teamLevel(current.career, 'coach');
+  if (!lv || lv >= 4) return '';
+  const adv = liveAdvice(m, ps, me, null, lv);
+  return adv.tips.length ? `🧑‍🏫 Your coach: "${esc(adv.tips.join(' '))}"` : '';
 }
 
 const SHORT_ATTR = { serve: 'Serve', ground: 'Ground', ret: 'Return', net: 'Net', stam: 'Stamina', mental: 'Mental', iq: 'IQ' };

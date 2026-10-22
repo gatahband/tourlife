@@ -514,7 +514,8 @@ function adaptTo(m, ps, who, target, set) {
   // What they countered, and the value it had: until you change that setting, a legend keeps punishing it.
   const cur = { ...planOf(ps[target]), ...advPlan(ps[target], ps[who]) };
   const played = (m.stats ? m.stats[0].points + m.stats[1].points : 0);
-  m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set, at: played, val: pick.key === 'plan' ? JSON.stringify(cur) : cur[pick.key] }];
+  m.adapted = [...(m.adapted || []), { who, against: target, key: pick.key, label: pick.label, set, at: played, val: pick.key === 'plan' ? JSON.stringify(cur) : cur[pick.key],
+    wonAt: m.stats ? m.stats[target].points : 0 }]; // points the target had won by then: shows whether it's hurting them since
   m.moments.push({ set, who, kind: 'adapt', label: pick.label, at: m.points.length - 1 });
 }
 

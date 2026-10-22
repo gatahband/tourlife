@@ -1662,7 +1662,7 @@ function renderMatch() {
         `<small>${planSummary(planOf(ps[me]))}</small></span><button type="button" class="btn ghost small" id="mAdj">Adjust plan</button></div>` + breakAdviceHtml();
     };
     // The coach talks to you at every set break, however the set was played (watched or simmed).
-    const breakAdv = () => teamLevel(current.career, 'coach') >= 4 && m.winner === null ? liveAdvice(m, ps, me, ev) : null;
+    const breakAdv = () => teamLevel(current.career, 'coach') >= 1 && m.winner === null ? liveAdvice(m, ps, me, ev, teamLevel(current.career, 'coach')) : null;
     const breakAdviceHtml = () => {
       const adv = breakAdv();
       if (!adv) { const n = m.winner === null ? adaptNotice(m, ps, me) : ''; return n ? `<div class="advice">${n}</div>` : ''; }
@@ -1780,7 +1780,7 @@ function renderMatch() {
 const changeoversOn = entry => teamLevel(current.career, 'coach') >= 4 // a Master coach talks to you at every changeover
   || ['ATP250', 'ATP500', 'M1000', 'GS'].includes(eventOf(entry).tier) && !inQual(entry) && overall(current.player) >= 75;
 // The Master coach's live advice, as a block of tips (and how many changes it suggests).
-const adviceHtml = adv => `<div class="advice"><b>🧑‍🏫 Coach's Advice</b><ul>${adv.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+const adviceHtml = adv => `<div class="advice"><b>🧑‍🏫 ${esc(TEAM.coach.levels[adv.level || 4].name.replace(/\b\w/g, x => x.toUpperCase()))}'s Read</b><ul>${adv.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
 
 // At a changeover the match pauses on court: keep going, take the coach's plan, or adjust your own.
 function changeover(entry, ps, me, step) {
@@ -1788,7 +1788,7 @@ function changeover(entry, ps, me, step) {
   const pl = { ...planOf(ps[me]) }, before = JSON.stringify(pl);
   const coach = hasTeam(current.career, 'coach') ? coachPlan(opp, ev, ps[me]) : null;
   const diffs = coach ? GAME_PLAN.filter(g => coach[g.key] !== pl[g.key]).length : 0;
-  const adv = teamLevel(current.career, 'coach') >= 4 ? liveAdvice(m, ps, me, ev) : null, nAdv = adv ? Object.keys(adv.plan).length : 0;
+  const adv = teamLevel(current.career, 'coach') >= 1 ? liveAdvice(m, ps, me, ev, teamLevel(current.career, 'coach')) : null, nAdv = adv ? Object.keys(adv.plan).length : 0;
   const box = $('mCallBox');
   // Main view: the coach's read, one row of equal choices (short names; hover for the detail), small extras below.
   const mainView = () => {
@@ -1897,8 +1897,8 @@ function openSetAdjust(entry) {
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button>` +
     `<h2 class="itop">Set break: adjust your plan</h2>` +
     `<p class="hint center">Applies for the rest of this match. A new plan resets what ${esc(shortName(opp))} has figured out, but it might click or flop.</p>` +
-    (teamLevel(current.career, 'coach') >= 4 ? (adv => adviceHtml(adv) + adv.counters.map((c, i) => `<button type="button" class="btn ghost sact" data-ct="${i}">${i ? '🅱️' : '🅰️'} ${esc(c.label)}</button>`).join('') +
-      `<button type="button" class="btn" id="saAdvice">💡 Take the Advice</button>`)(liveAdvice(m, ps, me, eventOf(entry)))
+    (teamLevel(current.career, 'coach') >= 1 ? (adv => adviceHtml(adv) + adv.counters.map((c, i) => `<button type="button" class="btn ghost sact" data-ct="${i}">${i ? '🅱️' : '🅰️'} ${esc(c.label)}</button>`).join('') +
+      (Object.keys(adv.plan).length ? `<button type="button" class="btn" id="saAdvice">💡 Take The Advice</button>` : ''))(liveAdvice(m, ps, me, eventOf(entry), teamLevel(current.career, 'coach')))
       : adaptNotice(m, ps, me) ? `<div class="advice">${adaptNotice(m, ps, me)}</div>` : '') +
     scoutHtml(opp) + (hasTeam(current.career, 'coach') ? `<button type="button" class="btn ghost" id="saCoach">🧑‍🏫 Use the Coach's Plan</button>` : '') +
     `<div id="saPlan" class="plan"></div><button type="button" class="btn" id="saDone">Back to the match</button>`,
@@ -1918,8 +1918,8 @@ function openSetAdjust(entry) {
       renderMatch();
     } });
   planEditor($('saPlan'), pl, () => {});
-  document.querySelectorAll('.sact').forEach(b => { b.onclick = () => { Object.assign(pl, liveAdvice(m, ps, me, eventOf(entry)).counters[+b.dataset.ct].plan); planEditor($('saPlan'), pl, () => {}); }; });
-  if ($('saAdvice')) $('saAdvice').onclick = () => { Object.assign(pl, liveAdvice(m, ps, me, eventOf(entry)).plan); planEditor($('saPlan'), pl, () => {}); };
+  document.querySelectorAll('.sact').forEach(b => { b.onclick = () => { Object.assign(pl, liveAdvice(m, ps, me, eventOf(entry), teamLevel(current.career, 'coach')).counters[+b.dataset.ct].plan); planEditor($('saPlan'), pl, () => {}); }; });
+  if ($('saAdvice')) $('saAdvice').onclick = () => { Object.assign(pl, liveAdvice(m, ps, me, eventOf(entry), teamLevel(current.career, 'coach')).plan); planEditor($('saPlan'), pl, () => {}); };
   if ($('saCoach')) $('saCoach').onclick = () => { Object.assign(pl, coachPlan(opp, eventOf(entry), ps[me])); planEditor($('saPlan'), pl, () => {}); };
   $('saDone').onclick = closeModal;
   $('mx').onclick = closeModal;

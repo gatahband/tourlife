@@ -1119,6 +1119,9 @@ function gameRecap(pt, pts, ps, me) {
 async function playOneSet(animate = true) {
   if (anim.running) return;
   const entry = current.entry, L = entry.live, ev = eventOf(entry);
+  // A set never plays under the set-break window (or the plan editor opened from it).
+  if ($('mBreak')) $('mBreak').hidden = true;
+  if ($('mCourtWrap')) $('mCourtWrap').classList.remove('veiled');
   // Each set runs on its own saved random seed, from a saved starting state, with every big-point call
   // recorded. So if the page is refreshed mid-set, the set replays exactly as it was and fast-forwards
   // to the point you'd reached.
@@ -1734,7 +1737,7 @@ function renderMatch() {
     // play the next set: watch it, read it, sim it, or sim the rest of the match.
     const bb = $('mBreak');
     if (bb) {
-      const show = !!mode && m.sets.length > 0 && m.winner === null && !anim.running;
+      const show = !!mode && m.sets.length > 0 && m.winner === null && !anim.running && !entry.live.inSet; // only between sets
       bb.hidden = !show;
       $('mCourtWrap').classList.toggle('veiled', show);
       if (show) Court.banner(null);
@@ -1757,8 +1760,10 @@ function renderMatch() {
           bb.innerHTML = `<div class="sbtitle">ADJUST YOUR PLAN FOR SET ${m.sets.length + 1}</div><div class="pcgrid" id="sbGrid"></div>` +
             `<div class="pcbtns"><button type="button" class="btn small" id="sbSave">✅ Save Plan</button><button type="button" class="btn small ghost" id="sbBack">Back</button></div>`;
           compactPlanEditor($('sbGrid'), pl);
-          $('sbSave').onclick = () => { commitSetPlan(entry, pl); renderMatch(); };
-          $('sbBack').onclick = () => renderMatch();
+          // Back to the set-break window (or, if a set has somehow started, straight back to the match).
+          const back = () => { if (anim.running || entry.live.inSet) { bb.hidden = true; $('mCourtWrap').classList.remove('veiled'); } else renderMatch(); };
+          $('sbSave').onclick = () => { commitSetPlan(entry, pl); back(); };
+          $('sbBack').onclick = back;
         };
         bb.querySelectorAll('[data-nb]').forEach(b => { b.onclick = () => {
           const k = b.dataset.nb; entry.live.mode = k; writeJSON(ENTRY_KEY, entry); bb.hidden = true; $('mCourtWrap').classList.remove('veiled');

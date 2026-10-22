@@ -1102,7 +1102,7 @@ function createCourt() {
         let kind = k === 0 ? 'serve' : 'rally';
         if (k === n - 1) kind = clean ? (app === winner ? 'volley' : 'winner') : (Math.random() < 0.45 ? 'net' : 'out');
         else if (app !== null && hitter(n - 1) === app && k === n - 3 && k > 0) kind = 'approach';
-        else if (app !== null && hitter(n - 1) !== app && k === n - 2) kind = 'approach';
+        else if (app !== null && hitter(n - 1) !== app && k === n - 2 && k > 0) kind = 'approach'; // never replaces the serve (serve-and-volley points ending on the return)
         if (app === hitter(n - 1) && k === n - 2 && kind !== 'serve') kind = 'pass';
         shots.push({ by: hitter(k), kind, passWin: k === n - 1 && clean && app !== null && app === loser });
       }

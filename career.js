@@ -373,6 +373,7 @@ function newSeason(c, p) {
   c.goals = makeGoals(c, p);
   c.goalSeason = seasonOfWeek(c.week);
   c.injuriesThisSeason = 0;
+  if (c.rebuild && c.rebuild.off) c.rebuild = null; // an off-season rebuild is always settled by the new season
   c.seasonStart = { ovr: overall(p), rank: currentRank(c), age: p.age, rivals: rivalsNow };
   c.pendingReview = true;
   if (p.age >= RETIRE_FORCED) c.forcedRetire = true;
@@ -408,26 +409,25 @@ function openSeasonReview(c) {
     (r.phase ? `<p class="big center">🌱 ${r.phase}</p>` : '') +
     `<p class="hint center">You're now ${r.age}.${Math.abs(r.ageDelta) >= 0.05 ? ` Your body ${r.ageDelta > 0 ? 'filled out a little' : 'is starting to slow down'} (OVR ${r.ageDelta > 0 ? '+' : ''}${r.ageDelta.toFixed(1)}).` : ''}` +
       `${c.forcedRetire ? ' At this age it is time to hang up the racket.' : ''}</p>` +
-    (!c.forcedRetire && canRespec(c) ? `<button type="button" class="btn ghost" id="srRespec">🔁 Rebuild My Game</button>` +
-      `<p class="hint center">Move your points into a different build for next season. Your body needs ${REBUILD_WEEKS} weeks to get used to it.</p>` : '') +
     `<button type="button" class="btn" id="srGo">${c.forcedRetire ? 'Retire' : `Start Season ${r.season + 1}`}</button>`,
     { wide: true, onClose: () => { if (c.forcedRetire) retire(); } });
   $('mx').onclick = closeModal;
   $('srGo').onclick = closeModal;
-  if ($('srRespec')) $('srRespec').onclick = () => openRespec(c, current.player, null, { review: true });
 }
 
 // --- Rebuild Camp ------------------------------------------------------------------------
-// Twice a season (REBUILDS_PER_SEASON), whenever you like: move your stat points into a different build. Same points (your OVR can't go up
-// this way: stats that count more cost more), and the new game takes REBUILD_WEEKS weeks to bed in. At the season
-// review the off-season covers the camp; mid-season you first sit out CAMP_WEEKS weeks (no tournaments) to rebuild.
-const REBUILD_WEEKS = 6, CAMP_WEEKS = 3, RESPEC_MIN = 30;
+// Move your stat points into a different build. Same points (your OVR can't go up this way: stats that count more cost
+// more). Mid-season (REBUILDS_PER_SEASON a season) you first sit out CAMP_WEEKS weeks at a camp, then the new game
+// takes REBUILD_WEEKS weeks to bed in. In the off-season there's one free rebuild that beds in over OFF_REBUILD_WEEKS
+// weeks and is always settled by the first week of the new season, so it never costs you a match.
+const REBUILD_WEEKS = 6, OFF_REBUILD_WEEKS = 3, CAMP_WEEKS = 3, RESPEC_MIN = 30;
+const offRebuildOpen = c => isOffSeason(c.week) && c.offRebuild !== seasonOfWeek(c.week);
 const REBUILDS_PER_SEASON = 2;
 // Rebuilds left this season (older saves stored just the season of their one rebuild).
 const rebuildsLeft = c => { const r = c.respecUsed, season = seasonOfWeek(c.week);
   const used = r && typeof r === 'object' ? (r.season === season ? r.n : 0) : r === season ? 1 : 0; return Math.max(0, REBUILDS_PER_SEASON - used); };
-const canRespec = c => rebuildsLeft(c) > 0 && !(c.camp && c.camp.weeks > 0) && !c.injury && !current.entry;
-const rebuildPen = c => c && c.rebuild && c.rebuild.weeks > 0 ? 0.03 * c.rebuild.weeks / REBUILD_WEEKS : 0;
+const canRespec = c => (rebuildsLeft(c) > 0 || offRebuildOpen(c)) && !(c.camp && c.camp.weeks > 0) && !c.injury && !current.entry;
+const rebuildPen = c => c && c.rebuild && c.rebuild.weeks > 0 ? 0.03 * c.rebuild.weeks / (c.rebuild.total || REBUILD_WEEKS) : 0;
 function openRespec(c, p, draft = null, opts = {}) {
   const orig = { ...p.attrs }, d = draft || { ...orig };
   // Stats that count more toward OVR cost more to raise and give back more when lowered, so your OVR stays put.
@@ -450,7 +450,7 @@ function openRespec(c, p, draft = null, opts = {}) {
     respecStylesHtml({ ...p, plan: { ...(p.plan || {}), ...(opts.plan || {}) } }, d) +
     (left >= minCost - 0.001 ? `<p class="hint center">Place your points before locking in.</p>` : '') +
     `<button type="button" class="btn" id="rsGo" ${!changed || left >= minCost - 0.001 ? 'disabled' : ''}>Lock In New Build</button>` +
-    `<button type="button" class="link" id="rsBack">‹ Keep My Current Build</button>`, { wide: true, onClose: () => { if (opts.review && canRespec(c)) { c.pendingReview = true; openSeasonReview(c); } else if (!opts.review) renderTournaments(current.player); } });
+    `<button type="button" class="link" id="rsBack">‹ Keep My Current Build</button>`, { wide: true, onClose: () => renderTournaments(current.player) });
   $('mx').onclick = closeModal;
   $('rsBack').onclick = closeModal;
   // Preview a playstyle on court, then come straight back to this rebuild (nothing locked in).
@@ -467,25 +467,39 @@ function openRespec(c, p, draft = null, opts = {}) {
     p.attrs = { ...d };
     if (opts.plan) p.plan = { ...(p.plan || {}), ...opts.plan };
     p.playstyle = styleOf(p).name;
-    c.rebuild = { weeks: REBUILD_WEEKS };
-    c.respecUsed = { season: seasonOfWeek(c.week), n: REBUILDS_PER_SEASON - rebuildsLeft(c) + 1 };
-    if (!opts.review) c.camp = { weeks: CAMP_WEEKS };
+    if (opts.off) { c.rebuild = { weeks: OFF_REBUILD_WEEKS, total: OFF_REBUILD_WEEKS, off: true }; c.offRebuild = seasonOfWeek(c.week); }
+    else {
+      c.rebuild = { weeks: REBUILD_WEEKS };
+      c.respecUsed = { season: seasonOfWeek(c.week), n: REBUILDS_PER_SEASON - rebuildsLeft(c) + 1 };
+      c.camp = { weeks: CAMP_WEEKS };
+    }
     writeJSON(SAVE_KEY, p);
     writeJSON(CAREER_KEY, c);
     closeModal();
-    toast(opts.review ? `🔁 New build locked in: ${p.playstyle}. Give it ${REBUILD_WEEKS} weeks to bed in.`
+    toast(opts.off ? `🔁 New build locked in: ${p.playstyle}. It'll be settled before the new season starts.`
       : `🔁 Off to Rebuild Camp: ${CAMP_WEEKS} weeks to learn your new ${p.playstyle} game.`);
   };
 }
+// Start of the off-season: the free rebuild, offered once.
+function openOffRebuildPrompt(c, p) {
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🔁 Off-Season Rebuild</h2>` +
+    `<p class="big center">The season's over. Want to try a new build for next year?</p>` +
+    `<p class="hint center">It's free in the off-season: no camp, and it settles in over ${OFF_REBUILD_WEEKS} weeks, so you're fully ready for your first match of the new season. You can do it any time before the season starts, from Home.</p>` +
+    `<div class="pbtns"><button type="button" class="btn ghost" id="opLater">Not Now</button><button type="button" class="btn" id="opGo">🔁 Rebuild My Game</button></div>`, { wide: true });
+  $('mx').onclick = closeModal; $('opLater').onclick = closeModal;
+  $('opGo').onclick = () => { modalClose = null; openRespec(c, p, null, { off: true }); };
+}
+
 // "Are you sure?" on top of the rebuild window, spelling out what the rebuild costs.
 function respecConfirm(opts, yes) {
   const box = document.createElement('div');
   box.id = 'rsConfirm'; box.className = 'rsconfirm';
   box.innerHTML = `<div class="rscard" role="dialog" aria-modal="true"><h3>⚠️ Are You Sure?</h3>` +
-    (opts.review
-      ? `<p>Your new build takes <b>${REBUILD_WEEKS} weeks</b> to bed in. Until then you'll play a little below your best.</p>`
+    (opts.off
+      ? `<p>This is your <b>free off-season rebuild</b>. No camp, and your new build beds in over <b>${OFF_REBUILD_WEEKS} weeks</b> of the off-season, so it's settled before your first match of the new season.</p>`
       : `<p>A mid-season rebuild means <b>${CAMP_WEEKS} weeks out of tournaments</b> at a Rebuild Camp.</p><p>After that, your new build takes <b>${REBUILD_WEEKS} more weeks</b> to bed in, playing a little below your best.</p>`) +
-    `<p>You get ${REBUILDS_PER_SEASON} rebuilds per season. ${rebuildsLeft(current.career) === 1 ? 'This is your last one this season.' : `After this you'll have ${rebuildsLeft(current.career) - 1} left.`}</p>` +
+    (opts.off ? `<p>It doesn't count toward your ${REBUILDS_PER_SEASON} mid-season rebuilds.</p>`
+      : `<p>You get ${REBUILDS_PER_SEASON} rebuilds per season. ${rebuildsLeft(current.career) === 1 ? 'This is your last one this season.' : `After this you'll have ${rebuildsLeft(current.career) - 1} left.`}</p>`) +
     `<div class="pbtns"><button type="button" class="btn ghost" id="rsNo">No, Go Back</button><button type="button" class="btn" id="rsYes">Yes, Rebuild</button></div></div>`;
   document.body.appendChild(box);
   $('rsNo').onclick = () => box.remove();
@@ -635,6 +649,8 @@ function renderCareerBits(c, p) {
   if (c.notice) { $('hNotice').textContent = c.notice; $('hNotice').hidden = false; c.notice = null; writeJSON(CAREER_KEY, c); }
   else $('hNotice').hidden = true;
   if (c.pendingReview && c.seasons && c.seasons.length) setTimeout(() => openSeasonReview(c), 50);
+  // The off-season has started: offer the free rebuild once.
+  else if (c.offPrompt === seasonOfWeek(c.week) && offRebuildOpen(c) && !current.entry) { c.offPrompt = null; writeJSON(CAREER_KEY, c); setTimeout(() => openOffRebuildPrompt(c, p), 50); }
   else if (c.offer && !c.offer.shown) { c.offer.shown = true; writeJSON(CAREER_KEY, c); setTimeout(() => openOffer(c), 300); }
 
   const box = $('events');

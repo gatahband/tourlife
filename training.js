@@ -199,6 +199,7 @@ function advanceWeek() {
   if (c.rebuild && c.rebuild.weeks > 0 && !(c.camp && c.camp.weeks > 0)) c.rebuild.weeks--; // a new build bedding in, after any camp (career.js)
   c.week++;
   if (weekInSeason(c.week) === 1) newSeason(c, p);
+  if (isOffSeason(c.week) && !isOffSeason(c.week - 1)) c.offPrompt = seasonOfWeek(c.week); // offer the free off-season rebuild
   c.downtime = null;
   if (next) c.location = next.nation;
   p.fatigue = clamp((p.fatigue || 0) - 10 - staminaRecovery(p) * 2, 0, 100);
@@ -276,15 +277,16 @@ function renderOvr(p) {
     `<div class="buildslot" id="hBuildSlot"></div></details>` +
     `<div class="rebuildnote">${c.camp && c.camp.weeks > 0 ? `🔁 At Rebuild Camp: ${c.camp.weeks} week${c.camp.weeks === 1 ? '' : 's'} to go.`
       : rebuildPen(c) ? `🔁 Your new build is bedding in: ${c.rebuild.weeks} week${c.rebuild.weeks === 1 ? '' : 's'} left.`
-      : canRespec(c) ? `<button type="button" class="btn ghost small" id="hRespec">🔁 Rebuild My Game</button><small>${rebuildsLeft(c)} of ${REBUILDS_PER_SEASON} left this season. Mid-season it costs ${CAMP_WEEKS} weeks out, then ${REBUILD_WEEKS} weeks below your best. No camp needed at the season review.</small>`
-      : !rebuildsLeft(c) ? `🔁 You've used both of this season's rebuilds. More from the season review.`
+      : offRebuildOpen(c) && canRespec(c) ? `<button type="button" class="btn ghost small" id="hRespec">🔁 Rebuild My Game (Free)</button><small>Off-season rebuild: free, no camp, and settled in ${OFF_REBUILD_WEEKS} weeks, before the new season starts.</small>`
+      : canRespec(c) ? `<button type="button" class="btn ghost small" id="hRespec">🔁 Rebuild My Game</button><small>${rebuildsLeft(c)} of ${REBUILDS_PER_SEASON} left this season. Mid-season it costs ${CAMP_WEEKS} weeks out, then ${REBUILD_WEEKS} weeks below your best. Free in the off-season.</small>`
+      : !rebuildsLeft(c) ? `🔁 You've used both of this season's rebuilds. A free one opens in the off-season.`
       : `🔁 Rebuild My Game opens once you're between tournaments and fit.`}</div>` +
 
     tacticalHtml(c, p) +
     seasonStatsHtml(c) +
     moraleHtml(moraleFor(c, p, { tier: (levels[1] || levels[0] || { t: 'M15' }).t, nation: '', city: '', surface: '' }, null, null, true)) +
     '';
-  if ($('hRespec')) $('hRespec').onclick = e => { e.preventDefault(); openRespec(c, p); };
+  if ($('hRespec')) $('hRespec').onclick = e => { e.preventDefault(); openRespec(c, p, null, { off: offRebuildOpen(c) }); };
   if (build) $('hBuildSlot').appendChild(build);
   $('hOvr').querySelector('.buildfold').ontoggle = e => { const m = e.target.querySelector('.obmore'); if (m) m.firstChild.textContent = e.target.open ? 'Hide My Build ' : 'Show My Build '; };
   if (foldOpen('h-build')) $('hOvr').querySelector('.obmore').firstChild.textContent = 'Hide My Build ';

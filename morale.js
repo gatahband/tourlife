@@ -72,7 +72,9 @@ function moraleFor(c, p, ev, opp, entry, general = false) {
 
   // Life on the road: weeks in a row away from home (a coach and physio make it easier).
   const away = c.awayWeeks || 0;
-  if (away >= 8) add('🧳', `${away} weeks on the road`, -Math.min(0.012, 0.002 * (away - 7)) * (hasTeam(c, 'coach') || hasTeam(c, 'physio') ? 0.5 : 1), 'Many weeks in a row away from home wear you down. Going home resets it, and having a coach or physio halves it.');
+  if (away >= 8) add('🧳', `${away} weeks on the road`, -Math.min(0.012, 0.002 * (away - 7)) * (hasTeam(c, 'coach') || hasTeam(c, 'physio') ? 0.5 : 1), 'Many weeks in a row away from home wear you down. Play a tournament in your home country or use Go Home This Week on Home to reset it. A coach or physio halves it.');
+
+  if (c.homeBoost && c.week - c.homeBoost <= 1) add('🏠', 'Recharged after a week at home', 0.006, 'You went home for a week. Family, your own bed and a break from the road give you a lift for a couple of weeks.');
 
   // Good memories and big moments.
   if (!general && hs.some(h => h.city === ev.city && h.matches.some(m => m.won)) && !lastYear) add('🗺️', `Good memories of ${ev.city}`, 0.004, `You have won matches in ${ev.city} before. Coming back somewhere familiar where things went well gives a small lift.`);

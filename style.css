@@ -1480,3 +1480,24 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .rsconfirm { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .rscard { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .rscard h3 { margin: 0 0 10px; font-size: 22px; } .rscard p { margin: 0 0 10px; font-size: 16px; line-height: 1.4; } .rscard .pbtns { margin-top: 14px; }
+.gohome { display: flex; align-items: center; gap: 12px; background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0 4px; text-align: left; }
+.gohome > div { flex: 1; display: grid; gap: 3px; } .gohome b { font-size: 15px; } .gohome small { color: var(--muted); font-size: 13px; }
+.gohome .btn { margin: 0; white-space: nowrap; }
+/* Rebuild My Game: the game's colour gradient as a border on every bubble */
+.rsinfo div, .rsrow, .rsstylebtns .btn, #rsPreview {
+  border: 1.5px solid transparent !important;
+  background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box !important;
+}
+.rsstylebtns .btn, #rsPreview { transition: box-shadow .2s, transform .1s; }
+.rsstylebtns .btn:hover, #rsPreview:hover { box-shadow: 0 0 14px rgba(191,90,242,.45); }
+.rsstylebtns .btn:active, #rsPreview:active { transform: scale(.98); }
+.rsstylebtns .btn.on { background: linear-gradient(rgba(10,132,255,.28), rgba(10,132,255,.28)) padding-box, var(--grad) border-box !important; box-shadow: 0 0 16px rgba(10,132,255,.45); }
+/* Preview Playstyles: a slow shimmer so it stands out */
+#rsPreview { position: relative; overflow: hidden; font-weight: 700; }
+#rsPreview::after { content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.18), transparent); animation: rsshine 3.2s ease-in-out infinite; }
+@keyframes rsshine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+@media (prefers-reduced-motion: reduce) { #rsPreview::after { animation: none; } }
+.rsrow .btn.ghost { border-color: var(--line); }
+#cPreview { display: block; width: 100%; margin: 4px 0 12px; border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; font-weight: 700; }
+#cPreview:hover { box-shadow: 0 0 14px rgba(191,90,242,.45); }

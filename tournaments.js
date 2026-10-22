@@ -360,7 +360,7 @@ function renderTournaments(player) {
     `<div class="evpanel" hidden></div></div>`
   ).join('') : `<p class="hint">${next ? 'Next week is the off-season: no events.' : 'No events this week.'}</p>`) +
     (next ? '<p class="hint">You can travel early to one of these from your free days after this week\'s event, for bigger practice gains and a comfort boost.</p>'
-      : `<button type="button" class="link" id="trainWeek">Skip the tournaments and take a training week</button>`);
+      : goHomeHtml(c, current.player) + `<button type="button" class="link" id="trainWeek">Skip the tournaments and take a training week</button>`);
   $('eventsTitle').querySelector('.wktabs').onclick = e => { const b = e.target.closest('[data-wk]'); if (b) { homeWeekTab = b.dataset.wk; renderTournaments(player); } };
   // Enter / Qualifying / Preview open a panel with your chances; the panel's button confirms.
   box.onclick = e => {
@@ -382,6 +382,7 @@ function renderTournaments(player) {
     setTimeout(() => { pnl.innerHTML = eventPreview(ev, b.dataset.mode || eligibility(ev, rank), !next); }, 30);
   };
   if ($('trainWeek')) $('trainWeek').onclick = () => startDowntime(6, c.location || current.player.nation, 'Training week');
+  if ($('goHome')) $('goHome').onclick = () => goHomeWeek();
 }
 
 // Your default plan (Home). Each tournament starts with a copy of it, which you can change for that week.

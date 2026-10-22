@@ -108,7 +108,7 @@ function previewPlan(name) {
 }
 
 const previewState = { style: null, i: 0 };
-function openStylePreview(p, attrs, start, onBack) {
+function openStylePreview(p, attrs, start, onBack, backLabel = 'Back To My Rebuild') {
   const st = previewState;
   if (!st.style || start) st.style = start || styleOf({ ...p, attrs }).name;
   const pts = STYLE_POINTS[st.style] || STYLE_POINTS['All-Court'];
@@ -121,12 +121,12 @@ function openStylePreview(p, attrs, start, onBack) {
     `<div class="seg pvtabs" style="grid-template-columns:repeat(${pts.length},1fr)">${pts.map((x, i) => `<button type="button" data-i="${i}" class="${i === st.i ? 'on' : ''}">Point ${i + 1}</button>`).join('')}</div>` +
     `<canvas id="pvCourt" class="court"></canvas>` +
     `<div class="pvtext"><b>${esc(title)}</b><p>${esc(text)}</p></div>` +
-    `<div class="pbtns"><button type="button" class="btn ghost" id="pvAgain">↻ Restart Point</button><button type="button" class="btn" id="pvBack">‹ Back To My Rebuild</button></div>`,
+    `<div class="pbtns"><button type="button" class="btn ghost" id="pvAgain">↻ Restart Point</button><button type="button" class="btn" id="pvBack">‹ ${esc(backLabel)}</button></div>`,
     { wide: true, onClose: () => { closed = true; ReplayCourt.skip = true; if (onBack) onBack(); } });
   $('mx').onclick = closeModal;
   $('pvBack').onclick = closeModal;
-  $('pvStyle').onchange = e => { st.style = e.target.value; st.i = 0; ReplayCourt.skip = true; openStylePreview(p, attrs, null, onBack); };
-  $('sheet').querySelectorAll('.pvtabs [data-i]').forEach(b => { b.onclick = () => { st.i = +b.dataset.i; ReplayCourt.skip = true; openStylePreview(p, attrs, null, onBack); }; });
+  $('pvStyle').onchange = e => { st.style = e.target.value; st.i = 0; ReplayCourt.skip = true; openStylePreview(p, attrs, null, onBack, backLabel); };
+  $('sheet').querySelectorAll('.pvtabs [data-i]').forEach(b => { b.onclick = () => { st.i = +b.dataset.i; ReplayCourt.skip = true; openStylePreview(p, attrs, null, onBack, backLabel); }; });
   const prof = (style, a, hand) => ({ ground: a.ground, adv: {}, real: false, legend: false, hand, backhand: 'two', iq: a.iq, net: a.net, plan: previewPlan(style), style, trait: null });
   const opp = { serve: 75, ground: 75, ret: 75, net: 65, stam: 75, mental: 75, iq: 75 };
   // One point at a time: any point still playing (from another style or tab) is stopped and finished first, then

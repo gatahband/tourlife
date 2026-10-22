@@ -256,6 +256,9 @@ function render() {
 }
 
 function build() {
+  // Watch how each playstyle builds its points before you commit to one (stylepreview.js).
+  $('cPreview').onclick = () => openStylePreview({ hand: state.hand, plan: state.plan }, { ...state.attrs }, detectStyles(state.attrs, state.fav, state.plan)[0].name, null, 'Back To My Player');
+
   $('nation').innerHTML = NATIONS.map(([c, f, n]) => `<option value="${c}">${f} ${n}</option>`).join('');
 
   $('temper').innerHTML = Object.entries(TEMPERAMENTS).map(([k, t]) =>
@@ -327,7 +330,8 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(player));
   } catch {
-    $('status').textContent = 'Could not save (browser storage unavailable).';
+    // Storage blocked by the browser (Private Browsing, an app's built-in browser, or website data turned off).
+    $('status').textContent = "Your browser isn't letting TourLife save. This usually happens in Private Browsing, inside an app's built-in browser (like Instagram, Facebook or TikTok), or when website data is blocked in settings. Open the link in Safari or Chrome, not in Private mode, and try again.";
     return;
   }
   $('status').textContent = '';

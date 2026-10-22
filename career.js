@@ -149,6 +149,32 @@ function maybeInjure(c, p, heavy = 1) {
   return c.injury;
 }
 
+// Go home for a week: fly home (your team comes too), skip the tournaments, rest with family. Resets the weeks on
+// the road, and you come back fresher and in better spirits for a couple of weeks.
+function goHomeCost(c, p) {
+  const t = travelDays(c.location || p.nation, p.nation), freeJet = c.perks && c.perks.jet && c.perks.jet.weeks > 0;
+  const crew = TRAVELLERS.filter(k => ownLevel(c, k) > 0).length;
+  return Math.round(FLIGHTS[t] * (c.business && !freeJet ? 3 : 1) + crew * FLIGHTS[t] * (c.business ? 3 : 1.5) + 100);
+}
+function goHomeHtml(c, p) {
+  if ((c.location || p.nation) === p.nation) return '';
+  const away = c.awayWeeks || 0, cost = goHomeCost(c, p);
+  return `<div class="gohome"><div><b>🏠 Go Home This Week</b><small>${away ? `${away} week${away === 1 ? '' : 's'} on the road. ` : ''}Fly home to ${flagOf(p.nation)} ${nationInfo(p.nation)[2]}, skip this week's tournaments and rest with family. Resets your weeks on the road and lifts your spirits. Flights: ${money(cost)}.</small></div>` +
+    `<button type="button" class="btn small" id="goHome" ${c.money < cost ? 'disabled' : ''}>Go Home</button></div>`;
+}
+function goHomeWeek() {
+  const c = current.career, p = current.player;
+  charge(c, goHomeCost(c, p), 'Flight home');
+  const trip = travelFatigue(c, c.location || p.nation, p.nation); // the flight tires you a little; the week at home more than makes up for it
+  c.location = p.nation;
+  c.homeBoost = c.week + 1; // a lift for the next couple of weeks (morale.js)
+  p.fatigue = clamp((p.fatigue || 0) + trip - 35, 0, 100);
+  c.notice = `🏠 A week at home with family. You're rested and the road weariness is gone.`;
+  writeJSON(SAVE_KEY, p);
+  writeJSON(CAREER_KEY, c);
+  advanceWeek();
+}
+
 // A week of rehab: no events, no training, lots of rest.
 function rehabWeek() {
   const c = current.career, p = current.player;

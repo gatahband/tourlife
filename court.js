@@ -526,7 +526,7 @@ function createCourt() {
     const r = review, t = r.t;
     ctx.fillStyle = `rgba(0,0,0,${0.45 * Math.min(1, t * 5)})`; ctx.fillRect(0, 0, W, H);
     const pw = Math.min(380, W * 0.72), ph = pw * 0.62, x0 = (W - pw) / 2, y0 = (H - ph) / 2 - 16;
-    ctx.fillStyle = r.out ? look.out : look.in;
+    ctx.fillStyle = look.in;
     ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2;
     ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y0, pw, ph, 14); else ctx.rect(x0, y0, pw, ph); ctx.fill(); ctx.stroke();
     ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, pw, ph); ctx.clip();
@@ -541,10 +541,13 @@ function createCourt() {
       const dx = bx2 - ax, dy = by2 - ay;
       horiz = Math.abs(dx) > Math.abs(dy); o = Math.sign(horiz ? dx : dy) || 1;
     }
-    // Inside the court is the court colour, outside the surround colour.
+    // Inside the line is the court colour. Past it is the surround colour only at the edge of the court (the
+    // baseline and the doubles sideline): past a singles sideline is the doubles alley and past a service line is
+    // the backcourt, both still court colour.
+    const edge = r.axis === 'x' ? Math.abs(r.line) > SINGLES + 0.3 : Math.abs(r.line) > SERVICE + 0.3;
     ctx.fillStyle = look.in;
     if (horiz) ctx.fillRect(o > 0 ? x0 : cx, y0, pw / 2, ph); else ctx.fillRect(x0, o > 0 ? y0 : cy, pw, ph / 2);
-    ctx.fillStyle = look.out;
+    ctx.fillStyle = edge ? look.out : look.in;
     if (horiz) ctx.fillRect(o > 0 ? cx : x0, y0, pw / 2, ph); else ctx.fillRect(x0, o > 0 ? cy : y0, pw, ph / 2);
     const d = (Math.abs(r.coord) - Math.abs(r.line)) * sc; // + = towards out
     // The line's outer edge sits on the boundary; the line itself is inside the court.

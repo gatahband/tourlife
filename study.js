@@ -1,5 +1,6 @@
-// study.js — the Study Room: unlocked by playing your first ATP-level tournament. Pick any two real ATP
-// players, a surface and conditions, and watch them play each other with their real styles and game plans.
+// study.js — the Research Lab, unlocked by playing your first ATP-level tournament: pick any two real ATP players, a
+// surface and conditions, and watch them play each other with their real styles and game plans (admins can also
+// Quick Sim 1,000 matches).
 
 const ATP_TIERS = ['ATP250', 'ATP500', 'M1000', 'GS'];
 function studyUnlocked(c) {
@@ -8,10 +9,10 @@ function studyUnlocked(c) {
   const e = current.entry, ev = e && typeof eventOf === 'function' ? eventOf(e) : null;
   return !!(ev && ATP_TIERS.includes(ev.tier));
 }
-// The small "🎬 Study Room" link at the top right of Home, the draw and free days (opposite the Home button).
+// The small "🔬 Research Lab" link at the top right of Home, the draw and free days.
 function renderStudyBtn(c) {
   const on = studyUnlocked(c);
-  document.querySelectorAll('[data-study]').forEach(b => { b.hidden = !on; b.onclick = () => openStudy(); });
+  document.querySelectorAll('[data-lab]').forEach(b => { b.hidden = !on; b.onclick = () => openStudy(); });
 }
 
 const studyState = { a: 0, b: 1, surface: 'hard', weather: 'sunny', bestOf: 3 };
@@ -33,7 +34,7 @@ function openStudy() {
       (r.strengths[0] ? `<p class="up">💪 ${esc(r.strengths[0])}</p>` : '') + (r.weaknesses[0] ? `<p class="down">🩹 ${esc(r.weaknesses[0])}</p>` : '') + realStatsHtml(p, { form: false, vs }) + `</div>`;
   };
   const A = realPlayer(list[st.a]), B = realPlayer(list[st.b]);
-  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">📚 Study Room</h2>` +
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🔬 Research Lab</h2>` +
     `<p class="hint center">Pick any two real players and watch how their games match up.</p>` +
     `<div class="stpick">${pick('stA', st.a)}<b>VS</b>${pick('stB', st.b)}</div>` +
     `<div class="stcards">${card(A, B)}${card(B, A)}</div>` +
@@ -54,7 +55,7 @@ function openStudy() {
   $('stGo').onclick = () => {
     const seed = (Math.random() * 4294967296) >>> 0;
     const ev = studyEv(st, A);
-    watchRealMatch({ replay: { seed, ps: [A, B], ev, bestOf: st.bestOf, side: 0 }, round: 'Study Room', event: `${surfaceLabel(st.surface)} · ${WEATHER[st.weather].name}` },
+    watchRealMatch({ replay: { seed, ps: [A, B], ev, bestOf: st.bestOf, side: 0 }, round: 'Research Lab', event: `${surfaceLabel(st.surface)} · ${WEATHER[st.weather].name}` },
       { neutral: true, onClose: () => openStudy() });
   };
 }
@@ -77,7 +78,7 @@ function bindStudySearch(id, onPick) {
   box.onclick = e => { const b = e.target.closest('[data-i]'); if (b) onPick(+b.dataset.i); };
 }
 
-const studyEv = (st, A) => ({ tier: st.bestOf === 5 ? 'GS' : 'M1000', surface: st.surface, indoor: st.weather === 'indoor', weather: st.weather, nation: A.nation, city: 'Study Room' });
+const studyEv = (st, A) => ({ tier: st.bestOf === 5 ? 'GS' : 'M1000', surface: st.surface, indoor: st.weather === 'indoor', weather: st.weather, nation: A.nation, city: 'Research Lab' });
 
 // --- Admin: Quick Sim ------------------------------------------------------------------------------------------
 // Plays the chosen matchup 100 or 200 times in the background and shows the averages: who wins, the likely

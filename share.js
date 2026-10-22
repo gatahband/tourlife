@@ -51,7 +51,7 @@ function playerCard() {
 // Before anything that replaces or removes a career (loading a save, switching or starting a career,
 // deleting a saved one), the career is copied here first. The last 3 are kept and can be restored any time,
 // so progress is never lost to a load or a mis-tap.
-const BACKUPS_KEY = 'tourlife.backups';
+const BACKUPS_KEY = TL_NS + 'backups';
 const loadBackups = () => readJSON(BACKUPS_KEY) || [];
 function autoBackup(snap, reason) {
   if (!snap || !snap.player || !snap.career) return;

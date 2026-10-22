@@ -1,7 +1,7 @@
 // tournaments.js — tournament options, field nationality mix, career state, and the home/draw/match screens
 
-const ENTRY_KEY = 'tourlife.entry';
-const CAREER_KEY = 'tourlife.career';
+const ENTRY_KEY = TL_NS + 'entry';
+const CAREER_KEY = TL_NS + 'career';
 const FIELD_SIZE = 32;
 
 const REGIONS = {
@@ -118,13 +118,13 @@ function writeJSON(key, val) {
 // Make room, least important first. Never deletes a career: only caches, spare backups and old match detail.
 function freeSpace(step, key, val) {
   try {
-    if (step === 0) { for (const k of ['tourlife.odds', 'tourlife.replayAngle']) localStorage.removeItem(k); const b = readJSON('tourlife.backups'); if (b && b.length > 2) localStorage.setItem('tourlife.backups', JSON.stringify(b.slice(-2))); return true; }
+    if (step === 0) { for (const k of ['tourlife.odds', 'tourlife.replayAngle']) localStorage.removeItem(k); const b = readJSON(BACKUPS_KEY); if (b && b.length > 2) localStorage.setItem(BACKUPS_KEY, JSON.stringify(b.slice(-2))); return true; }
     if (step === 1) { // old seasons' matches keep their result but drop point-by-point detail, in every saved career
       const saves = readJSON(SAVES_KEY) || [];
       for (const sv of saves) if (sv.career) { compactHistory(sv.career); if (sv.career.highlights) sv.career.highlights = sv.career.highlights.slice(-4); }
       localStorage.setItem(SAVES_KEY, JSON.stringify(saves)); return true;
     }
-    if (step === 2) { localStorage.removeItem('tourlife.backups'); return true; }
+    if (step === 2) { localStorage.removeItem(BACKUPS_KEY); return true; }
     if (step === 3 && val && val.history) { compactHistory(val); if (val.highlights) val.highlights = val.highlights.slice(-6); return true; }
     if (step === 4) { const c = readJSON(CAREER_KEY); if (c && c.history && key !== CAREER_KEY) { compactHistory(c); c.highlights = (c.highlights || []).slice(-6); localStorage.setItem(CAREER_KEY, JSON.stringify(c)); } return true; }
   } catch {}
@@ -169,7 +169,7 @@ function showScreen(name) {
 // --- Saved careers -----------------------------------------------------------
 // The live career uses the three keys above. Other careers wait in SAVES_KEY until you switch to them.
 
-const SAVES_KEY = 'tourlife.saves';
+const SAVES_KEY = TL_NS + 'saves';
 const loadSaves = () => readJSON(SAVES_KEY) || [];
 
 // Moves the live career into the saved list (if there is one).
@@ -360,7 +360,7 @@ function renderTournaments(player) {
     `<div class="evpanel" hidden></div></div>`
   ).join('') : `<p class="hint">${next ? 'Next week is the off-season: no events.' : 'No events this week.'}</p>`) +
     (next ? '<p class="hint">You can travel early to one of these from your free days after this week\'s event, for bigger practice gains and a comfort boost.</p>'
-      : goHomeHtml(c, current.player) + `<button type="button" class="link" id="trainWeek">Skip the tournaments and take a training week</button>`);
+      : goHomeHtml(c, current.player) + (growthBlock(c, current.player) ? '' : `<button type="button" class="link" id="trainWeek">Skip The Tournaments And Take A Training Week</button>`));
   $('eventsTitle').querySelector('.wktabs').onclick = e => { const b = e.target.closest('[data-wk]'); if (b) { homeWeekTab = b.dataset.wk; renderTournaments(player); } };
   // Enter / Qualifying / Preview open a panel with your chances; the panel's button confirms.
   box.onclick = e => {
@@ -440,7 +440,7 @@ function eventPreview(ev, mode, canEnter) {
   const pct = x => x >= 0.995 ? '99%' : x < 0.01 ? '<1%' : `${Math.round(x * 100)}%`;
   const notes = [];
   if (ev.surface === p.fav) notes.push('🟢 Your favourite surface.');
-  if (ev.surface === p.worst) notes.push('🔴 Your worst surface.');
+  if (ev.surface === p.worst) { const w = Math.round(100 * ((p.surfWork || {})[ev.surface] || 0)); notes.push(`🔴 Your worst surface.${w ? ` Your ${surfaceLabel(ev.surface)} Work (${w}%) softens it.` : ' Practise on it in a training week to soften it.'}`); }
   const wx = evx.weather;
   if (wx && wx !== 'sunny' && wx !== 'indoor') {
     const st = styleOf(p).name, e = wxEdge(me, st, evx);
@@ -723,6 +723,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
     (moraleData ? fold('d-morale', '🧠 Morale', mo, moraleHtml(moraleData)) : '') +
     fold('d-cond', '🌤️ Conditions & Matchup', `${wx}${myStyle} vs ${oppStyle}`, weatherHtml(ev, me, opp) + matchupHtml(me, opp)) +
     fold('d-know', '🔍 Know Your Opponent', `${r.strengths.length} strength${r.strengths.length === 1 ? '' : 's'} · ${r.weaknesses.length} weakness${r.weaknesses.length === 1 ? '' : 'es'}${scouted ? ` · ${qn} hidden` : ''}`, know) +
+    fold('d-book', `📒 Plan Book vs ${esc(oppStyle)}s`, esc(pbMatchSum(c, oppStyle)), pbMatchHtml(c, oppStyle, plan)) +
     fold('d-beat', '🎯 How To Beat Them', coach ? esc(short(beatLines[0] || 'No obvious holes')) : '🔒 Needs a coach', beat) +
     fold('d-plan', '📋 Your Game Plan', coach && diffs.length ? `Coach suggests ${diffs.length} change${diffs.length === 1 ? '' : 's'}` : esc(short(planSummary({ ...DEFAULT_PLAN, ...plan }))),
       videoPlanHtml(c, opp, plan) + note + table + tbNote + btns) + `</div>`;
@@ -730,6 +731,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
 
 function bindPrematch(entry, oi, rerender) {
   const opp = entry.entrants[oi], ev = eventOf(entry);
+  pbRerender = rerender;
   bindRealMatches(document);
   if ($('vidUse')) $('vidUse').onclick = () => {
     const v = current.career.videoPlans[opp.id], lv = teamLevel(current.career, 'coach');
@@ -999,6 +1001,9 @@ function shortName(p) {
 function openMatch() {
   const entry = current.entry;
   anim.noCalls = false; anim.noChangeovers = false;
+  // A fresh match never inherits a fast-forward from the last one (a match finished with Full Match left it on,
+  // so watching the next one skipped straight through its first set).
+  if (!anim.running) { Court.skip = false; anim.finishAfter = false; anim.paused = false; }
   if (!entry.live) {
     const pm = playerMatch(entry), ev0 = eventOf(entry);
     // You carry this week's tiredness (and any early-arrival practice) into the match.
@@ -1130,6 +1135,8 @@ async function playOneSet(animate = true) {
   const { m, log } = L, rng = seeded(L.seed), target = L.shownSaved || 0;
   const ps = matchPlayers(entry, m);
   const me = m.a === 0 ? 0 : 1, op = 1 - me;
+  // The plan you start each set with, for the Plan Book (planbook.js).
+  L.setPlans = L.setPlans || []; L.setPlans[m.sets.length] = { ...planOf(ps[me]) };
   // Racket deal: the frame's boost applies in matches only (the base stats are put back after the set).
   if (ps[me].baseAttrs) ps[me].attrs = { ...ps[me].baseAttrs };
   const rb = typeof racketBoost === 'function' ? racketBoost(current.career) : null;
@@ -1158,7 +1165,16 @@ async function playOneSet(animate = true) {
     ps[me].textbook = clamp((same - 0.6) / 0.4, 0, 1);
   } else ps[me].textbook = 0; // which advanced plan settings your coach has unlocked
   // Your plan as the set began (a changeover can change it mid-set; a replay must start from the same one).
-  if (L.planAtStart) ps[me].plan = JSON.parse(L.planAtStart); else L.planAtStart = JSON.stringify(ps[me].plan || planOf(ps[me]));
+  if (L.planAtStart) ps[me].plan = JSON.parse(L.planAtStart);
+  else {
+    // Coach Mode: your player decides how much of your plan to follow this set (coachmode.js).
+    if (isCoachMode()) {
+      const r = coachFollow(current.career, ps[me], { ...DEFAULT_PLAN, ...(ps[me].plan || planOf(ps[me])) }, seeded((L.seed ^ 0x5bd1e995) >>> 0));
+      ps[me].plan = r.plan; L.follow = { asked: (L.follow ? L.follow.asked : 0) + r.asked, followed: (L.follow ? L.follow.followed : 0) + r.followed };
+      L.log.push(followText(ps[me].name.split(' ')[0], r));
+    }
+    L.planAtStart = JSON.stringify(ps[me].plan || planOf(ps[me]));
+  }
   const before = JSON.parse(JSON.stringify(m.stats));
   const momentsBefore = m.moments.length;
   // Autopilot: a small cost for simming, a bigger one for losing a set and changing nothing.
@@ -1344,6 +1360,8 @@ function bigPoint(info, ps, me) {
   if (Court.skip || anim.finishAfter) return Promise.resolve();
   Court.banner(text);
   if (anim.noCalls) return Promise.resolve();
+  // Coach Mode: the big points are your player's to play. You watch from the box.
+  if (isCoachMode()) return new Promise(r => setTimeout(r, 900));
   const serving = info.s === me, calls = callsFor(ps[me], serving ? 'serve' : 'ret');
   const pct = e => `${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}%`;
   const box = $('mCallBox');
@@ -1409,6 +1427,7 @@ async function watchMatch() {
   if (anim.watching) return;
   anim.watching = true;
   anim.paused = false;
+  if (!anim.running) Court.skip = false; // watching means every point is shown
   // One set at a time: the set break is your chance to change the plan.
   await playOneSet(true);
   if (!anim.finishAfter) { anim.watching = false; renderMatch(); return; }
@@ -1528,7 +1547,7 @@ function liveBoard(prior, games, labels, server) {
 
 function playerLabel(ps, i, me) {
   const p = ps[i];
-  if (i === me) return `${flagOf(p.nation)} You`;
+  if (i === me) return `${flagOf(p.nation)} ${isCoachMode() ? `🧑‍🏫 ${esc(p.name)}` : 'You'}`;
   return `${p.seed ? `<span class="seed">${p.seed}</span>` : ''}${flagOf(p.nation)} ${p.atpRank ? `<span class="realname${isLegend(p) ? ' legend' : ''}">${isLegend(p) ? '👑 ' : ''}${esc(p.name)}</span>` : esc(p.name)}`;
 }
 
@@ -1551,6 +1570,9 @@ function concludeMatch() {
   // Head-to-head and the tour's memory of this opponent.
   const rec = entry.matches[entry.matches.length - 1];
   if (m.styles) rec.styles = [m.styles[me], m.styles[op]];
+  pbRecord(current.career, rec, entry.live.setPlans || []); writeJSON(CAREER_KEY, current.career); // the Plan Book
+  addSurfWork(current.player, eventOf(entry).surface, SURF_WORK_MATCH); writeJSON(SAVE_KEY, current.player); // playing on a surface builds Surface Work too
+  if (isCoachMode()) { coachAfterMatch(current.career, current.player, rec.won, entry.live.follow); writeJSON(CAREER_KEY, current.career); }
   if (m.rally) rec.rally = { sum: m.rally.sum, n: m.rally.n, long: [m.rally.long[me], m.rally.long[op]], short: [m.rally.short[me], m.rally.short[op]] };
   const myCalls = (m.callLog || []).filter(x => x.side === me);
   if (myCalls.length) rec.calls = { made: myCalls.length, won: myCalls.filter(x => x.won).length };
@@ -1691,6 +1713,7 @@ function renderMatch() {
           `<button type="button" class="mode" data-mode="${k}"><span>${icon}</span><b>${t}</b><small>${d}</small></button>`).join('') +
         `</div>` +
         scoutCard(opp, ev, ps[me], eventPlan(entry), { planBtn: 'mPlan' });
+      pbRerender = renderMatch;
       if ($('coachUse')) $('coachUse').onclick = () => {
         Object.assign(eventPlan(entry), coachPlan(opp, ev, ps[me]));
         saveEventPlan(entry);

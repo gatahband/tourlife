@@ -63,7 +63,7 @@ function renderAdmin() {
   $('admin').innerHTML = `<header><h1>Admin</h1><p class="sub">Your real players and tournaments.</p></header>` +
     `<div class="seg two tltabs"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
     `<button type="button" data-t="players" class="${adminTab === 'players' ? 'on' : ''}">Players (${n})</button></div>` +
-    `<div id="adBody"></div><button type="button" class="btn ghost" id="adStudy">📚 Study Room (Quick Sim)</button>` +
+    `<div id="adBody"></div><button type="button" class="btn ghost" id="adStudy">🔬 Research Lab (Quick Sim)</button>` +
     `<button type="button" class="link" id="adExit">Back to the game</button>`;
   $('admin').querySelector('.tltabs').onclick = e => {
     const b = e.target.closest('[data-t]');

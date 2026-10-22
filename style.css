@@ -1220,10 +1220,11 @@ h2.ctr { text-align: center; }
 
 /* Study Room link: small, top right, opposite the Home button */
 #home, #draw, #train { position: relative; }
-.studylink { position: absolute; top: 10px; right: max(16px, env(safe-area-inset-right, 0px)); z-index: 5; background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; cursor: pointer; }
+.studylinks { position: absolute; top: 10px; right: max(16px, env(safe-area-inset-right, 0px)); z-index: 5; display: flex; gap: 6px; }
+.studylink { position: static; background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; cursor: pointer; }
 .studylink:hover { border-color: var(--accent); }
 #home > header { padding-right: 130px; }
-@media (max-width: 560px) { .studylink { font-size: 12px; padding: 5px 10px; } #home > header { padding-right: 112px; } }
+@media (max-width: 560px) { .studylink { font-size: 12px; padding: 5px 10px; } #home > header { padding-right: 0; padding-top: 34px; } }
 /* Playstyle panel under the court */
 .stylepanel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
 .stylepanel:empty { display: none; }
@@ -1484,7 +1485,7 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .gohome > div { flex: 1; display: grid; gap: 3px; } .gohome b { font-size: 15px; } .gohome small { color: var(--muted); font-size: 13px; }
 .gohome .btn { margin: 0; white-space: nowrap; }
 /* Rebuild My Game: the game's colour gradient as a border on every bubble */
-.rsinfo div, .rsrow, .rsstylebtns .btn, #rsPreview {
+.rsinfo div, .rsrow, .rsstylebtns .btn, #rsPreview, #cStyleBtns .btn {
   border: 1.5px solid transparent !important;
   background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box !important;
 }
@@ -1535,9 +1536,49 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 @keyframes ldbounce { 0% { transform: translateY(-26px); } 85% { transform: translateY(0) scale(1, 1); } 100% { transform: translateY(0) scale(1.15, .85); } }
 @keyframes ldshadow { 0% { transform: scale(.5); opacity: .35; } 100% { transform: scale(1); opacity: .8; } }
 @media (prefers-reduced-motion: reduce) { .ldball i, .ldball span { animation-duration: 1.6s; } }
-.toptwrap { display: grid; gap: 6px; }
-.toptwrap .tprev { justify-self: end; margin: -2px 0 4px; }
+/* Travel options: the Preview button sits inside the card, on the right */
+.toptwrap { display: grid; grid-template-columns: 1fr auto; align-items: center; background: var(--field); border: 1px solid transparent; border-radius: 14px; }
+.toptwrap:hover { border-color: var(--accent); }
+.toptwrap > .topt { background: none; border: 0; min-width: 0; }
+.toptwrap > .topt:hover { border: 0; }
+.toptwrap .tprev { margin: 0 14px 0 0; white-space: nowrap; }
+.toptwrap .evpanel { grid-column: 1 / -1; margin: 0 12px 12px; }
+@media (max-width: 520px) { .toptwrap { grid-template-columns: 1fr; } .toptwrap .tprev { justify-self: end; margin: -6px 14px 12px 0; } }
 .topt .tcost { display: block; font-style: normal; font-size: 13px; margin-top: 4px; color: var(--text); } .topt .tcost.down { color: var(--bad); }
-.toptwrap .evpanel { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.toptwrap .evpanel { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .topt small, .topt .tcost { text-transform: none; }
 .topt .tcost b { display: inline; font-size: inherit; }
+/* Plan Book */
+.pblist, .pbstyles { display: grid; gap: 6px; }
+.pbrow { display: flex; align-items: center; gap: 10px; background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; text-align: left; }
+.pbrow > div { flex: 1; display: grid; gap: 2px; } .pbrow b { font-size: 14px; } .pbrow small { color: var(--muted); font-size: 12px; } .pbrow em { font-style: normal; font-size: 11px; color: var(--muted); }
+.pbrow.good { border-color: rgba(48,209,88,.55); } .pbrow.good b { color: var(--good); }
+.pbrow.bad { border-color: rgba(255,69,58,.45); } .pbrow.bad b { color: var(--bad); }
+.pbrow .btn { margin: 0; white-space: nowrap; } .pbon { font-size: 12px; font-weight: 700; color: var(--good); white-space: nowrap; }
+.pbstyle { background: var(--field); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
+.pbshead { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; } .pbshead span { color: var(--muted); font-size: 13px; }
+.pbstyle small { color: var(--muted); font-size: 12px; }
+/* Mode switch + Coach Mode banner */
+.modeswitch { display: grid; gap: 2px; margin: 12px auto 0; padding: 10px 16px; border: 1.5px solid transparent !important;
+  background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box !important; font-weight: 700; }
+.modeswitch small { font-weight: 500; font-size: 12px; color: var(--muted); text-transform: none; }
+#hModeSwitch { display: flex; justify-content: center; }
+.coachbar { display: grid; gap: 10px; text-align: left; }
+.cbtop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .cbtop span { color: var(--muted); font-size: 13px; } .cbtop b { font-size: 20px; } .cbtop small { color: var(--muted); }
+.cbtlabel { display: flex; justify-content: space-between; font-size: 14px; } .cbtlabel span { color: var(--muted); }
+.cbbar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; margin: 6px 0; } .cbbar i { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+.cbtrust small, .cbfoot { color: var(--muted); font-size: 12px; } .cbfoot b { color: var(--text); }
+.cbuildhead { text-align: center; margin: 16px 0 2px; }
+#cPreview { margin-top: 4px; }
+/* Language picker (lang.js): a small select in the settings row */
+.langpick { margin-top: 10px; }
+.langpick select { width: auto; padding: 4px 8px; font-size: 12px; border-radius: 8px; }
+.capnote { background: var(--field); border: 1.5px solid transparent; background: linear-gradient(var(--field), var(--field)) padding-box, var(--grad) border-box; border-radius: 14px; padding: 14px 16px; margin: 10px 0; text-align: left; }
+.capnote b { font-size: 16px; } .capnote p { margin: 6px 0; font-size: 14px; color: var(--muted); line-height: 1.4; } .capnote .capdo { color: var(--text); font-weight: 600; }
+.capnote ul { margin: 4px 0 0; padding-left: 20px; font-size: 14px; }
+/* Practice courts and Surface Work (training) */
+.courtpick { background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 8px 0 12px; display: grid; gap: 8px; text-align: left; }
+.cphead { display: grid; gap: 2px; } .cphead b { font-size: 15px; } .cphead small, .cpnote { color: var(--muted); font-size: 12px; }
+.cpwork { display: grid; gap: 4px; } .cpwork > div { display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.cpwork > div.on { color: var(--text); font-weight: 600; } .cpwork b { text-align: right; }
+.cpbar { height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; } .cpbar i { display: block; height: 100%; background: var(--grad); border-radius: 999px; }

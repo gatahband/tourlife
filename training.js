@@ -70,13 +70,14 @@ function renderTraining() {
     const opt = (id, icon, title, desc, extra = '', disabled = false) =>
       `<button type="button" class="topt${disabled ? ' off' : ''}" data-choice="${id}" ${disabled ? 'disabled' : ''}><span class="ticon">${icon}</span>` +
       `<span><b>${title}</b><small>${desc}</small>${extra}</span></button>`;
-    box.innerHTML = `<h2>How Do You Want To Use The Days?</h2><div class="topts">` +
-      opt('here', '🏟️', `Train Here`, `${left} training day${left === 1 ? '' : 's'}. +0.4–1.3% per stat each day.`) +
+    const block = growthBlock(c, p);
+    box.innerHTML = `<h2>How Do You Want To Use The Days?</h2>` + (block ? capNoticeHtml(block) : '') + `<div class="topts">` +
+      (block ? '' : opt('here', '🏟️', `Train Here`, `${left} training day${left === 1 ? '' : 's'}. +0.4–1.3% per stat each day.`)) +
       nextEvs.map((e, i) => {
         const t = travelDays(dt.at, e.nation), stay = left - t, cost = tripCost(c, e, e.mode), broke = cost > c.money;
         // What the trip costs, paid when you choose it, and a Preview of your chances and the week's money.
         return `<div class="toptwrap">` + opt(`go${i}`, '✈️', `Travel Early To ${flagOf(e.nation)} ${e.city}`,
-          stay > 0 ? `${t ? `${t} travel day${t === 1 ? '' : 's'}, then ` : ''}${stay} practice day${stay === 1 ? '' : 's'} on site: better gains (usually 0.8–1.3%) and a comfort boost on those courts. You'll be entered automatically.`
+          stay > 0 ? `${t ? `${t} travel day${t === 1 ? '' : 's'}, then ` : ''}${stay} day${stay === 1 ? '' : 's'} on site${block ? ' for' : ' practising: better gains (usually 0.8–1.3%) and'} a comfort boost on those courts. You'll be entered automatically.`
             : `Too far to arrive early (${t} travel days).`,
           `<em class="tag2">${tierLabel(e.tier)}${e.mode === 'qual' ? ' qualifying' : ''} · ${surfaceLabel(e.surface)}${e.indoor ? ' · Indoor' : ''}</em>` +
           `<em class="tcost ${broke ? 'down' : ''}">💸 Trip: <b>${money(cost)}</b> (flights &amp; hotel${crewTripCost(c, e) ? ', incl. your team' : ''}) · you'd have ${money(c.money - cost)} left${broke ? ': not enough money' : ''}</em>`,
@@ -126,9 +127,26 @@ function renderTraining() {
     $('tNext').onclick = advanceWeek;
     return;
   }
+  // Training can't move you forward right now: say why and what to do, and just rest the days.
+  const block = growthBlock(c, p);
+  if (block) {
+    const court = practiceCourt(c, p);
+    box.innerHTML = `<h2>Day ${dt.used + 1} of ${dt.days}${dt.choice === 'travel' ? ' · on site' : ''}</h2>` + capNoticeHtml(block) +
+      courtPickHtml(c, p) +
+      (logHtml ? `<ul class="tlog">${logHtml}</ul>` : '') +
+      `<div class="pbtns"><button type="button" class="btn" id="tSurfAll">🎾 Practise On ${surfaceLabel(court)} For ${left} Day${left === 1 ? '' : 's'}</button>` +
+      `<button type="button" class="btn ghost" id="tRestAll">🛌 Rest The Remaining ${left} Day${left === 1 ? '' : 's'}</button></div>`;
+    bindCourtPick(c);
+    $('tRestAll').onclick = () => { while (dt.used < dt.days) applyDay('rest'); renderTraining(); };
+    // Surface practice still helps at a ceiling: it's not a stat gain, it's comfort on that surface.
+    $('tSurfAll').onclick = () => { while (dt.used < dt.days) { addSurfWork(p, court, SURF_WORK_DAY); p.fatigue = clamp((p.fatigue || 0) + 2 - DAILY_RECOVERY * 0.5, 0, 100); dt.used++; }
+      dt.log = [...(dt.log || []), `🎾 ${left} day${left === 1 ? '' : 's'} on ${surfaceLabel(court).toLowerCase()} courts. ${surfaceLabel(court)} Work ${Math.round(100 * ((p.surfWork || {})[court] || 0))}%.`];
+      writeJSON(SAVE_KEY, p); writeJSON(CAREER_KEY, c); renderTraining(); };
+    return;
+  }
   const local = dt.choice === 'travel';
   const range = local ? '0.8–1.3%' : '0.4–1.3%';
-  box.innerHTML = `<h2>Day ${dt.used + 1} of ${dt.days}${local ? ' · practising on site' : ''}</h2>` +
+  box.innerHTML = `<h2>Day ${dt.used + 1} of ${dt.days}${local ? ' · practising on site' : ''}</h2>` + courtPickHtml(c, p) +
     `<div class="drills">${DRILLS.map(d => {
       const res = d.stats.length ? sessionResult(d.id, rollTrain(local) * trainBoost(c)) : null;
       const after = d.stats.map(k => `<span class="chip">${attrLabel(k)} <b>+${(res.attrs[k] - p.attrs[k]).toFixed(2)}</b></span>`).join('');
@@ -145,10 +163,12 @@ function renderTraining() {
     (rustOf(c) >= 0.001 ? `<p class="hint warnline">🧊 ${rustText(c)}</p>` : '') +
     (logHtml ? `<ul class="tlog">${logHtml}</ul>` : '') +
     `<div class="drillconfirm" id="tConfirm" hidden></div>` +
-    `<button type="button" class="link" id="tRestAll">Rest the remaining ${left} day${left === 1 ? '' : 's'}</button>`;
+    `<button type="button" class="link" id="tRestAll">Rest The Remaining ${left} Day${left === 1 ? '' : 's'}</button>`;
   // Two steps, so a stray tap never spends a day: pick a session, then confirm it.
   let picked = null;
   box.onclick = e => {
+    const cp = e.target.closest('[data-court-pick] [data-court]');
+    if (cp) { c.downtime.court = cp.dataset.court; writeJSON(CAREER_KEY, c); renderTraining(); return; }
     if (e.target.closest('#tGo')) { if (picked) { applyDay(picked, rollTrain(local) * trainBoost(c)); renderTraining(); } return; }
     if (e.target.closest('#tCancel')) { picked = null; $('tBuildBox').innerHTML = buildPanel(p, dt.lastSession); box.querySelectorAll('.drill').forEach(x => x.classList.remove('picked')); $('tConfirm').hidden = true; return; }
     const b = e.target.closest('[data-drill]');
@@ -185,6 +205,7 @@ function applyDay(drillId, gain = rollTrain(false)) {
   // Weak-wing work narrows the gap between your forehand and backhand.
   if (d.id === 'weakwing') { ensureWing(p); const g = p.bhGap; p.bhGap = Math.round(Math.sign(g) * Math.max(0, Math.abs(g) - 0.05 * gain / 0.008) * 100) / 100; }
   dt.lastSession = d.stats.length ? { stats: d.stats, gain } : null;
+  if (d.id !== 'rest') addSurfWork(p, practiceCourt(c, p), SURF_WORK_DAY);
   p.playstyle = styleOf(p).name;
   dt.used++;
   // Hard sessions on a tired body can end in an injury: the rest of the week is rest.
@@ -316,4 +337,35 @@ function renderOvr(p) {
     setTimeout(next, 30);
   };
   setTimeout(next, 60);
+}
+
+// The notice that replaces training when you're at a ceiling: why, and what will move you forward.
+function capNoticeHtml(b) {
+  return `<div class="capnote"><b>🧱 You've Reached Your Current Ceiling</b><p>${esc(b.text)}</p>` +
+    `<p class="capdo">Training won't add anything until then. To keep moving forward:</p><ul>${b.todo.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+}
+
+// --- Practice courts and Surface Work ---------------------------------------------------------------------------
+// Pick the surface you train on. Every training day there builds Surface Work on it (see comfort in sim.js): on your
+// worst surface it shrinks the penalty, elsewhere it gives a small lift. Practising on site uses the event's surface.
+const SURF_WORK_DAY = 0.035, SURF_WORK_MATCH = 0.01;
+function addSurfWork(p, surface, amount) {
+  p.surfWork = p.surfWork || { hard: 0, clay: 0, grass: 0 };
+  p.surfWork[surface] = Math.min(1, Math.round(((p.surfWork[surface] || 0) + amount) * 1000) / 1000);
+}
+function practiceCourt(c, p) {
+  const dt = c.downtime || {};
+  if (dt.choice === 'travel' && dt.next) return dt.next.surface;
+  return dt.court || (p.worst && p.worst !== p.fav ? p.worst : 'hard');
+}
+function courtPickHtml(c, p) {
+  const dt = c.downtime || {}, onSite = dt.choice === 'travel' && dt.next, cur = practiceCourt(c, p), w = s => Math.round(100 * ((p.surfWork || {})[s] || 0));
+  const tag = s => s === p.fav ? ' · Your Best' : s === p.worst ? ' · Your Worst' : '';
+  return `<div class="courtpick"><div class="cphead"><b>🎾 Practice Courts</b><small>${onSite ? `Practising on site in ${esc(dt.next.city)}: ${surfaceLabel(cur).toLowerCase()} courts` : 'Where you train this week'}</small></div>` +
+    (onSite ? '' : `<div class="seg" data-court-pick>${['hard', 'clay', 'grass'].map(s => `<button type="button" data-court="${s}" class="${s === cur ? 'on' : ''}">${surfaceLabel(s)}${tag(s)}</button>`).join('')}</div>`) +
+    `<div class="cpwork">${['hard', 'clay', 'grass'].map(s => `<div class="${s === cur ? 'on' : ''}"><span>${surfaceLabel(s)} Work</span><div class="cpbar"><i style="width:${w(s)}%"></i></div><b>${w(s)}%</b></div>`).join('')}</div>` +
+    `<small class="cpnote">Every training day builds Surface Work on that surface. On your worst surface it shrinks the penalty (up to three quarters of it); on other surfaces it gives a small lift.</small></div>`;
+}
+function bindCourtPick(c) {
+  document.querySelectorAll('[data-court-pick] [data-court]').forEach(b => { b.onclick = () => { c.downtime.court = b.dataset.court; writeJSON(CAREER_KEY, c); renderTraining(); }; });
 }

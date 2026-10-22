@@ -203,8 +203,12 @@ let LEGEND_X = 1.4;
 
 function comfort(p, ev) {
   let c = p.acclimated ? 0.01 : 0; // arrived early and practised on these courts
+  // Surface Work (0–1, built by practising on that surface): softens your worst surface by up to 75% and gives a
+  // small lift on surfaces that are neither your best nor your worst.
+  const sw = (p.surfWork && p.surfWork[ev.surface]) || 0;
   if (p.fav === ev.surface) c += 0.012;
-  if (p.worst === ev.surface) c -= 0.012;
+  else if (p.worst === ev.surface) c -= 0.012 * (1 - 0.75 * sw);
+  else c += 0.004 * sw;
   if (ev.indoor) c += p.fav === 'hard' ? 0.006 : p.worst === 'hard' ? -0.006 : 0;
   return c;
 }

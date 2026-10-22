@@ -1,5 +1,11 @@
 // names.js — opponent name pools by nationality (first names, surnames)
 
+// Game mode, read once at load: 'player' (your own career) or 'coach' (Coach Mode). Coach Mode keeps its saves under
+// their own keys (tourlife.coach.*), so switching modes can never touch a player career. Switching reloads the page.
+const TL_MODE = (() => { try { return localStorage.getItem('tourlife.mode') === 'coach' ? 'coach' : 'player'; } catch { return 'player'; } })();
+const TL_NS = TL_MODE === 'coach' ? 'tourlife.coach.' : 'tourlife.';
+const isCoachMode = () => TL_MODE === 'coach';
+
 const FAMILY_FIRST = new Set(['CHN', 'KOR']);
 
 const NAMES = {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tour Life</title>
-  <link rel="stylesheet" href="style.css?v=1792640547">
+  <link rel="stylesheet" href="style.css?v=1792686147">
 </head>
 <body>
   <main class="wrap" id="creator">
@@ -13,6 +13,7 @@
       <p class="sub">Build your identity. Your attributes define your game.</p>
       <button type="button" id="cImport" class="link">⬆️ Played before? Load my progress</button>
       <button type="button" class="link" onclick="openRecovery()">🔎 Find My Lost Progress</button>
+      <div id="cModeSwitch"></div>
     </header>
 
     <section class="card" id="cSaves" hidden>
@@ -35,22 +36,25 @@
     </section>
 
     <section class="card">
-      <div class="head">
-        <h2>Attributes</h2>
-        <span><span id="cOvr" class="pill ovrpill"></span> <span id="pool" class="pill"></span></span>
-      </div>
-      <div id="attrs"></div>
-    </section>
-
-    <section class="card">
       <h2>Playstyle</h2>
       <div class="hero">
         <div id="topStyle" class="top"></div>
         <div class="meter"><div id="topFill" class="fill"></div></div>
         <p id="topDesc" class="hint"></p>
       </div>
-      <button type="button" class="btn ghost" id="cPreview">🎬 Preview Playstyles</button>
       <ol id="styles" class="styles"></ol>
+    </section>
+
+    <section class="card">
+      <div class="head">
+        <h2>Attributes</h2>
+        <span><span id="cOvr" class="pill ovrpill"></span> <span id="pool" class="pill"></span></span>
+      </div>
+      <div id="attrs"></div>
+      <p class="tbshead cbuildhead">Build Me A Playstyle</p>
+      <p class="hint center">Tap a style and your points are shared out to suit it. You can still adjust any stat after.</p>
+      <div class="rsstylebtns" id="cStyleBtns"></div>
+      <button type="button" class="btn ghost" id="cPreview">🎬 Preview Playstyles</button>
     </section>
 
     <section class="card">
@@ -72,13 +76,14 @@
   </main>
 
   <main class="wrap" id="home" hidden>
-    <button type="button" class="studylink" data-study hidden>🎬 Study Room</button>
+    <span class="studylinks"><button type="button" class="studylink" data-lab hidden>🔬 Research Lab</button></span>
     <div id="rankNote" class="ranknote" hidden></div>
     <header>
       <h1 id="cName"></h1>
       <p id="cMeta" class="sub"></p>
     </header>
     <p id="hNotice" class="notice" hidden></p>
+    <section class="card" id="hCoach" hidden></section>
     <section class="card" id="hOvr"></section>
     <section class="card">
       <h2 id="eventsTitle"></h2>
@@ -111,6 +116,7 @@
 <details class="card fold homefold" data-fold="h-plan"><summary class="foldhead"><span class="foldt">📋 Default Game Plan</span><span class="foldsum" id="sumPlan"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody">
       <p class="hint">How you play by default. Each tournament starts with this plan, and you can tweak it for that week from the draw screen or before a match.</p>
       <div id="hPlan" class="plan"></div></div></details>
+    <details class="card fold homefold" data-fold="h-planbook"><summary class="foldhead"><span class="foldt">📒 Plan Book</span><span class="foldsum" id="sumPlanBook"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><div id="hPlanBook"></div></div></details>
     <details class="card fold homefold" data-fold="h-history"><summary class="foldhead"><span class="foldt">📜 Match History</span><span class="foldsum" id="sumHistory"></span><i class="foldchev" aria-hidden="true"></i></summary><div class="foldbody"><div id="hHistory" class="hlist"></div></div></details>
     <button id="edit" class="btn ghost">Edit Player</button>
     <button id="share" class="btn">🎾 Join Real Tournaments</button>
@@ -124,11 +130,12 @@
     <button id="helpBtn" class="link">❓ How To Play</button>
     <button id="reset" class="link">Switch or start a new career</button>
     <div class="settings"><span>Speed</span><div id="units" class="seg two"></div></div>
+    <div id="hModeSwitch"></div>
     <a href="#admin" class="ownerlink">admin</a>
   </main>
 
   <main class="wrap" id="draw" hidden>
-    <button id="dHome" class="link back">‹ Home</button><button type="button" class="studylink" data-study hidden>🎬 Study Room</button>
+    <button id="dHome" class="link back">‹ Home</button><span class="studylinks"><button type="button" class="studylink" data-lab hidden>🔬 Research Lab</button></span>
     <header>
       <h1 id="dTitle"></h1>
       <p id="dMeta" class="sub"></p>
@@ -214,7 +221,7 @@
   </main>
 
   <main class="wrap" id="train" hidden>
-    <button id="tHome" class="link back">‹ Home</button><button type="button" class="studylink" data-study hidden>🎬 Study Room</button>
+    <button id="tHome" class="link back">‹ Home</button><span class="studylinks"><button type="button" class="studylink" data-lab hidden>🔬 Research Lab</button></span>
     <header>
       <h1 id="tTitle"></h1>
       <p id="tMeta" class="sub"></p>
@@ -227,44 +234,47 @@
 
   <div id="modal" class="modal" hidden><div id="sheet" class="sheet"></div></div>
 
-  <script>window.TL_VERSION = "1792640547";</script>
-  <script src="names.js?v=1792640547"></script>
-  <script src="sim.js?v=1792640547"></script>
-  <script src="court.js?v=1792640547"></script>
-  <script src="story.js?v=1792640547"></script>
-  <script src="stats.js?v=1792640547"></script>
-  <script src="calendar.js?v=1792640547"></script>
+  <script>window.TL_VERSION = "1792686147";</script>
+  <script src="lang.js?v=1792686147"></script>
+  <script src="names.js?v=1792686147"></script>
+  <script src="sim.js?v=1792686147"></script>
+  <script src="court.js?v=1792686147"></script>
+  <script src="story.js?v=1792686147"></script>
+  <script src="stats.js?v=1792686147"></script>
+  <script src="calendar.js?v=1792686147"></script>
   <!-- Netlify picks this form up at deploy time; share.js submits it with fetch. -->
   <form name="send-player" data-netlify="true" netlify-honeypot="bot-field" hidden>
     <input name="bot-field"><input name="player"><input name="nation"><input name="ovr"><input name="rank">
     <input name="record"><input name="contact"><textarea name="note"></textarea><textarea name="code"></textarea>
   </form>
-  <script src="ranking.js?v=1792640547"></script>
-  <script src="worldmap.js?v=1792640547"></script>
-  <script src="weather.js?v=1792640547"></script>
-  <script src="morale.js?v=1792640547"></script>
-  <script src="realplayers.js?v=1792640547"></script>
-  <script src="realscout.js?v=1792640547"></script>
-  <script src="realstats.js?v=1792640547"></script>
-  <script src="fairplay.js?v=1792640547"></script>
-  <script src="rivals.js?v=1792640547"></script>
-  <script src="tournaments.js?v=1792640547"></script>
-  <script src="realwatch.js?v=1792640547"></script>
-  <script src="prep.js?v=1792640547"></script>
-  <script src="training.js?v=1792640547"></script>
-  <script src="sponsors.js?v=1792640547"></script>
-  <script src="career.js?v=1792640547"></script>
-  <script src="achievements.js?v=1792640547"></script>
-  <script src="share.js?v=1792640547"></script>
-  <script src="orders.js?v=1792640547"></script>
-  <script src="dayevents.js?v=1792640547"></script>
-  <script src="study.js?v=1792640547"></script>
-  <script src="stylepreview.js?v=1792640547"></script>
-  <script src="reads.js?v=1792640547"></script>
-  <script src="help.js?v=1792640547"></script>
-  <script src="tips.js?v=1792640547"></script>
-  <script src="player.js?v=1792640547"></script>
-  <script src="admin.js?v=1792640547"></script>
-  <script src="safety.js?v=1792640547"></script>
+  <script src="ranking.js?v=1792686147"></script>
+  <script src="worldmap.js?v=1792686147"></script>
+  <script src="weather.js?v=1792686147"></script>
+  <script src="morale.js?v=1792686147"></script>
+  <script src="realplayers.js?v=1792686147"></script>
+  <script src="realscout.js?v=1792686147"></script>
+  <script src="realstats.js?v=1792686147"></script>
+  <script src="fairplay.js?v=1792686147"></script>
+  <script src="rivals.js?v=1792686147"></script>
+  <script src="tournaments.js?v=1792686147"></script>
+  <script src="realwatch.js?v=1792686147"></script>
+  <script src="prep.js?v=1792686147"></script>
+  <script src="training.js?v=1792686147"></script>
+  <script src="sponsors.js?v=1792686147"></script>
+  <script src="career.js?v=1792686147"></script>
+  <script src="achievements.js?v=1792686147"></script>
+  <script src="share.js?v=1792686147"></script>
+  <script src="orders.js?v=1792686147"></script>
+  <script src="dayevents.js?v=1792686147"></script>
+  <script src="study.js?v=1792686147"></script>
+  <script src="stylepreview.js?v=1792686147"></script>
+  <script src="planbook.js?v=1792686147"></script>
+  <script src="coachmode.js?v=1792686147"></script>
+  <script src="reads.js?v=1792686147"></script>
+  <script src="help.js?v=1792686147"></script>
+  <script src="tips.js?v=1792686147"></script>
+  <script src="player.js?v=1792686147"></script>
+  <script src="admin.js?v=1792686147"></script>
+  <script src="safety.js?v=1792686147"></script>
 </body>
 </html>

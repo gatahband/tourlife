@@ -42,6 +42,21 @@ function bloomOf(c) {
 const careerAge = (c, p) => (p.age || 18) + ((c.week - 1) % 52) / 52;
 const maturityNow = (c, p) => maturityCeiling(careerAge(c, p), bloomOf(c));
 
+// Whether training can still move you forward right now. When your OVR is at your age ceiling (see maturityCeiling)
+// or at your Tactical rating's cap, gains are a tiny fraction of normal, so the game says so instead of offering drills.
+function growthBlock(c, p) {
+  if (!c || !p) return null;
+  const ovr = overall(p), age = maturityNow(c, p), tac = typeof tacticalCap === 'function' ? tacticalCap(c) : 99;
+  const byAge = ovr >= age - 0.5, byTac = ovr >= tac;
+  if (!byAge && !byTac) return null;
+  const years = Math.floor(careerAge(c, p));
+  const lines = [];
+  if (byAge) lines.push(`Your game is ahead of your age: about ${Math.floor(age)} OVR is as far as ${/^(8|11|18)/.test(String(years)) ? 'an' : 'a'} ${years}-year-old's game can go, and you're at ${ovr.toFixed(1)}. Your ceiling rises as you get older, every season a bit more until your prime.`);
+  if (byTac) lines.push(`Your Tactical rating (${Math.round(tacticalOf(c))}) is holding you at about ${Math.floor(tac)} OVR. Raise it with good Match Reads in your matches.`);
+  return { byAge, byTac, text: lines.join(' '),
+    todo: [byAge && 'Play your matches and rest: the ceiling lifts with age', byTac && 'Make good Match Reads to raise your Tactical rating', 'Rebuild your game if you want a different style at the same level'].filter(Boolean) };
+}
+
 function applyGain(attrs, k, gain) { attrs[k] = gainedValue(attrs, k, gain); }
 // The value a stat would reach from a gain (growth slows near the cap and past your Tactical rating's cap).
 function gainedValue(attrs, k, gain) {
@@ -80,7 +95,7 @@ function noteWeek(c) {
 // --- No save-scumming ---------------------------------------------------------------------------
 // Every career's furthest point on this device (week, matches, sets) is remembered. An older copy of the
 // same career can't be loaded over it, so you can't replay a lost match from a backup.
-const MARK_KEY = 'tourlife.marks';
+const MARK_KEY = TL_NS + 'marks';
 function careerProgress(c, entry) {
   const matches = (c.history || []).reduce((n, h) => n + (h.matches || []).length, 0) + ((entry && entry.matches) || []).length;
   const sets = entry && entry.live && entry.live.m ? entry.live.m.sets.length : 0;

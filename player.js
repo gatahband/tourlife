@@ -1,7 +1,7 @@
 // player.js — character creation, attributes, temperament, playstyle detection
 
 const POOL = 350, MIN = 20, MAX = 90, START = 40;
-const SAVE_KEY = 'tourlife.player';
+const SAVE_KEY = TL_NS + 'player';
 
 const ATTRS = [
   ['serve', 'Serve Power'],
@@ -55,10 +55,12 @@ function planRows(styleName) {
 }
 const myStyleName = () => typeof current !== 'undefined' && current.player ? styleOf(current.player).name : (typeof state !== 'undefined' && state.attrs ? detectStyles(state.attrs, state.fav, state.plan)[0].name : '');
 
-function planEditor(el, plan, onChange) {
+// styleName (a name or a function returning one) says whose playstyle the options are for; it's read fresh on every
+// draw, so the signature play always matches the current style. el._redraw redraws it after the style changes.
+function planEditor(el, plan, onChange, styleName = null) {
   const draw = () => {
     const lv = typeof teamLevel === 'function' && current.career ? teamLevel(current.career, 'coach') : 0;
-    const rows = planRows(myStyleName());
+    const rows = planRows(typeof styleName === 'function' ? styleName() : styleName || myStyleName());
     // Basic settings first, then the coach-unlocked tier under its own heading.
     el.innerHTML = rows.map((g, i) => {
       const locked = g.coach && lv < g.coach;
@@ -75,6 +77,7 @@ function planEditor(el, plan, onChange) {
     draw();
     onChange(plan);
   };
+  el._redraw = draw;
   draw();
 }
 
@@ -258,6 +261,9 @@ function render() {
 
   const ranked = detectStyles(state.attrs, state.fav, state.plan);
   const best = ranked[0], trait = detectTrait(state.attrs);
+  // A new playstyle brings its own signature play: redraw the plan options when the style changes.
+  if ($('cPlan') && $('cPlan')._redraw && $('cPlan')._style !== best.name) { $('cPlan')._style = best.name; $('cPlan')._redraw(); }
+  document.querySelectorAll('#cStyleBtns [data-cstyle]').forEach(b => b.classList.toggle('on', b.dataset.cstyle === best.name));
   $('topStyle').textContent = best.name + (trait ? ` · ${trait.name}` : '');
   $('topFill').style.width = `${Math.round(best.score * 100)}%`;
   $('topDesc').textContent = best.desc;
@@ -268,7 +274,43 @@ function render() {
   }).join('');
 }
 
+// Share the creation points out to suit a playstyle: its key stats highest, the rest a sensible spread around it,
+// all inside the usual limits and using exactly the points available. Also sets the plan that style plays.
+function creatorBuild(name) {
+  const st = STYLES.find(s => s.name === name), w = st && st.w ? st.w : ATTRS.map(() => 0);
+  const plan = { ...state.plan, ...stylePlanBits(name) };
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const shape = spread => {
+    const at = L => ATTRS.map((_, i) => clamp(Math.round(L + spread * w[i]), MIN, MAX));
+    let lo = MIN - 40, hi = MAX + 40;
+    for (let n = 0; n < 40; n++) { const mid = (lo + hi) / 2; sum(at(mid)) > POOL ? hi = mid : lo = mid; }
+    const a = at(lo);
+    // Exactly the points available: the leftover goes to the style's key stats first (or comes off the least important).
+    const up = ATTRS.map((_, i) => i).sort((x, y) => w[y] - w[x]);
+    for (let diff = POOL - sum(a), g = 0; diff !== 0 && g < 400; g++) {
+      const i = diff > 0 ? up[g % up.length] : up[up.length - 1 - (g % up.length)];
+      if (diff > 0 && a[i] < MAX) { a[i]++; diff--; } else if (diff < 0 && a[i] > MIN) { a[i]--; diff++; }
+    }
+    return Object.fromEntries(ATTRS.map(([k], i) => [k, a[i]]));
+  };
+  let best = shape(4);
+  for (const spread of [4, 5, 6, 8, 10, 12]) { best = shape(spread); if (detectStyles(best, state.fav, plan)[0].name === name) break; }
+  state.attrs = best;
+  Object.assign(state.plan, stylePlanBits(name));
+  for (const [k] of ATTRS) $(`s-${k}`).value = state.attrs[k]; // move the sliders too
+  render();
+}
+
 function build() {
+  $('cStyleBtns').innerHTML = STYLES.map(s => `<button type="button" class="btn ghost" data-cstyle="${esc(s.name)}">${esc(s.name)}</button>`).join('');
+  $('cStyleBtns').onclick = e => { const b = e.target.closest('[data-cstyle]'); if (b) creatorBuild(b.dataset.cstyle); };
+  // Mode: the switch, and in Coach Mode the creator is for the player you'll coach.
+  if ($('cModeSwitch')) $('cModeSwitch').innerHTML = modeSwitchHtml('creator');
+  if (isCoachMode()) {
+    document.querySelector('#creator h1').textContent = 'Create The Player You Coach';
+    document.querySelector('#creator .sub').textContent = "Build their game. You'll set their schedule, training and game plans, but they play the points, and they only follow you as far as they trust you.";
+  }
+
   // Watch how each playstyle builds its points before you commit to one (stylepreview.js).
   $('cPreview').onclick = () => openStylePreview({ hand: state.hand, plan: state.plan }, { ...state.attrs }, detectStyles(state.attrs, state.fav, state.plan)[0].name, null, 'Back To My Player');
 
@@ -312,7 +354,7 @@ function build() {
 
   $('hand').innerHTML = HANDS.map(([v, l]) => `<button type="button" data-v="${v}">${l.split('-')[0]}</button>`).join('');
   $('hand').onclick = e => { const b = e.target.closest('button'); if (b) { state.hand = b.dataset.v; render(); } };
-  planEditor($('cPlan'), state.plan, render);
+  planEditor($('cPlan'), state.plan, render, () => detectStyles(state.attrs, state.fav, state.plan)[0].name); // the player being created
 
   $('name').oninput = e => { state.name = e.target.value.trim(); };
   $('nation').onchange = e => { state.nation = e.target.value; };

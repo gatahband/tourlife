@@ -5,7 +5,7 @@
 //  3. Housekeeping on start-up keeps localStorage well under its limit.
 //  4. "Find My Lost Progress" lists every copy of every career on this device and restores one in a tap.
 
-const MIRROR_KEYS = ['tourlife.player', 'tourlife.career', 'tourlife.entry', 'tourlife.saves', 'tourlife.backups', 'tourlife.marks'];
+const MIRROR_KEYS = ['player', 'career', 'entry', 'saves', 'backups', 'marks'].map(k => TL_NS + k); // this mode's saves (Coach Mode has its own)
 const IDB_NAME = 'tourlife', IDB_STORE = 'kv';
 let idbPromise = null;
 function idb() {
@@ -40,16 +40,16 @@ const parse = t => { try { return JSON.parse(t); } catch { return null; } };
 // localStorage, or storage the browser cleared), bring it back without asking.
 async function recoverFromMirror() {
   const all = await idbGetAll();
-  const mP = all['tourlife.player'] && parse(all['tourlife.player'].text);
-  const mC = all['tourlife.career'] && parse(all['tourlife.career'].text);
+  const mP = all[SAVE_KEY] && parse(all[SAVE_KEY].text);
+  const mC = all[CAREER_KEY] && parse(all[CAREER_KEY].text);
   if (!mP || !mC) { mirrorNow(); return; }
   const lP = readJSON(SAVE_KEY), lC = readJSON(CAREER_KEY);
-  const mE = all['tourlife.entry'] ? parse(all['tourlife.entry'].text) : null;
+  const mE = all[ENTRY_KEY] ? parse(all[ENTRY_KEY].text) : null;
   const sameCareer = !lP || (lP.created && lP.created === mP.created);
   const ahead = !lC || careerProgress(mC, mE) > careerProgress(lC, readJSON(ENTRY_KEY));
   if (sameCareer && ahead) {
-    for (const k of ['tourlife.player', 'tourlife.career', 'tourlife.entry']) if (all[k]) writeJSON(k, parse(all[k].text));
-    if (!readJSON(SAVES_KEY) && all['tourlife.saves']) writeJSON(SAVES_KEY, parse(all['tourlife.saves'].text));
+    for (const k of [SAVE_KEY, CAREER_KEY, ENTRY_KEY]) if (all[k]) writeJSON(k, parse(all[k].text));
+    if (!readJSON(SAVES_KEY) && all[SAVES_KEY]) writeJSON(SAVES_KEY, parse(all[SAVES_KEY].text));
     current.player = readJSON(SAVE_KEY); current.career = null; current.entry = null;
     if (typeof renderTournaments === 'function' && current.player) { renderTournaments(current.player); showScreen('home'); }
     setTimeout(() => toast('🛟 Progress recovered', `Brought back ${mP.name}'s latest save (season ${seasonOfWeek(mC.week)}, week ${weekInSeason(mC.week)}).`), 600);
@@ -79,10 +79,10 @@ async function findCopies() {
   const add = (src, player, career, entry) => { if (player && career) copies.push({ src, player, career, entry: entry || null, prog: careerProgress(career, entry) }); };
   add('Open now', readJSON(SAVE_KEY), readJSON(CAREER_KEY), readJSON(ENTRY_KEY));
   for (const sv of readJSON(SAVES_KEY) || []) add('Saved careers', sv.player, sv.career, sv.entry);
-  for (const b of readJSON('tourlife.backups') || []) add(`Safety backup (${b.reason})`, b.player, b.career, b.entry);
+  for (const b of readJSON(BACKUPS_KEY) || []) add(`Safety backup (${b.reason})`, b.player, b.career, b.entry);
   const all = await idbGetAll();
-  if (all['tourlife.player'] && all['tourlife.career']) add('Backup store', parse(all['tourlife.player'].text), parse(all['tourlife.career'].text), all['tourlife.entry'] && parse(all['tourlife.entry'].text));
-  for (const sv of (all['tourlife.saves'] && parse(all['tourlife.saves'].text)) || []) add('Backup store (saved careers)', sv.player, sv.career, sv.entry);
+  if (all[SAVE_KEY] && all[CAREER_KEY]) add('Backup store', parse(all[SAVE_KEY].text), parse(all[CAREER_KEY].text), all[ENTRY_KEY] && parse(all[ENTRY_KEY].text));
+  for (const sv of (all[SAVES_KEY] && parse(all[SAVES_KEY].text)) || []) add('Backup store (saved careers)', sv.player, sv.career, sv.entry);
   return copies.sort((a, b) => b.prog - a.prog);
 }
 async function openRecovery() {

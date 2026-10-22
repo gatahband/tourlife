@@ -156,8 +156,8 @@ const FEATURES = [
     'Money & Team now has More Staff & Upgrades: a fitness trainer, a mental coach, a travelling hitting partner, a stringer, an upgraded hotel and an agent.',
     'Each gives a real but modest edge. Wages rise as your ranking climbs, and everyone who travels with you adds their flights and hotel to each trip.',
     'An agent takes 12% of your sponsor money but brings bigger offers. Spend on what actually helps your game.'] },
-  { id: 'study', when: c => typeof studyUnlocked === 'function' && studyUnlocked(c), icon: '📚', title: 'Study Room Unlocked', slides: [
-    "You've made it to the ATP Tour. The Study Room is open: tap 🎬 Study Room at the top right of Home.",
+  { id: 'study', when: c => typeof studyUnlocked === 'function' && studyUnlocked(c), icon: '📚', title: 'Research Lab Unlocked', slides: [
+    "You've made it to the ATP Tour. The Research Lab is open: tap 🔬 Research Lab at the top right of Home to simulate any two real players against each other.",
     'Pick any two real ATP players, a surface, the conditions and the match length, then watch them play each other.',
     'Each player uses their real playstyle and game plan, so you can see how their points are built and how they adjust to each other.'] },
   { id: 'pc', when: c => c.badges && c.badges.elite, icon: '🏛️', title: 'Performance Center Unlocked', slides: [

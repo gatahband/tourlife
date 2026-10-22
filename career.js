@@ -791,6 +791,13 @@ function homeSums(c, p) {
   const bill = typeof weeklyBill === 'function' ? weeklyBill(c) : 0;
   set('sumTeam', `${money(c.money)} in the bank${bill ? ` · wages ${money(bill)}/week` : ''}${activeDeals(c).length ? ` · ${activeDeals(c).length} sponsor${activeDeals(c).length === 1 ? '' : 's'}` : ''}`);
   set('sumBadges', `${BADGES.filter(b => (c.badges || {})[b.id]).length} of ${BADGES.length} earned`);
+  renderCoachBits(c, p);
+  // Hitting a ceiling: tell them once a season (and the training screens step aside, see training.js).
+  { const b = growthBlock(c, p), key = `${seasonOfWeek(c.week)}:${b ? (b.byAge ? 'a' : '') + (b.byTac ? 't' : '') : ''}`;
+    if (b && c.capNote !== key && !c.notice) { c.capNote = key; c.notice = `🧱 You've reached your current ceiling. ${b.text} Training won't add anything until then.`; writeJSON(CAREER_KEY, c); } }
+  if ($('hModeSwitch')) $('hModeSwitch').innerHTML = modeSwitchHtml('home');
+  { const el = $('hPlanBook'); if (el) el.innerHTML = pbHomeHtml(c);
+    const n = Object.keys(c.planBook || {}).length; set('sumPlanBook', n ? `${n} playstyle${n === 1 ? '' : 's'} faced` : 'Fills up as you play'); }
   const riv = Object.keys(h2hOf(c)).filter(id => isRival(c, id)).length, met = Object.keys(h2hOf(c)).length;
   set('sumRivals', `${riv} rival${riv === 1 ? '' : 's'} · ${met} player${met === 1 ? '' : 's'} met`);
   set('sumPlan', planSummary(planOf(p)).split(' · ').slice(0, 3).join(' · '));

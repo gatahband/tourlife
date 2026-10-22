@@ -1845,9 +1845,10 @@ function compactPlanEditor(el, plan) {
   const lv = teamLevel(current.career, 'coach');
   const draw = () => {
     // The basic settings, then the coach-unlocked ones as their own tier (with a little space and a heading).
-    const row = g => `<div class="pcrow"><span title="${esc(g.hint)}">${g.label.replace(/\b\w/g, c => c.toUpperCase())}</span><div class="pcseg" data-key="${g.key}">${g.opts.map(([v, l]) =>
+    const row = g => `<div class="pcrow${g.key === 'sig' || g.key === 'underarm' ? ' sigrow' : ''}"><span title="${esc(g.hint)}">${g.label.replace(/\b\w/g, c => c.toUpperCase())}</span><div class="pcseg" data-key="${g.key}">${g.opts.map(([v, l]) =>
       `<button type="button" data-v="${v}" class="${(plan[g.key] || DEFAULT_PLAN[g.key]) === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>`;
-    const basic = GAME_PLAN.filter(g => !g.coach), adv = GAME_PLAN.filter(g => g.coach && lv >= g.coach);
+    const rows = planRows(styleOf(current.player).name); // your style's options: underarm only for Creative Shotmakers, else the signature play
+    const basic = rows.filter(g => !g.coach), adv = rows.filter(g => g.coach && lv >= g.coach);
     el.innerHTML = basic.map(row).join('') + (adv.length ? `<div class="pctier">🎓 Master Coach Options</div>${adv.map(row).join('')}` : '');
   };
   el.onclick = e => {

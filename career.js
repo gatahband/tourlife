@@ -175,16 +175,15 @@ function goHomeWeek() {
   advanceWeek();
 }
 
-// Local club tournament: when no tour event this week is affordable, a real event at your local club. It plays like
+// Local club tournament: always on offer, a free real event at your local club (to save up or when broke). It plays like
 // any other tournament (the draw, live matches, Match Reads), with a small prize and no ranking points.
 function clubEvent(c, p) {
   const nation = c.location || p.nation;
   return { id: `club-w${c.week}`, week: c.week, tier: 'CLUB', city: 'Local Club', nation, surface: p.fav || 'hard', indoor: false };
 }
 function clubHtml(c, p, evs, rank) {
-  const canGo = evs.some(e => { const el = eligibility(e, rank); return el !== 'locked' && tripCost(c, e, el) <= c.money; });
-  if (canGo) return '';
-  return `<div class="gohome"><div><b>🎾 Local Club Tournament</b><small>No tour event you can afford this week? Play the local club's tournament: a full draw, ` +
+  // Always on offer: a free week that earns a little, for when you can't afford a trip or want to save up for one.
+  return `<div class="gohome"><div><b>🎾 Local Club Tournament</b><small>Saving up, or can't afford a trip this week? Play the local club's tournament instead: a full draw, ` +
     `played like any other event, with a prize of up to ${money(WIN_CHEQUE.CLUB)} and no ranking points. It keeps you match-sharp and earns Match Reads experience.</small></div>` +
     `<button type="button" class="btn small" id="clubGo">Enter</button></div>`;
 }

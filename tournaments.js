@@ -356,7 +356,8 @@ function renderTournaments(player) {
       `<div class="ev-top"><span class="tier">${tierLabel(e.tier)}</span>${surfaceFit(player, e)}</div>` +
       `<div class="ev-city">${flagOf(e.nation)} ${e.city}, ${nationInfo(e.nation)[2]}</div>` +
       `<div class="ev-meta">${surfaceLabel(e.surface)}${e.indoor ? ' · Indoor' : ''} · ${PRIZE[e.tier]} · ${wxLabel({ ...e, weather: weatherFor(e) })}</div>` +
-    `</div>${next ? `<button type="button" class="btn small ghost" data-look="${e.id}">Preview</button>` : entryButton(e, rank)}</div>` +
+    `</div>${next ? (eligibility(e, rank) === 'locked' ? `<span class="locked">🔒 Top ${TIERS[e.tier].qual}</span>` // same lock as this week
+      : `<button type="button" class="btn small ghost" data-look="${e.id}" data-mode="${eligibility(e, rank)}">Preview${eligibility(e, rank) === 'qual' ? ' (qualifying)' : ''}</button>`) : entryButton(e, rank)}</div>` +
     `<div class="evpanel" hidden></div></div>`
   ).join('') : `<p class="hint">${next ? 'Next week is the off-season: no events.' : 'No events this week.'}</p>`) +
     (next ? '<p class="hint">You can travel early to one of these from your free days after this week\'s event, for bigger practice gains and a comfort boost.</p>'

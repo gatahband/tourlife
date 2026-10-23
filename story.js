@@ -104,14 +104,14 @@ function breakLine(rec, oppName) {
   const { bpWon: w, bpChances: c, bpSaved: sv, bpFaced: f } = rec.stats;
   let a;
   if (c === 0) a = `You never got a look at ${oppName}'s serve: no break points all match.`;
-  else if (w / c >= 0.5) a = pickOne([`You were sharp on return, converting ${w} of ${c} break points.`, `${w} of ${c} break points converted: clinical.`, `When the chances came, you took them: ${w} of ${c}.`, `Your return games did damage, with ${w} breaks from ${c} chances.`]);
-  else if (c >= 6 && w / c < 0.3) a = `You had chances but took just ${w} of ${c} break points${rec.won ? ', and it nearly cost you' : ''}.`;
+  else if (w / c >= 0.5) a = pickOne([`You were sharp on return, converting ${w} of ${c} break point${c === 1 ? '' : 's'}.`, `${w} of ${c} break point${c === 1 ? '' : 's'} converted: clinical.`, `When the chances came, you took them: ${w} of ${c}.`, `Your return games did damage, with ${w} breaks from ${c} chances.`]);
+  else if (c >= 6 && w / c < 0.3) a = `You had chances but took just ${w} of ${c} break point${c === 1 ? '' : 's'}${rec.won ? ', and it nearly cost you' : ''}.`;
   else if (w === 0) a = `You couldn't break, despite ${plural(c, 'chance')}.`;
   else a = `You broke ${times(w)} from ${plural(c, 'chance')}.`;
   let b;
   if (f === 0) b = "You didn't face a single break point.";
   else if (sv === f) b = f === 1 ? 'You saved the only break point you faced.' : `You saved all ${f} break points you faced.`;
-  else if (f >= 3) b = pickOne([`You saved ${sv} of ${f} break points.`, `${sv} of ${f} break points saved on your serve.`, `Under pressure on serve, you saved ${sv} of ${f}.`, `${oppName} had ${f} looks at your serve; you saved ${sv}.`]);
+  else if (f >= 3) b = pickOne([`You saved ${sv} of ${f} break point${f === 1 ? '' : 's'}.`, `${sv} of ${f} break point${f === 1 ? '' : 's'} saved on your serve.`, `Under pressure on serve, you saved ${sv} of ${f}.`, `${oppName} had ${f} looks at your serve; you saved ${sv}.`]);
   else b = `You were broken ${times(f - sv)}.`;
   return `${a} ${b}`;
 }
@@ -201,10 +201,16 @@ function planLine(rec, oppName) {
   if (rec.oppStats.underarm) lines.push(`${oppName} caught you with ${rec.oppStats.underarmWon || 0} underarm serve${rec.oppStats.underarmWon === 1 ? '' : 's'}.`);
   if (pl.returnPos === 'deep' && rec.oppStats.aces <= 2 && rec.oppStats.servePts) lines.push('Standing deep took the sting out of their serve.');
   // Plans meeting answers.
-  const adapt = rec.moments.find(x => x.kind === 'adapt');
-  if (adapt) lines.unshift(adapt.who === 'opponent'
-    ? pickOne([`After the ${ORDINAL[adapt.set - 2]} set, ${oppName} found answers to your game plan.`, `${oppName} worked out your plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the ${ORDINAL[adapt.set - 1]} set, ${oppName} had read your game.`])
-    : pickOne([`After the ${ORDINAL[adapt.set - 2]} set, you found answers to ${oppName}'s game plan.`, `You worked out ${oppName}'s plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the ${ORDINAL[adapt.set - 1]} set, you had ${oppName} figured out.`]));
+  // Only an adjustment made while there was still tennis to play (not one recorded as the match ended).
+  const adapt = rec.moments.find(x => x.kind === 'adapt' && x.set <= rec.sets.length);
+  // adapt.set is the set it happened in: during the first set, or after an earlier one.
+  if (adapt) lines.unshift(adapt.set <= 1
+    ? (adapt.who === 'opponent'
+      ? pickOne([`Midway through the first set, ${oppName} found answers to your game plan.`, `${oppName} had your game plan figured out before the first set was over.`])
+      : pickOne([`Midway through the first set, you found answers to ${oppName}'s game plan.`, `You had ${oppName}'s plan figured out before the first set was over.`]))
+    : adapt.who === 'opponent'
+      ? pickOne([`After the ${ORDINAL[adapt.set - 2]} set, ${oppName} found answers to your game plan.`, `${oppName} worked out your plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the start of the ${ORDINAL[adapt.set - 1]} set, ${oppName} had read your game.`])
+      : pickOne([`After the ${ORDINAL[adapt.set - 2]} set, you found answers to ${oppName}'s game plan.`, `You worked out ${oppName}'s plan after the ${ORDINAL[adapt.set - 2]} set.`, `By the start of the ${ORDINAL[adapt.set - 1]} set, you had ${oppName} figured out.`]));
   return lines.filter(Boolean).slice(0, 2).join(' ');
 }
 
@@ -241,14 +247,43 @@ function swingLine(rec, oppName) {
 }
 
 // Off the court: the biggest morale factors going into the match.
+// The morale labels are written for badges ("Big favourite: they have nothing to lose"); in a sentence each one
+// becomes a plain phrase ("the pressure of being the big favourite").
+const MORALE_PHRASE = [
+  [/^Home crowd behind you/, () => 'the home crowd behind you'],
+  [/^Hostile crowd/, () => 'a hostile crowd that you fed off'],
+  [/^Crowd behind the local favourite/, () => 'a crowd backing the local favourite'],
+  [/^Adjusting to (\w+) after weeks on (\w+)/, m => `adjusting to ${m[1]} after weeks on ${m[2]}`],
+  [/^Jet-lagged \((\d+) time zones\)/, m => `jet lag from crossing ${m[1]} time zones`],
+  [/^Big favourite/, () => 'the pressure of being the big favourite'],
+  [/^Underdog/, () => 'playing freely as the underdog'],
+  [/^Defending (\d+) points/, m => `the pressure of defending ${m[1]} points`],
+  [/^Defending champion/, () => "the crowd's love for the defending champion"],
+  [/^Still riding the high of (.+)/, m => `the high from ${m[1]}`],
+  [/^Bogey player \((.+)\)/, m => `facing a bogey opponent (${m[1]})`],
+  [/^Beat your bogey player/, () => 'the belief from finally beating your bogey player'],
+  [/^On a roll: (\d+) wins in a row/, m => `a ${m[1]}-match winning streak`],
+  [/^In a slump/, () => 'a slump of four events without a win'],
+  [/^(\d+) weeks on the road/, m => `${m[1]} weeks on the road`],
+  [/^Recharged/, () => 'the lift from a week at home'],
+  [/^Good memories of (.+)/, m => `good memories of ${m[1]}`],
+  [/^Came through qualifying/, () => 'being match-tight from qualifying'],
+  [/^First time at this level/, () => 'the buzz of a first event at this level'],
+  [/^Fresh after a week off/, () => 'fresh legs after a week off'],
+];
+function moralePhrase(text) {
+  for (const [re, f] of MORALE_PHRASE) { const m = text.match(re); if (m) return f(m); }
+  const t = text.split(':')[0];
+  return t.charAt(0).toLowerCase() + t.slice(1);
+}
+const andList = a => a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
 function moraleLine(rec) {
   const t = rec.moraleTags || [];
   if (!t.length) return '';
-  const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
-  const ups = t.filter(x => x.v > 0), downs = t.filter(x => x.v < 0);
-  if (downs.length && !ups.length) return `Off the court, ${downs.map(x => lc(x.text)).join(' and ')} weighed on you.`;
-  if (ups.length && !downs.length) return `Off the court, you had a lift: ${ups.map(x => lc(x.text)).join(' and ')}.`;
-  return `Off the court: ${lc(ups[0].text)} helped, but ${lc(downs[0].text)} didn't.`;
+  const ups = t.filter(x => x.v > 0).map(x => moralePhrase(x.text)), downs = t.filter(x => x.v < 0).map(x => moralePhrase(x.text));
+  if (downs.length && !ups.length) return `Off the court, ${andList(downs)} weighed on you.`;
+  if (ups.length && !downs.length) return `Off the court, ${andList(ups)} gave you a lift.`;
+  return `Off the court, ${ups[0]} helped, but ${downs[0]} weighed on you.`;
 }
 
 // Big-point calls: how many you made and how many came off.
@@ -386,8 +421,8 @@ function matchSignals(rec, ev) {
   const sig = {};
   const { bpWon, bpChances, bpSaved, bpFaced, aces } = rec.stats;
   const opp = esc(shortName(rec.opponent));
-  if (bpFaced >= 3 && bpSaved / bpFaced < 0.5) sig.lowSave = `You saved just ${bpSaved} of ${bpFaced} break points.`;
-  if (bpChances >= 4 && bpWon / bpChances < 0.35) sig.lowConvert = `You converted only ${bpWon} of ${bpChances} break points.`;
+  if (bpFaced >= 3 && bpSaved / bpFaced < 0.5) sig.lowSave = `You saved just ${bpSaved} of ${bpFaced} break point${bpFaced === 1 ? '' : 's'}.`;
+  if (bpChances >= 4 && bpWon / bpChances < 0.35) sig.lowConvert = `You converted only ${bpWon} of ${bpChances} break point${bpChances === 1 ? '' : 's'}.`;
   if (rec.oppStats.aces >= 4) sig.oppAces = `${opp} hit ${rec.oppStats.aces} aces past you.`;
   if (aces <= 1) sig.fewAces = `You hit ${aces === 0 ? 'no aces' : 'only one ace'}.`;
   const dip = rec.moments.find(x => x.who === 'you' && x.kind === 'dip');
@@ -555,7 +590,7 @@ function styleLine(rec, oppName) {
   const longs = r.long[0] + r.long[1], shorts = r.short[0] + r.short[1];
   const bits = [];
   if (longs >= 4) bits.push(`won ${r.long[0]} of ${longs} long rallies`);
-  if (shorts >= 8) bits.push(`${r.short[0]} of ${shorts} quick points`);
+  if (shorts >= 8) bits.push(`${bits.length ? '' : 'won '}${r.short[0]} of ${shorts} quick points`);
   return `Your ${styleName(rec.styles[0])} game against ${oppName}'s ${styleName(rec.styles[1])}: points averaged ${avg} shots${bits.length ? `, and you ${bits.join(' and ')}` : ''}.`;
 }
 

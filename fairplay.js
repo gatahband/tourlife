@@ -84,7 +84,7 @@ const rustOf = c => c.rust || 0;
 // A week only counts as played if you actually played a match in it. Entering and pulling out before
 // your first match doesn't reset burnout.
 function noteWeek(c) {
-  const played = c.history.some(h => h.week === c.week && !h.exhibition && (h.matches || []).length > 0);
+  const played = c.clubWeek === c.week || c.history.some(h => h.week === c.week && !h.exhibition && (h.matches || []).length > 0); // a local club event counts
   if (played) c.idleWeeks = 0;
   else if (!isOffSeason(c.week)) {
     c.idleWeeks = idleWeeks(c) + 1;

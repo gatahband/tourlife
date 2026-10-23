@@ -175,6 +175,43 @@ function goHomeWeek() {
   advanceWeek();
 }
 
+// Local club tournament: a cheap week at home when you can't (or don't want to) travel. Three quick rounds against
+// local players, a small prize, no ranking points. You stay match-sharp and pick up a little from the matches.
+const CLUB_PRIZE = [100, 250, 450, 750]; // by matches won (all three: the title)
+function clubHtml(c, p) {
+  return `<div class="gohome"><div><b>🎾 Local Club Tournament</b><small>Three rounds at the local club, no travel and no ranking points. ` +
+    `Win up to ${money(CLUB_PRIZE[3])}, stay match-sharp and learn a little from every match.</small></div>` +
+    `<button type="button" class="btn small" id="clubGo">Play It</button></div>`;
+}
+function clubTournament() {
+  const c = current.career, p = current.player, rng = Math.random;
+  const ev = { tier: 'M15', surface: p.fav || 'hard', indoor: false, weather: 'sunny', nation: c.location || p.nation, city: 'Local Club' };
+  const weakest = () => Object.entries(p.attrs).sort((a, b) => a[1] - b[1]).slice(0, 2).map(x => x[0]);
+  let wins = 0, played = 0;
+  const scores = [];
+  for (let r = 0; r < 3; r++) {
+    const o = generateOpponent(ev.nation, 'M15', rng, r - 3); // local players, a little below Futures level, tougher each round
+    const m = newMatch(0, 1, rng);
+    playMatch(m, [{ ...p, isPlayer: true, attrs: { ...p.attrs } }, o], ev, rng);
+    played++;
+    scores.push(`${m.winner === 0 ? 'W' : 'L'} ${scoreLine(m, 0)}`);
+    for (const k of weakest()) applyGain(p.attrs, k, 0.004); // a little from every match (it's not the tour)
+    if (m.winner !== 0) break;
+    wins++;
+  }
+  const prize = CLUB_PRIZE[wins];
+  earn(c, prize, wins === 3 ? 'Local club tournament (winner)' : 'Local club tournament');
+  c.clubWeek = c.week;
+  c.rust = Math.max(0, (c.rust || 0) - 2 * RUST_STEP);
+  p.fatigue = clamp((p.fatigue || 0) + 8 * played, 0, 100);
+  p.playstyle = styleOf(p).name;
+  c.notice = `🎾 Local club tournament: ${wins === 3 ? 'you won it! 🏆' : `you won ${wins} match${wins === 1 ? '' : 'es'}.`} (${scores.join(' · ')}) ` +
+    `Prize: ${money(prize)}. You stayed match-sharp.`;
+  writeJSON(SAVE_KEY, p);
+  writeJSON(CAREER_KEY, c);
+  advanceWeek();
+}
+
 // A week of rehab: no events, no training, lots of rest.
 function rehabWeek() {
   const c = current.career, p = current.player;

@@ -360,7 +360,7 @@ function renderTournaments(player) {
     `<div class="evpanel" hidden></div></div>`
   ).join('') : `<p class="hint">${next ? 'Next week is the off-season: no events.' : 'No events this week.'}</p>`) +
     (next ? '<p class="hint">You can travel early to one of these from your free days after this week\'s event, for bigger practice gains and a comfort boost.</p>'
-      : goHomeHtml(c, current.player) + clubHtml(c, current.player) + (growthBlock(c, current.player) ? '' : `<button type="button" class="link" id="trainWeek">Skip The Tournaments And Take A Training Week</button>`));
+      : goHomeHtml(c, current.player) + clubHtml(c, current.player, evs, rank) + (growthBlock(c, current.player) ? '' : `<button type="button" class="link" id="trainWeek">Skip The Tournaments And Take A Training Week</button>`));
   $('eventsTitle').querySelector('.wktabs').onclick = e => { const b = e.target.closest('[data-wk]'); if (b) { homeWeekTab = b.dataset.wk; renderTournaments(player); } };
   // Enter / Qualifying / Preview open a panel with your chances; the panel's button confirms.
   box.onclick = e => {
@@ -383,7 +383,7 @@ function renderTournaments(player) {
   };
   if ($('trainWeek')) $('trainWeek').onclick = () => startDowntime(6, c.location || current.player.nation, 'Training week');
   if ($('goHome')) $('goHome').onclick = () => goHomeWeek();
-  if ($('clubGo')) $('clubGo').onclick = () => clubTournament();
+  if ($('clubGo')) $('clubGo').onclick = () => enterEvent(clubEvent(c, current.player), true, 'main'); // local: no travel or hotel to pay
 }
 
 // Your default plan (Home). Each tournament starts with a copy of it, which you can change for that week.
@@ -787,8 +787,8 @@ function finishEvent() {
   if (prize) earn(c, prize, `Prize money, ${ev.city}`);
   c.wins += won;
   c.losses += entry.matches.length - won;
-  if (entry.result.reached === ROUND_NAMES.length) c.titles.push({ week: c.week, event: ev.id, city: ev.city, tier: ev.tier });
-  c.history.push({
+  if (entry.result.reached === ROUND_NAMES.length && ev.tier !== 'CLUB') c.titles.push({ week: c.week, event: ev.id, city: ev.city, tier: ev.tier });
+  c.history.push({ club: ev.tier === 'CLUB' || undefined,
     week: c.week, event: ev.id, city: ev.city, nation: ev.nation, tier: ev.tier, surface: ev.surface,
     reached: entry.result.reached < 0 ? `Q${entry.result.qualRound}` : entry.result.reached === ROUND_NAMES.length ? 'W' : ROUND_NAMES[entry.result.reached],
     points: entry.result.points, matches: entry.matches, prize,

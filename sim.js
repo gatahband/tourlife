@@ -39,6 +39,8 @@ const TIERS = {
   ATP250: { label: 'ATP 250',    name: 'ATP 250',        level: 73.5, sd: 4,   prize: '$650,000', points: [0, 25, 50, 100, 165, 250],   main: 110, qual: 200, home: 0.12, qRounds: 2, qPoints: 12 },
   ATP500: { label: 'ATP 500',    name: 'ATP 500',        level: 76, sd: 4,   prize: '$2.1M',    points: [0, 50, 100, 200, 330, 500],  main: 70,  qual: 140, home: 0.1,  qRounds: 2, qPoints: 20 },
   M1000:  { label: 'Masters',    name: 'Masters 1000',   level: 78.5, sd: 3.5, prize: '$8.9M',    points: [10, 100, 200, 400, 650, 1000], main: 50, qual: 110, home: 0.1, qRounds: 2, qPoints: 25 },
+  // A local club event: open to anyone, no ranking points, a small prize. Offered only when no tour event is affordable.
+  CLUB:   { label: 'Club',       name: 'Local Club Tournament', level: 41, sd: 5, prize: '$750', points: [0, 0, 0, 0, 0, 0], main: null, qual: null, home: 1 },
   GS:     { label: 'Grand Slam', name: 'Grand Slam',     level: 80, sd: 3.5, prize: '$50M',     points: [50, 200, 400, 800, 1300, 2000], main: 104, qual: 230, home: 0.08, qRounds: 3, qPoints: 25 },
 };
 const TIER_ORDER = ['GS', 'M1000', 'ATP500', 'ATP250', 'CH125', 'CH75', 'M25', 'M15'];

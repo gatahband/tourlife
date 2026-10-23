@@ -26,7 +26,7 @@ const BADGES = [
   { id: 'top10', icon: '🔟', name: 'Top 10', desc: 'Reach the top 10.', career: c => (c.bestRank || 9999) <= 10 },
   { id: 'no1', icon: '🌍', name: 'World No. 1', desc: 'Reach No. 1 in the world.', career: c => c.bestRank === 1 },
   { id: 'million', icon: '💰', name: 'Millionaire', desc: 'Earn $1,000,000 in prize money.', career: c => c.history.reduce((a, h) => a + (h.prize || 0), 0) >= 1e6 },
-  { id: 'final', icon: '🎗️', name: 'Finalist', desc: 'Reach the final of any tournament.', career: c => c.history.some(h => !h.real && (h.reached === 'F' || h.reached === 'W')) },
+  { id: 'final', icon: '🎗️', name: 'Finalist', desc: 'Reach the final of any tournament.', career: c => c.history.some(h => !h.real && !h.club && (h.reached === 'F' || h.reached === 'W')) },
   { id: 'bigfinal', icon: '🎖️', name: 'Big-Stage Finalist', desc: 'Reach a Masters 1000 or Grand Slam final.', career: c => c.history.some(h => !h.real && ['M1000', 'GS'].includes(h.tier) && (h.reached === 'F' || h.reached === 'W')) },
   { id: 'perfect_clay', icon: '🧱', name: 'King of Clay', desc: 'A perfect season on clay: no losses, at least 10 wins.', career: c => perfectSeason(c, 'clay') },
   { id: 'perfect_grass', icon: '🌿', name: 'Lord of the Lawns', desc: 'A perfect season on grass: no losses, at least 10 wins.', career: c => perfectSeason(c, 'grass') },

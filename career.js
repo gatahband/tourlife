@@ -5,7 +5,7 @@
 
 const START_MONEY = 6000;
 // Winner's cheque per tier; earlier rounds get a share of it (R32 out, R16 out, QF, SF, F, W).
-const WIN_CHEQUE = { M15: 2160, M25: 3600, CH75: 11000, CH125: 18000, ATP250: 100000, ATP500: 400000, M1000: 1000000, GS: 3000000 };
+const WIN_CHEQUE = { CLUB: 750, M15: 2160, M25: 3600, CH75: 11000, CH125: 18000, ATP250: 100000, ATP500: 400000, M1000: 1000000, GS: 3000000 };
 const ROUND_SHARE = [0.06, 0.1, 0.18, 0.32, 0.55, 1];
 const QUAL_SHARE = 0.035;
 // Your team, paid weekly. Better (pricier) staff do more; you can change level any week.
@@ -43,7 +43,7 @@ const TEAM = {
 const TRAVELLERS = ['coach', 'physio', 'fitness', 'mental', 'hitting', 'stringer'];
 const AGENT_CUT = 0.12, AGENT_BOOST = 1.35;
 // Hotel and food for a tournament week. Bigger events put main-draw players up; qualifiers pay their own way.
-const LIVING = { M15: 350, M25: 400, CH75: 250, CH125: 250, ATP250: 150, ATP500: 150, M1000: 150, GS: 150 };
+const LIVING = { CLUB: 0, M15: 350, M25: 400, CH75: 250, CH125: 250, ATP250: 150, ATP500: 150, M1000: 150, GS: 150 };
 const QUAL_LIVING = 250;
 const FLIGHTS = [100, 450, 1100]; // same country, same region, another continent
 
@@ -175,41 +175,18 @@ function goHomeWeek() {
   advanceWeek();
 }
 
-// Local club tournament: a cheap week at home when you can't (or don't want to) travel. Three quick rounds against
-// local players, a small prize, no ranking points. You stay match-sharp and pick up a little from the matches.
-const CLUB_PRIZE = [100, 250, 450, 750]; // by matches won (all three: the title)
-function clubHtml(c, p) {
-  return `<div class="gohome"><div><b>🎾 Local Club Tournament</b><small>Three rounds at the local club, no travel and no ranking points. ` +
-    `Win up to ${money(CLUB_PRIZE[3])}, stay match-sharp and learn a little from every match.</small></div>` +
-    `<button type="button" class="btn small" id="clubGo">Play It</button></div>`;
+// Local club tournament: when no tour event this week is affordable, a real event at your local club. It plays like
+// any other tournament (the draw, live matches, Match Reads), with a small prize and no ranking points.
+function clubEvent(c, p) {
+  const nation = c.location || p.nation;
+  return { id: `club-w${c.week}`, week: c.week, tier: 'CLUB', city: 'Local Club', nation, surface: p.fav || 'hard', indoor: false };
 }
-function clubTournament() {
-  const c = current.career, p = current.player, rng = Math.random;
-  const ev = { tier: 'M15', surface: p.fav || 'hard', indoor: false, weather: 'sunny', nation: c.location || p.nation, city: 'Local Club' };
-  const weakest = () => Object.entries(p.attrs).sort((a, b) => a[1] - b[1]).slice(0, 2).map(x => x[0]);
-  let wins = 0, played = 0;
-  const scores = [];
-  for (let r = 0; r < 3; r++) {
-    const o = generateOpponent(ev.nation, 'M15', rng, r - 3); // local players, a little below Futures level, tougher each round
-    const m = newMatch(0, 1, rng);
-    playMatch(m, [{ ...p, isPlayer: true, attrs: { ...p.attrs } }, o], ev, rng);
-    played++;
-    scores.push(`${m.winner === 0 ? 'W' : 'L'} ${scoreLine(m, 0)}`);
-    for (const k of weakest()) applyGain(p.attrs, k, 0.004); // a little from every match (it's not the tour)
-    if (m.winner !== 0) break;
-    wins++;
-  }
-  const prize = CLUB_PRIZE[wins];
-  earn(c, prize, wins === 3 ? 'Local club tournament (winner)' : 'Local club tournament');
-  c.clubWeek = c.week;
-  c.rust = Math.max(0, (c.rust || 0) - 2 * RUST_STEP);
-  p.fatigue = clamp((p.fatigue || 0) + 8 * played, 0, 100);
-  p.playstyle = styleOf(p).name;
-  c.notice = `🎾 Local club tournament: ${wins === 3 ? 'you won it! 🏆' : `you won ${wins} match${wins === 1 ? '' : 'es'}.`} (${scores.join(' · ')}) ` +
-    `Prize: ${money(prize)}. You stayed match-sharp.`;
-  writeJSON(SAVE_KEY, p);
-  writeJSON(CAREER_KEY, c);
-  advanceWeek();
+function clubHtml(c, p, evs, rank) {
+  const canGo = evs.some(e => { const el = eligibility(e, rank); return el !== 'locked' && tripCost(c, e, el) <= c.money; });
+  if (canGo) return '';
+  return `<div class="gohome"><div><b>🎾 Local Club Tournament</b><small>No tour event you can afford this week? Play the local club's tournament: a full draw, ` +
+    `played like any other event, with a prize of up to ${money(WIN_CHEQUE.CLUB)} and no ranking points. It keeps you match-sharp and earns Match Reads experience.</small></div>` +
+    `<button type="button" class="btn small" id="clubGo">Enter</button></div>`;
 }
 
 // A week of rehab: no events, no training, lots of rest.
@@ -252,7 +229,7 @@ function seasonStats(c, season) {
   const hs = c.history.filter(h => seasonOfWeek(h.week) === season);
   const wins = hs.reduce((a, h) => a + h.matches.filter(m => m.won).length, 0);
   const losses = hs.reduce((a, h) => a + h.matches.filter(m => !m.won).length, 0);
-  const titles = hs.filter(h => h.reached === 'W');
+  const titles = hs.filter(h => h.reached === 'W' && !h.club); // club wins aren't tour titles
   const prize = hs.reduce((a, h) => a + (h.prize || 0), 0);
   const order = ['Q1', 'Q2', 'Q3', 'R32', 'R16', 'QF', 'SF', 'F', 'W'];
   const best = [...hs].sort((a, b) => TITLE_LADDER.indexOf(b.tier) * 10 + order.indexOf(b.reached) - (TITLE_LADDER.indexOf(a.tier) * 10 + order.indexOf(a.reached)))[0];

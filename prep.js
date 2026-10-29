@@ -105,7 +105,7 @@ function prepHtml(entry, opp) {
       return `<div class="prepitem${got ? ' got' : ''}"><span class="ticon">${it.icon}</span><div><b>${it.name}</b><small>${it.desc}</small>` +
         (it.id === 'partner' ? `<select class="inp" id="prepPartner" ${got ? 'disabled' : ''}>${Object.entries(PARTNERS).map(([k, v]) =>
           `<option value="${k}" ${(pr.partner || guess) === k ? 'selected' : ''}>Plays like ${v.name}</option>`).join('')}</select>` : '') +
-        `</div><button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(cost)}</button></div>`;
+        `</div>${priceTip(`<button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(cost)}</button>`, cost, got, used, 1, `Price at ${(TIERS[ev.tier] || {}).name || ev.tier} level`)}</div>`;
     }).join('')}</div>` + pcHtml(entry, opp, used)) + `</div>`;
 }
 
@@ -123,8 +123,19 @@ function pcHtml(entry, opp, used) {
     return `<div class="prepitem pc${got ? ' got' : ''}"><span class="ticon">${it.icon}</span><div><b>${it.name}${it.slots > 1 ? ' <em class="slot2">2 slots</em>' : ''}</b><small>${it.desc}</small>` +
       (it.id === 'pcspar' ? `<select class="inp" id="pcSpar" ${got ? 'disabled' : ''}>${Object.entries(PARTNERS).map(([k, v]) => `<option value="${k}" ${(pr.spar || guess) === k ? 'selected' : ''}>Plays like ${v.name}</option>`).join('')}</select>` : '') +
       (it.id === 'pcbreak' ? `<select class="inp" id="pcStat" ${got ? 'disabled' : ''}>${ATTRS.map(([k, l]) => `<option value="${k}" ${pr.breakStat === k ? 'selected' : ''}>${l}</option>`).join('')}</select>` : '') +
-      `</div><button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(it.cost)}</button></div>`;
+      `</div>${priceTip(`<button type="button" class="btn small${got ? ' ghost' : ''}" data-prep="${it.id}" ${got || !can ? 'disabled' : ''}>${got ? '✓ Booked' : money(it.cost)}</button>`, it.cost, got, used, prepSlots(it), 'Same price at every event')}</div>`;
   }).join('')}</div>`;
+}
+
+// Hover (or tap) a price to see what it costs you: the bank before and after, slots left, and why it's greyed out.
+function priceTip(btn, cost, got, used, slots, note) {
+  const have = current.career.money, after = have - cost, row = (k, v, cls = '') => `<div class="ptrow${cls}"><span>${k}</span><b>${v}</b></div>`;
+  const noSlots = used !== null && used + slots > PREP_SLOTS;
+  const why = got ? '✓ Already booked for this week' : noSlots ? 'Not enough free slots' : after < 0 ? `You're ${money(-after)} short` : '';
+  const rows = got ? row('Paid', money(cost)) + row('In The Bank', money(have)) :
+    row('Cost', money(cost)) + row('In The Bank', money(have)) + row('After Booking', money(after), after < 0 ? ' neg' : ' total') +
+    (used === null ? '' : row('Slots', `Uses ${slots} · ${PREP_SLOTS - used} free`, noSlots ? ' neg' : ''));
+  return `<span class="pricewrap" tabindex="0">${btn}<span class="pricetip" role="tooltip">${rows}${why ? `<em class="ptwhy${got ? ' ok' : ''}">${why}</em>` : ''}<small>${note}</small></span></span>`;
 }
 
 // Between rounds (Performance Center): premium recovery, each one helping less.
@@ -132,7 +143,7 @@ function recoveryHtml(entry) {
   const pr = prepOf(entry), c = current.career, n = pr.rec || 0;
   if (!pcUnlocked(c) || !entry.matches.length || entry.result || n >= PC_RECOVERY.steps.length) return '';
   return `<div class="prepbox done pcrec"><b>🛁 Premium recovery treatment</b> <span>−${PC_RECOVERY.steps[n]} fatigue before your next match${n ? ' (each one this week helps less)' : ''}.</span>` +
-    `<button type="button" class="btn small" id="pcRec" ${c.money < PC_RECOVERY.cost ? 'disabled' : ''}>${money(PC_RECOVERY.cost)}</button></div>`;
+    priceTip(`<button type="button" class="btn small" id="pcRec" ${c.money < PC_RECOVERY.cost ? 'disabled' : ''}>${money(PC_RECOVERY.cost)}</button>`, PC_RECOVERY.cost, false, null, 0, `Treatment ${n + 1} of ${PC_RECOVERY.steps.length} this week`) + `</div>`;
 }
 
 function bindPrep(entry, rerender) {

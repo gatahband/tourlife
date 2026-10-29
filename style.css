@@ -1582,3 +1582,18 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .cpwork { display: grid; gap: 4px; } .cpwork > div { display: grid; grid-template-columns: 100px 1fr 40px; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
 .cpwork > div.on { color: var(--text); font-weight: 600; } .cpwork b { text-align: right; }
 .cpbar { height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; } .cpbar i { display: block; height: 100%; background: var(--grad); border-radius: 999px; }
+
+/* Prepare For The Week: hover (or tap) a price to see the bank before and after, and slots left. */
+.pricewrap { position: relative; display: inline-block; outline: none; }
+.pricetip { display: none; position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 30; width: 220px; padding: 10px 12px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0,0,0,.5); font-size: 13px; line-height: 1.4; text-align: left; white-space: normal; }
+.pricewrap:hover .pricetip, .pricewrap:focus-within .pricetip { display: block; }
+.ptrow { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; color: var(--muted); }
+.ptrow b { color: var(--text); font-weight: 700; display: inline; font-size: 13px; text-transform: none; }
+.ptrow.total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; } .ptrow.total b { color: var(--good); }
+.ptrow.neg { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; } .ptrow.neg b { color: var(--bad); }
+.ptrow.neg + .ptrow.neg { border-top: 0; margin-top: 0; padding-top: 2px; }
+.pricetip .ptwhy { display: block; margin-top: 6px; font-style: normal; font-weight: 600; color: #ffd60a; }
+.pricetip small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+.prepitem .pricewrap .btn:disabled { pointer-events: none; }
+.pricetip .ptwhy.ok { color: var(--good); }

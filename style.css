@@ -1729,3 +1729,15 @@ body.hofixed { overflow: hidden; }
 /* The decision's header sits on its own dark backing, so nothing drawn on the court shows through the words. */
 .callbox.ho .hohead { background: rgba(8, 10, 14, .9); padding: 6px 16px; border-radius: 12px; }
 .sgchips button { padding-left: 26px; padding-right: 8px; } /* room for the key number, so it never sits on the words */
+
+/* Cards or Swipes: a big, clear switch at the top of each decision. In Swipes the dealt cards aren't shown. */
+.hoplayas { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0, 0, 0, .55); border: 1.5px solid rgba(255, 255, 255, .2); width: min(360px, 100%); }
+.hoplayas button { min-height: 44px; border: 0; border-radius: 10px; background: none; color: #f5f5f7; font: 800 16px/1 system-ui, sans-serif; cursor: pointer; }
+.hoplayas button.on { background: #0a84ff; color: #fff; }
+.callbox.ho.held .hoplayas { display: none; }
+.hocards.sgchips { display: none; }
+
+.playas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.playas .btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 10px; height: auto; }
+.playas .btn span { font-size: 30px; } .playas .btn b { font-size: 20px; } .playas .btn small { font-size: 13px; font-weight: 500; opacity: .9; line-height: 1.3; }
+.playas .btn + .btn { margin: 0; }

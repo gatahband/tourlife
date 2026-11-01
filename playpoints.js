@@ -843,7 +843,8 @@ function hoUI(box, c, idle = {}) {
         let left = secs * 1000 * (hoSwipeOn() ? 1.3 : 1), total = left, last = performance.now(), held = false, eng = null, trail = null, bar = null;
         const cardsHtml = (cls = '') => `<div class="hocards${cls}" style="--n:${cards.length}">${cards.map((cd, i) => `<button type="button" data-ho="${i}"><kbd class="hokey">${i + 1}</kbd><span>${cd.icon}</span><b>${cd.title}</b>` +
           `${cd.sig ? `<small>Your Signature Shot</small>` : ''}${cd.readN >= 3 ? `<em>They're Reading This</em>` : ''}</button>`).join('')}</div>`;
-        const swap = `<button type="button" class="hoswap" data-swap="1">${hoSwipeOn() ? '🃏 Use Cards' : '✍️ Swipe Shots'}</button>`;
+        // Two ways to play, never both at once: tap cards, or draw swipes. A big switch at the top changes it.
+        const modeSwitch = sw => `<div class="hoplayas"><button type="button" data-swap="cards" class="${sw ? '' : 'on'}">🃏 Cards</button><button type="button" data-swap="swipe" class="${sw ? 'on' : ''}">✍️ Swipes</button></div>`;
         // The pad: serves are swiped towards the target; other shots are swung like your arm would, on the ball's side.
         const isServe = stage === 'serve' || stage === 'serve2', bs = hoBallSide(c), lefty = (c.ps[c.me].hand || 'right') === 'left';
         const swipePad = () => isServe
@@ -854,8 +855,8 @@ function hoUI(box, c, idle = {}) {
         const render = () => {
           if (eng) { eng.detach(); eng = null; } if (trail) { trail.remove(); trail = null; }
           const sw = hoSwipeOn();
-          box.innerHTML = head(STAGE[stage]) + (sit ? `<div class="hosit ${c.pos > 0 || c.st.open ? 'good' : c.pos < 0 || c.st.net === 'them' ? 'bad' : ''}">${sit}</div>` : '') + `<div class="hotimer"><i></i></div>` +
-            (sw ? swipePad() + cardsHtml(' sgchips') : cardsHtml()) + `<div class="horow">${swap}${sw && !isServe ? SETUP : ''}${PAUSE}</div>` + HELD;
+          box.innerHTML = head(STAGE[stage]) + modeSwitch(sw) + (sit ? `<div class="hosit ${c.pos > 0 || c.st.open ? 'good' : c.pos < 0 || c.st.net === 'them' ? 'bad' : ''}">${sit}</div>` : '') + `<div class="hotimer"><i></i></div>` +
+            (sw ? swipePad() + cardsHtml(' sgchips') : cardsHtml()) + `<div class="horow">${sw && !isServe ? SETUP : ''}${PAUSE}</div>` + HELD;
           bar = box.querySelector('.hotimer i'); bar.style.transition = 'transform .1s linear';
           if (!sw) return;
           const pad = box.querySelector('.sgpad'), live = box.querySelector('.sglive'), chips = [...box.querySelectorAll('.sgchips [data-ho]')];
@@ -911,7 +912,8 @@ function hoUI(box, c, idle = {}) {
         box.onclick = e => {
           if (e.target.closest('[data-pause]')) return pauseNow();
           if (e.target.closest('[data-setup]')) { pauseNow(); return hoSwipeSetup(() => render()); }
-          if (e.target.closest('[data-swap]')) { try { localStorage.setItem(HO_SWIPE_KEY, hoSwipeOn() ? '0' : '1'); } catch {} return render(); }
+          const sb = e.target.closest('[data-swap]');
+          if (sb) { const want = sb.dataset.swap === 'swipe'; if (want !== hoSwipeOn()) { try { localStorage.setItem(HO_SWIPE_KEY, want ? '1' : '0'); } catch {} render(); } return; }
           const b = e.target.closest('[data-ho]'); if (b) pick(cards[+b.dataset.ho]);
         };
         setKey(e => {
@@ -1085,6 +1087,7 @@ const HO_TUT_TIPS = {
   start: ['🎮', 'Play The Points', [
     'In Play The Points you play the key games of your match yourself, shot by shot. The rest of the match plays out on its own.',
     'In this practice match every game is yours, against an opponent at about your level. Nothing here counts for your career.',
+    'There are two ways to play: tap shot cards, or draw each shot with Swipes. You start with cards, then learn Swipes.',
     'When the match stops, it is your turn: pick a shot before the timer bar runs out. Tap ❚❚ Pause whenever you need a break.']],
   serve: ['🎾', 'Your Serve', ['Pick where to serve: out wide, into the body or down the T. Wide serves and serves down the T win more aces, but they are harder to land.']],
   hold: ['✊', 'Hold, Then Let Go', ['Serves are timed with the hold bar. Press and hold anywhere in the box (or hold Space). The bar only fills while you hold. Let go when it reaches the green.',
@@ -1095,10 +1098,11 @@ const HO_TUT_TIPS = {
   ring: ['⭕', 'Tap When The Rings Meet', ['Every shot apart from the serve is timed with the rings. Tap (or press Space) when the yellow ring sits inside the green.',
     'How well you hit it shows in the middle of the screen: Perfect, Okay or Mistimed. Better timing means better shots.']],
   swipeOn: ['✍️', 'Now Try Swipe Shots', [
-    'Instead of tapping a card, you can draw your shot. Swipe Shots is now switched on. Tap 🃏 Use Cards at any time to go back.',
+    'Instead of tapping a card, you can draw your shot. Swipes is now switched on. The Cards / Swipes switch at the top of the screen changes it at any time.',
     'Draw a shape from the key under the box: Flat, Topspin, Slice, Lob or Drop. The first shape of each goes down the line, the second goes crosscourt. Finish your stroke where the arrow points.',
     'Turn the stroke further to angle the ball more, and draw a longer trail to hit deeper. If the trail turns red, that stroke sends the ball out: keep your finger still for a moment to cancel it, then draw again.',
-    'If your strokes aren\'t read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape your own way.']],
+    'If your strokes aren\'t read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape your own way.',
+    'Next, a quick drill: draw a few shots and see how each one is read.']],
   swserve: ['🎾', 'Swiping Your Serve', ['Swipe up from the bottom of the box towards where you want the serve to land: out wide, into the body or down the T. The key under the box shows the three directions.',
     'Wide serves and serves down the T win more aces, but they are harder to land.']],
 };
@@ -1124,16 +1128,17 @@ async function hoTutBefore(stage) {
   const st = hoTutState(); if (!st) return;
   const serve = stage === 'serve' || stage === 'serve2';
   await hoTutTip('start');
-  if (!serve && !st.seen.swipeOn && st.seen.ring && st.n >= 6) { try { localStorage.setItem(HO_SWIPE_KEY, '1'); } catch {} await hoTutTip('swipeOn'); }
+  if (!serve && !st.seen.swipeOn && st.seen.ring && st.n >= 6) { try { localStorage.setItem(HO_SWIPE_KEY, '1'); } catch {} await hoTutTip('swipeOn'); await hoSwipeDrill(); }
   if (serve) await hoTutTip(hoSwipeOn() ? 'swserve' : 'serve');
   else await hoTutTip(stage === 'ret' ? 'ret' : 'rally');
   const s2 = hoTutState(); s2.n++; if (hoSwipeOn()) s2.ns = (s2.ns || 0) + 1; hoTutSave(s2);
-  if (s2.seen.swipeOn && s2.seen.hold && s2.ns >= 7 && !s2.seen.done) { s2.seen.done = 1; hoTutSave(s2); await hoTutDone(); }
+  if (s2.seen.swipeOn && s2.seen.hold && s2.seen.ret && s2.ns >= 7 && !s2.seen.done) { s2.seen.done = 1; hoTutSave(s2); await hoTutDone(); }
 }
 function hoTutDone() {
+  try { localStorage.setItem('tourlife.hoTutDone', '1'); } catch {}
   return new Promise(done => {
     openModal(`<div class="help welcome"><div class="helpicon">🏆</div><div class="newtag">Tutorial</div><h2 class="itop">You're Ready</h2>` +
-      `<p class="big">That is everything. In your own matches, choose 🎮 Play The Points before the first ball, and you will play the key games yourself.</p>` +
+      `<p class="big">That is everything. In your own matches, choose 🎮 Play The Points before the first ball, then Cards or Swipes, and you will play the key games yourself.</p>` +
       `<button type="button" class="btn huge" id="tuKeep">Keep Practising</button><button type="button" class="btn ghost" id="tuLeave">Leave The Tutorial</button></div>`, { onClose: () => done() });
     $('tuKeep').onclick = closeModal;
     $('tuLeave').onclick = () => hoTutLeave(true);
@@ -1141,7 +1146,9 @@ function hoTutDone() {
 }
 // Start it: your player (as they are now) against a computer player of about your level, on a hard court.
 function hoStartTutorial() {
-  const base = readJSON('tourlife.player'), career0 = readJSON('tourlife.career');
+  const base = readJSON(TL_NS + 'player'), career0 = readJSON(TL_NS + 'career'), fromTest = isTestMatch();
+  // From an admin test match: that match is put aside and comes back when you leave the tutorial.
+  if (fromTest) for (const k of ['player', 'career', 'entry']) { const v = localStorage.getItem('tourlife.test.' + k); if (v !== null) localStorage.setItem('tourlife.testbak.' + k, v); }
   if (!base || !career0) { toast('Make Your Player First', 'The tutorial uses your own player, so create one first.'); return; }
   const me = JSON.parse(JSON.stringify(base)), ovr = overall(me);
   Object.assign(me, { fatigue: 0, injury: null });
@@ -1159,8 +1166,7 @@ function hoStartTutorial() {
   const entry = { id, test: true, tutorial: true, event: ev, entrants: [you, opp], rounds: [[{ a: 0, b: 1 }]], live: null, matches: [], result: null, plan: planOf(me), acclimated: true };
   for (const [k, v] of [['player', me], ['career', career], ['entry', entry]]) localStorage.setItem('tourlife.test.' + k, JSON.stringify(v));
   let swipe = null; try { swipe = localStorage.getItem(HO_SWIPE_KEY); localStorage.setItem(HO_SWIPE_KEY, '0'); } catch {}
-  hoTutSave({ on: 1, seen: {}, n: 0, ns: 0, swipe });
-  try { localStorage.setItem('tourlife.hoTutAsked', '1'); } catch {}
+  hoTutSave({ on: 1, seen: {}, n: 0, ns: 0, swipe, back: fromTest ? 'test' : 'career' });
   localStorage.setItem('tourlife.mode', 'test');
   location.hash = '';
   location.reload();
@@ -1171,18 +1177,74 @@ function hoTutLeave(finished) {
   try { if (st.swipe === null || st.swipe === undefined) localStorage.removeItem(HO_SWIPE_KEY); else localStorage.setItem(HO_SWIPE_KEY, st.swipe); } catch {}
   if (finished) try { localStorage.setItem('tourlife.hoTutDone', '1'); } catch {}
   for (const k of Object.keys(localStorage)) if (k.startsWith('tourlife.test.')) localStorage.removeItem(k);
-  localStorage.setItem('tourlife.mode', 'player');
+  // Back to the admin test match it was started from, or to your career.
+  const back = st.back === 'test' && localStorage.getItem('tourlife.testbak.entry');
+  for (const k of Object.keys(localStorage)) if (k.startsWith('tourlife.testbak.')) { if (back) localStorage.setItem('tourlife.test.' + k.slice(17), localStorage.getItem(k)); localStorage.removeItem(k); }
+  localStorage.setItem('tourlife.mode', back ? 'test' : 'player');
   location.hash = '';
   location.reload();
 }
-// The first time you pick Play The Points in a real match: offer the tutorial (once).
-function hoTutOffer(play) {
-  let asked = false; try { asked = !!localStorage.getItem('tourlife.hoTutAsked') || !!localStorage.getItem('tourlife.hoTutDone'); } catch {}
-  if (asked || isTestMatch()) return play();
-  try { localStorage.setItem('tourlife.hoTutAsked', '1'); } catch {}
-  openModal(`<div class="help welcome"><div class="helpicon">🎓</div><h2 class="itop">First Time Playing The Points?</h2>` +
-    `<p class="big">A short practice match shows you how it works, with your own player. It doesn't count for your career, and this match will wait for you.</p>` +
-    `<button type="button" class="btn huge" id="tuGo">🎓 Take The Tutorial</button><button type="button" class="btn ghost" id="tuSkip">Play This Match Now</button></div>`);
+// Before your next match (once per device, on a computer or tablet): the tutorial, which you can't skip. Play The
+// Points is new, and nobody should meet it for the first time in a match that counts.
+const hoTutNeeded = () => { try { return playPointsOn() && !hoTutOn() && !localStorage.getItem('tourlife.hoTutDone') && !(typeof isCoachMode === 'function' && isCoachMode()); } catch { return false; } };
+function hoTutRequired() {
+  openModal(`<div class="help welcome"><div class="helpicon">🎓</div><div class="newtag">New</div><h2 class="itop">Before Your Next Match</h2>` +
+    `<p class="big">There is a new way to play: Play The Points. You play the key games yourself, shot by shot, by tapping shot cards or by drawing each shot.</p>` +
+    `<p>A short practice match with your own player shows you how it all works. It doesn't count for your career, and this match will wait for you.</p>` +
+    `<button type="button" class="btn huge" id="tuGo">🎓 Start The Tutorial</button></div>`);
   $('tuGo').onclick = () => { closeModal(); hoStartTutorial(); };
-  $('tuSkip').onclick = () => { closeModal(); play(); };
+}
+// Picking Play The Points: cards or swipes, two different ways to play (you can switch during the match).
+function hoPlayAs(play) {
+  openModal(`<div class="help welcome"><div class="helpicon">🎮</div><h2 class="itop">How Do You Want To Play The Points?</h2>` +
+    `<div class="playas"><button type="button" class="btn huge" data-as="0"><span>🃏</span><b>Cards</b><small>Tap a shot card, then time your shot.</small></button>` +
+    `<button type="button" class="btn huge" data-as="1"><span>✍️</span><b>Swipes</b><small>Draw each shot with your finger or mouse, then time it.</small></button></div></div>`);
+  $('sheet').querySelectorAll('[data-as]').forEach(b => { b.onclick = () => { try { localStorage.setItem(HO_SWIPE_KEY, b.dataset.as); } catch {} closeModal(); play(); }; });
+}
+
+// The tutorial's swipe drill: draw the shot it asks for, on the forehand, and see how it's read. Then one sent
+// out on purpose, to see the trail turn red.
+const HO_DRILL = [['flat', 'fwd'], ['topspin', 'cross'], ['slice', 'fwd'], ['lob', 'cross'], ['drop', 'fwd'], ['flat', 'out']];
+const hoShapeSvg = (w, t, d, lefty) => { const own = SG_NORM[`${w}.${t}.${d}`], P = own && own.own ? own[0] : SG_SHAPES[w][t][d];
+  const N = sgNorm(P, 24).map(p => ({ x: 20 + (lefty ? -p.x : p.x) * 30, y: 20 + p.y * 30 }));
+  return `<svg viewBox="0 0 40 40"><path d="M${N.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L')} ${hoArrowHead(N[N.length - 1], N[N.length - 4])}"/></svg>`; };
+function hoSwipeDrill() {
+  const lefty = ((readJSON(TL_NS + 'player') || {}).hand || 'right') === 'left';
+  const NAME = { flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' };
+  const out = k => k > 1.93 || k < -0.92; // past the sideline (see hoSwipeAim)
+  let i = 0, tries = 0, eng = null, trail = null;
+  return new Promise(done => {
+    const stop = () => { if (eng) { eng.detach(); eng = null; } };
+    const step = () => {
+      stop();
+      if (i >= HO_DRILL.length) {
+        $('sheet').querySelector('.sgsetup').innerHTML = `<p class="big">Well drawn. Now play some points with Swipes: draw your shot, then time it with the rings as before.</p><button type="button" class="btn huge" id="drDone">Back To The Match</button>`;
+        $('drDone').onclick = closeModal; return;
+      }
+      const [t, d] = HO_DRILL[i], last = d === 'out';
+      $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length} · Ball On Your Forehand</p>` +
+        `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, last ? 'cross' : d, lefty)}<i>${last ? '↖↖' : d === 'fwd' ? '↑' : '↖'}</i></span></div>` +
+        `<b>${last ? 'Flat Crosscourt, Angled Out' : `${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}`}</b></div>` +
+        `<p class="hint">${last ? 'Draw the Flat crosscourt shape, but turn it much further across until the trail turns red. Then let go.' : 'Draw this shape, finishing where the arrow points.'}</p>` +
+        `<div class="sgpad" id="drPad"><div class="sglive" id="drOut">Draw Here</div></div>` +
+        (tries >= 2 ? `<button type="button" class="btn small ghost" id="drSkip">Skip This One</button>` : '');
+      if ($('drSkip')) $('drSkip').onclick = () => { i++; tries = 0; step(); };
+      const el = $('drPad'); trail = new SwipeTrail(el);
+      eng = new StrokeGestureEngine(el, {
+        move: (g, pts) => trail.set(pts, g && g.len >= 0.2 && !g.unclear && out(g.cross) ? '#ff3b30' : '#f5f5f7'),
+        cancel: () => trail.set([]),
+        commit: (g, pts) => {
+          const dir = g.cross >= 0.65 ? 'Crosscourt' : g.cross <= 0.35 ? 'Down The Line' : 'Down The Middle', isOut = out(g.cross);
+          const said = g.unclear ? 'Not A Clear Shot' : `${SG_TYPES[g.base].label} · ${isOut ? 'Out Wide' : dir}`;
+          const ok = !g.unclear && (last ? isOut : g.base === t && !isOut && (d === 'fwd' ? g.cross <= 0.35 : g.cross >= 0.65));
+          trail.set(pts, ok ? '#3dff6e' : '#ff3b30'); trail.done();
+          $('drOut').textContent = ok ? `✅ ${said}` : `That read as: ${said}. Try again.`;
+          $('drOut').classList.toggle('out', !ok);
+          if (ok) { i++; tries = 0; setTimeout(step, 900); } else { tries++; if (tries === 2) setTimeout(step, 1200); }
+        },
+      }, { wing: 'fh', lefty }).attach();
+    };
+    openModal(`<h2 class="itop">✍️ Swipe Drill</h2><div class="sgsetup"></div>`, { onClose: () => { stop(); done(); } });
+    step();
+  });
 }

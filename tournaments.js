@@ -1773,9 +1773,12 @@ function renderMatch() {
         $('mx').onclick = closeModal;
       };
       if ($('mTut')) $('mTut').onclick = () => hoStartTutorial();
+      if (typeof hoTutNeeded === 'function' && hoTutNeeded()) setTimeout(hoTutRequired, 300); // stopped before the first ball
       $('mActions').querySelectorAll('[data-mode]').forEach(b => {
         b.onclick = () => {
-          if (b.dataset.mode === 'play' && typeof hoTutOffer === 'function' && !b.__offered) { b.__offered = 1; return hoTutOffer(() => b.onclick()); }
+          // Play The Points is new: the tutorial comes first (once), and then you choose Cards or Swipes.
+          if (typeof hoTutNeeded === 'function' && hoTutNeeded()) return hoTutRequired();
+          if (b.dataset.mode === 'play' && !b.__as && typeof hoPlayAs === 'function' && !hoTutOn()) { b.__as = 1; return hoPlayAs(() => b.onclick()); }
           entry.live.mode = b.dataset.mode;
           writeJSON(ENTRY_KEY, entry);
           if (liveMode(entry.live.mode)) watchMatch();

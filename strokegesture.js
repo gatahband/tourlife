@@ -20,7 +20,7 @@ const SG_TYPES = {
 };
 // The thresholds, in pad heights (U) and seconds. Tuned on drawn test strokes (tools/stroke-check.js); real hands vary,
 // so they're generous and all in one place.
-const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.26, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: 1.18, cancelMs: 700, margin: 0.015 };
+const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.26, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: [1.22, 1.4], cancelMs: 700, margin: 0.015 };
 
 const sgAng = (x, y) => Math.atan2(x, y) * 180 / Math.PI; // 0 = straight up the screen, + = to the right
 const sgWrap = a => ((a + 540) % 360) - 180;
@@ -66,14 +66,16 @@ const sgDist = (A, B) => A.reduce((s, p, i) => s + Math.hypot(p.x - B[i].x, p.y 
 const SG_NORM = {}; // per wing.shot.direction: the shapes to match, normalised (your own drawings, or the sheet's)
 // The heading the end of a path is going (0 = up the screen, 90 = right; clockwise is +).
 const sgHead = N => { const a = N[Math.floor(N.length * 0.6)], z = N[N.length - 1]; return Math.atan2(z.x - a.x, a.y - z.y) * 180 / Math.PI; };
-// How round the wind-up before a stroke's final straight line is: its length over the distance it covers (a straight
-// flag ≈ 1, a hook well over).
+// How round the wind-up is: the path from the start to the corner (the point furthest from the start–end line),
+// over the straight distance between them. A flat's straight flag ≈ 1; a slice's hook well over. Smoothed first, so
+// a shaky hand doesn't make a straight flag look curly.
 function sgWindup(N) {
-  const z = N[N.length - 1], off = k => { const a = N[k], dx = z.x - a.x, dy = z.y - a.y, L = Math.hypot(dx, dy) || 1;
-    let m = 0; for (let i = k; i < N.length; i++) m = Math.max(m, Math.abs((N[i].x - a.x) * dy - (N[i].y - a.y) * dx) / L); return m; };
-  let k = 0; while (k < N.length * 0.6 && off(k) > 0.05) k++;
-  let wl = 0; for (let i = 1; i <= k; i++) wl += Math.hypot(N[i].x - N[i - 1].x, N[i].y - N[i - 1].y);
-  return wl / Math.max(0.02, Math.hypot(N[k].x - N[0].x, N[k].y - N[0].y));
+  const S = N.map((p, i) => { let x = 0, y = 0, n = 0; for (let j = Math.max(0, i - 2); j <= Math.min(N.length - 1, i + 2); j++) { x += N[j].x; y += N[j].y; n++; } return { x: x / n, y: y / n }; });
+  const a = S[0], z = S[S.length - 1], dx = z.x - a.x, dy = z.y - a.y, L = Math.hypot(dx, dy) || 1;
+  let k = 0, far = -1;
+  for (let i = 0; i < S.length * 0.7; i++) { const d = Math.abs((S[i].x - a.x) * dy - (S[i].y - a.y) * dx) / L; if (d > far) { far = d; k = i; } }
+  let wl = 0; for (let i = 1; i <= k; i++) wl += Math.hypot(S[i].x - S[i - 1].x, S[i].y - S[i - 1].y);
+  return wl / Math.max(0.02, Math.hypot(S[k].x - a.x, S[k].y - a.y));
 }
 const SG_HEAD = {}, SG_FWDH = {}; // per wing.shot: degrees of turn from forward to cross (signed), and forward's heading
 // Your own drawings (Set Up My Swipes): a right-handed forehand, two of each shape, kept on this device. When there,
@@ -216,7 +218,8 @@ class StrokeGestureEngine {
     // With the sheet's shapes, flat and slice overlap in angle, so the wind-up tells them apart: a flat is a "1"
     // (a straight flag into a sharp corner), a slice a hook. Your own drawings don't need it.
     const own = SG_NORM[`${w}.flat.fwd`].own && SG_NORM[`${w}.slice.fwd`].own;
-    if (!own && (best.type === 'flat' || best.type === 'slice')) best = by[sgWindup(N) >= SG_TUNE.hook ? 'slice' : 'flat'];
+    // (Clearly straight or clearly hooked decides it; in between, the closer shape does.)
+    if (!own && (best.type === 'flat' || best.type === 'slice')) { const wu = sgWindup(N); if (wu < SG_TUNE.hook[0]) best = by.flat; else if (wu > SG_TUNE.hook[1]) best = by.slice; }
     // Not clearly one shot (too far from every shape, or almost as close to another one): it isn't played; draw again.
     const next = ranked.find(r => r.type !== best.type);
     const fs = r => r.type === 'flat' || r.type === 'slice', split = !own && next && fs(best) && fs(next); // (settled by the wind-up)

@@ -1207,9 +1207,9 @@ function hoPlayAs(play) {
   $('sheet').querySelectorAll('[data-as]').forEach(b => { b.onclick = () => { try { localStorage.setItem(HO_SWIPE_KEY, b.dataset.as); } catch {} closeModal(); play(); }; });
 }
 
-// The tutorial's swipe drill: draw the shot it asks for, on the forehand, and see how it's read. Then one sent
-// out on purpose, to see the trail turn red.
-const HO_DRILL = [['flat', 'fwd'], ['topspin', 'cross'], ['slice', 'fwd'], ['lob', 'cross'], ['drop', 'fwd'], ['flat', 'out']];
+// The tutorial's swipe drill: draw the shot it asks for, on the forehand, and see how it's read. Close enough
+// counts: the right shot, and on the right side of halfway between down the line and crosscourt.
+const HO_DRILL = [['flat', 'fwd'], ['topspin', 'cross'], ['slice', 'fwd'], ['lob', 'cross'], ['drop', 'fwd'], ['flat', 'cross']];
 const hoShapeSvg = (w, t, d, lefty) => { const own = SG_NORM[`${w}.${t}.${d}`], P = own && own.own ? own[0] : SG_SHAPES[w][t][d];
   const N = sgNorm(P, 24).map(p => ({ x: 20 + (lefty ? -p.x : p.x) * 30, y: 20 + p.y * 30 }));
   return `<svg viewBox="0 0 40 40"><path d="M${N.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L')} ${hoArrowHead(N[N.length - 1], N[N.length - 4])}"/></svg>`; };
@@ -1226,11 +1226,11 @@ function hoSwipeDrill() {
         $('sheet').querySelector('.sgsetup').innerHTML = `<p class="big">Well drawn. Now play some points with Swipes: draw your shot, then time it with the rings as before.</p><button type="button" class="btn huge" id="drDone">Back To The Match</button>`;
         $('drDone').onclick = closeModal; return;
       }
-      const [t, d] = HO_DRILL[i], last = d === 'out';
+      const [t, d] = HO_DRILL[i];
       $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length}</p>` +
-        `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, last ? 'cross' : d, lefty)}<i>${last ? '↖↖' : d === 'fwd' ? '↑' : '↖'}</i></span></div>` +
-        `<b>${last ? 'Flat Crosscourt, Angled Out' : `${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}`}</b></div>` +
-        `<p class="hint">${last ? 'Draw the Flat crosscourt shape, but turn it much further across until the trail turns red. Then let go.' : 'Draw this shape, finishing where the arrow points.'}</p>` +
+        `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, d, lefty)}<i>${d === 'fwd' ? '↑' : lefty ? '↗' : '↖'}</i></span></div>` +
+        `<b>${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}</b></div>` +
+        `<p class="hint">Draw this shape, finishing where the arrow points. It doesn't have to be perfect: close enough counts.</p>` +
         `<div class="sgpad ${lefty ? 'bl' : 'br'}" id="drPad">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive" id="drOut">Draw Here</div></div>` +
         (tries >= 2 ? `<button type="button" class="btn small ghost" id="drSkip">Skip This One</button>` : '');
       if ($('drSkip')) $('drSkip').onclick = () => { i++; tries = 0; step(); };
@@ -1239,9 +1239,9 @@ function hoSwipeDrill() {
         move: (g, pts) => trail.set(pts, g && g.len >= 0.2 && !g.unclear && out(g.cross) ? '#ff3b30' : '#f5f5f7'),
         cancel: () => trail.set([]),
         commit: (g, pts) => {
-          const dir = g.cross >= 0.65 ? 'Crosscourt' : g.cross <= 0.35 ? 'Down The Line' : 'Down The Middle', isOut = out(g.cross);
-          const said = g.unclear ? 'Not A Clear Shot' : `${SG_TYPES[g.base].label} · ${isOut ? 'Out Wide' : dir}`;
-          const ok = !g.unclear && (last ? isOut : g.base === t && !isOut && (d === 'fwd' ? g.cross <= 0.35 : g.cross >= 0.65));
+          const dir = g.cross >= 0.5 ? 'Crosscourt' : 'Down The Line', isOut = out(g.cross);
+          const said = g.unclear ? 'Not A Clear Shot' : `${SG_TYPES[g.base].label} · ${dir}${isOut ? ' (Out Wide)' : ''}`;
+          const ok = !g.unclear && g.base === t && (d === 'fwd' ? g.cross < 0.5 : g.cross >= 0.5);
           trail.set(pts, ok ? '#3dff6e' : '#ff3b30'); trail.done();
           $('drOut').textContent = ok ? `✅ ${said}` : `That read as: ${said}. Try again.`;
           $('drOut').classList.toggle('out', !ok);

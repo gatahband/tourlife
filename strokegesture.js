@@ -20,7 +20,7 @@ const SG_TYPES = {
 };
 // The thresholds, in pad heights (U) and seconds. Tuned on drawn test strokes (tools/stroke-check.js); real hands vary,
 // so they're generous and all in one place.
-const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.26, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: [1.22, 1.4], cancelMs: 700, margin: 0.015 };
+const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.23, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: [1.22, 1.4], bend: [0.45, 0.6, 135], cancelMs: 700, margin: 0.015 };
 
 const sgAng = (x, y) => Math.atan2(x, y) * 180 / Math.PI; // 0 = straight up the screen, + = to the right
 const sgWrap = a => ((a + 540) % 360) - 180;
@@ -76,6 +76,17 @@ function sgWindup(N) {
   for (let i = 0; i < S.length * 0.7; i++) { const d = Math.abs((S[i].x - a.x) * dy - (S[i].y - a.y) * dx) / L; if (d > far) { far = d; k = i; } }
   let wl = 0; for (let i = 1; i <= k; i++) wl += Math.hypot(S[i].x - S[i - 1].x, S[i].y - S[i - 1].y);
   return wl / Math.max(0.02, Math.hypot(S[k].x - a.x, S[k].y - a.y));
+}
+// How the stroke turns: total turning (degrees) and the most of it inside any short stretch (a sixth of the stroke).
+// A flat is one sharp corner between straight lines (nearly all its turning in one place); a topspin curves smoothly
+// all the way round (its turning spread out). Smoothed first, so a shaky hand isn't a corner.
+function sgBend(N0) {
+  const N = sgNorm(N0, 24), S = N.map((p, i) => { let x = 0, y = 0, n = 0; for (let j = Math.max(0, i - 2); j <= Math.min(N.length - 1, i + 2); j++) { x += N[j].x; y += N[j].y; n++; } return { x: x / n, y: y / n }; });
+  // Signed turning, so a wobble one way and back cancels out.
+  const d = []; for (let i = 2; i < S.length; i++) d.push(sgWrap(sgAng(S[i].x - S[i - 1].x, S[i - 1].y - S[i].y) - sgAng(S[i - 1].x - S[i - 2].x, S[i - 2].y - S[i - 1].y)));
+  const total = Math.abs(d.reduce((a, b) => a + b, 0)), w = 4;
+  let peak = 0; for (let i = 0; i + w <= d.length; i++) peak = Math.max(peak, Math.abs(d.slice(i, i + w).reduce((a, b) => a + b, 0)));
+  return { total, peak, share: peak / Math.max(1, total) };
 }
 const SG_HEAD = {}, SG_FWDH = {}; // per wing.shot: degrees of turn from forward to cross (signed), and forward's heading
 // Your own drawings (Set Up My Swipes): a right-handed forehand, two of each shape, kept on this device. When there,
@@ -221,10 +232,19 @@ class StrokeGestureEngine {
     const own = SG_NORM[`${w}.flat.fwd`].own && SG_NORM[`${w}.slice.fwd`].own;
     // (Clearly straight or clearly hooked decides it; in between, the closer shape does.)
     if (!own && (best.type === 'flat' || best.type === 'slice') && by.flat && by.slice && Math.abs(by.flat.dist - by.slice.dist) < 0.03) { const wu = sgWindup(N); if (wu < SG_TUNE.hook[0]) best = by.flat; else if (wu > SG_TUNE.hook[1]) best = by.slice; }
+    // Flat or topspin is settled by how the stroke bends, never by a near-fit of the wrong shape: a smooth curve
+    // isn't a flat, and a sharp corner between straight lines isn't a topspin. If the other one doesn't fit either,
+    // it's not clear (draw again) rather than the wrong shot.
+    let bendBad = false;
+    if (best.type === 'flat' || best.type === 'topspin') {
+      const b = sgBend(N), smooth = b.share < SG_TUNE.bend[0] && b.total > 100 || b.total > SG_TUNE.bend[2] /* a flat only turns about 90° */, corner = b.share > SG_TUNE.bend[1] && b.peak > 60;
+      const want = best.type === 'flat' && smooth ? 'topspin' : best.type === 'topspin' && corner ? 'flat' : null;
+      if (want) { if (by[want] && by[want].dist <= SG_TUNE.fitBad) best = by[want]; else bendBad = true; }
+    }
     // Not clearly one shot (too far from every shape, or almost as close to another one): it isn't played; draw again.
     const next = ranked.find(r => r.type !== best.type);
     const fs = r => r.type === 'flat' || r.type === 'slice', split = !own && next && fs(best) && fs(next) && next.dist - best.dist < 0.03; // (settled by the wind-up)
-    best.unclear = best.dist > SG_TUNE.fitBad || (!!next && !split && next.dist - best.dist < SG_TUNE.margin);
+    best.unclear = bendBad || best.dist > SG_TUNE.fitBad || (!!next && !split && next.dist - best.dist < SG_TUNE.margin);
     // The angle: how far the stroke's end is turned from your forward shape's (your cross shape = 1), and on past it.
     const D = SG_HEAD[`${best.ow}.${best.type}`];
     best.cross = Math.abs(D) >= 12 ? sgWrap(sgHead(N) - SG_FWDH[`${best.ow}.${best.type}`]) / D : (best.dir === 'fwd' ? 0 : 1) + best.turn / (30 * Math.sign(D || 1));

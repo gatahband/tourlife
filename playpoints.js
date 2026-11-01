@@ -433,7 +433,9 @@ function hoImprov(c, g, come) {
   if (fam === 'drop' && kind !== 'drop') dir = 'short';
   const id = `imp_${fam}_${dir}${kind === 'net' ? '_in' : ''}`, lob = fam === 'lob' || undefined;
   const title = `${st.wing === 'bh' ? 'Backhand' : 'Forehand'} ${kind === 'volley' && fam === 'drop' ? 'Drop' : HO_FAMW[fam]}${kind === 'volley' ? ' Volley' : ''}${lob ? '' : ` · ${HO_DIRW[dir] || 'Short'}`}${kind === 'net' ? ' · To The Net' : ''}`;
-  return { id, icon: '✍️', title, kind, dir: lob ? undefined : dir, lob, chip: kind === 'net' && fam === 'slice' || undefined, read: id, readN: hoReadN(c, id), improv: true };
+  // Close to a line is harder to get to; down the middle is easy to attack.
+  const ax = g.landX === undefined || lob ? null : Math.abs(g.landX), bonus = ax === null ? 0 : ax >= 3.2 ? 0.022 * Math.min(1, (ax - 3.2) / 0.8) : ax < 1.4 ? -0.01 : 0;
+  return { id, icon: '✍️', title, kind, dir: lob ? undefined : dir, lob, chip: kind === 'net' && fam === 'slice' || undefined, read: id, readN: hoReadN(c, id), improv: true, bonus };
 }
 // The card as drawn. A disguised shot can't be read (it's counted on its own) but is harder to time; a swing against
 // the way your arm moves (see SG_TUNE) is a little harder to time and less accurate.
@@ -441,6 +443,13 @@ function hoGestureCard(c, cd, g, ph) {
   const t = SG_TYPES[g.type], out = { ...cd, sg: { type: g.type, fam: g.type === 'disguise' ? g.base : g.type, flight: g.type === 'disguise' ? SG_TYPES[g.base].flight : t.flight, awkward: !!g.awkward, miss: g.miss || undefined, ...ph } };
   if (g.type === 'disguise') Object.assign(out, { read: 'disguise', readN: hoReadN(c, 'disguise'), ring: (cd.ring || 1) * 0.85, title: `Disguised: ${cd.title}` });
   if (g.awkward) out.ring = (out.ring || 1) * 0.9;
+  // Where it really lands: your stat (and a shaky line) spreads it a little around where you aimed, so a ball aimed
+  // at the line can catch it or just miss; one aimed well inside is safe.
+  if (g.landX !== undefined && !out.sg.miss) {
+    const a = attr(c.ps[c.me], (HO_KIND[cd.kind] || {}).stat || 'ground'), x = g.landX + gauss(Math.random) * (0.12 + (1 - a / 100) * 0.3 + Math.min(0.15, (g.fit || 0) * 0.5));
+    if (Math.abs(x) > 4.115) Object.assign(out.sg, { miss: 'just', aim: Math.sign(x) });
+    else out.sg.aim = clamp(x / 3.9, -1, 1);
+  }
   return out;
 }
 // Which side of the screen the ball comes to you on (you're always at the bottom): a right-hander's forehand is on the right.
@@ -454,14 +463,14 @@ const hoBallSide = c => (c.st.wing !== 'bh') === ((c.ps[c.me].hand || 'right') !
 function hoSwipeAim(c, stage, g) {
   if (!g || stage === 'serve' || stage === 'serve2') return g;
   const x = c.st.x === undefined ? hoBallSide(c) : c.st.x, s = Math.abs(x) >= 0.6 ? Math.sign(x) : hoBallSide(c), k = g.cross;
-  // Where it lands across (metres, + = your side of the court for down the line): forward ≈ 3 m in on the line side,
-  // the cross shape ≈ 2.8 m in on the far side; turned further it keeps going, and only a swing turned well past
-  // either shape (about 40°) carries past the sideline (4.2 m).
+  // Where it lands across (metres, + = your side of the court for down the line): as shown ≈ 3 m across on the line
+  // side, turned for crosscourt (SG_TURN, 25°) ≈ 2.8 m across on the far side; every few degrees moves it, so you can
+  // aim for the lines (or play safer inside them), and turned too far it carries past the sideline (4.2 m).
   const m = k <= 0 ? 3 + 1.3 * -k : k <= 1 ? 3 - 5.8 * k : -2.8 - 1.5 * (k - 1);
   g.landX = s * m;
   g.aim = clamp(g.landX / 3.9, -1, 1);
   g.wide = k >= 0.85;
-  g.miss = Math.abs(m) > 4.2 ? 'wide' : g.long ? 'long' : g.short ? 'net' : null; // decided by the swing, however well it's timed
+  g.miss = g.wrong ? 'mishit' : Math.abs(m) > 4.2 ? 'wide' : g.long ? 'long' : g.short ? 'net' : null; // decided by the swing, however well it's timed
   return g;
 }
 // The swing guide under the pad: the drawn shape of each shot for this wing, with an arrowhead where the stroke ends
@@ -597,7 +606,7 @@ async function hoPickAndHit(c, ui, stage, cards) {
   else {
     card.u = await ui.hit(card, hoWindow(c, card, stage), c.pf, stage);
     // A drawn shot angled past the sideline, or swung too long or too short, misses however well it was timed.
-    const miss = card.sg && card.sg.miss && ({ wide: 'OUT WIDE', long: 'OVERHIT: LONG', net: 'UNDERHIT: NET' })[card.sg.miss];
+    const miss = card.sg && card.sg.miss && ({ wide: 'OUT WIDE', just: 'JUST WIDE', long: 'OVERHIT: LONG', net: 'UNDERHIT: NET', mishit: 'WRONG SIDE: MISHIT' })[card.sg.miss];
     if (ui.flash) ui.flash(miss ? `${hoQuality(card.u)} · ${miss}` : fault && card.u < 0.4 ? `MISTIMED · ${fault}` : hoQuality(card.u));
   }
   c.uses[card.read] = (c.uses[card.read] || 0) + 1;
@@ -645,13 +654,16 @@ async function hoPlay(c, ui, rng = Math.random) {
     if (ui.flash && !swMissed && ['ue', 'fe'].includes(r.pt.how)) ui.flash(`${r.w === op ? 'Your Shot' : 'Their Shot'}: ${r.pt.missNet ? 'Into The Net' : 'Out'}`.toUpperCase());
     return r; };
   // Your drawn shot missed (angled out, overhit or underhit): the point is theirs, shown as your error.
-  const missed = (k, card) => { pt.aims[k] = hoAim(card); swMissed = true; return done(out(op, { how: 'ue', len: k + 1, missNet: card.sg.miss === 'net' })); };
+  const missed = (k, card) => { pt.aims[k] = hoAim(card); swMissed = true; return done(out(op, { how: 'ue', len: k + 1, missNet: card.sg.miss === 'net' || card.sg.miss === 'mishit' && rng() < 0.5 })); };
   c.push = clamp(0.28 + (attr(B, 'ground') - attr(A, 'ground')) * 0.006 + (({ aggressive: 0.07, patient: -0.04 })[planOf(B).aggression] || 0), 0.1, 0.6);
   let R, R0, k0, card;
   const pWin = e => clamp(R + e, R0 - HO_DOWN, R0 + HO_CAP);
   // The point swing from a shot: the choice (poor ones cost the most) and how well you hit it.
   const swing = card => { const ch = hoEdge(c, card); return (ch < 0 ? HO_BAD : HO_SKILL) * ch + HO_SKILL * (card.u - 0.55) * HO_KIND[card.kind].gain; };
   const timed = swing;
+  // They ran down your drop shot: now they're at the net, and you pass or lob them (a better drop leaves them stretched).
+  const dropBack = (card, k) => { pt.drop = { by: me, result: 'retrieved', at: k }; c.pos = clamp(c.pos + (card.u > 0.7 ? 1 : 0), -2, 2);
+    c.st = { ...c.st, net: 'them', ball: 'short', open: card.u > 0.7, wing: rng() < 0.5 ? 'fh' : 'bh', last: card.id, first: false }; };
   // You came to the net with shot a: their pass may decide it; if not, you volley.
   const approach = async (a, card) => {
     pt.aims[a] = hoAim(card);
@@ -711,8 +723,9 @@ async function hoPlay(c, ui, rng = Math.random) {
     pt.aims[1] = hoAim(card);
     // The return may decide the point; if not, the rally is on.
     const e = timed(card), K = HO_KIND[card.kind];
-    if (rng() < clamp(0.3 * K.end * HO_SURF[ev.surface] * (card.u < 0.3 ? 1.6 : 1), 0.06, 1)) return done(hoEnd(pt, me, s, 1, card, rng() < pWin(e), rng));
-    hoReply(c, card, rng);
+    const r1 = rng() < clamp(0.3 * K.end * HO_SURF[ev.surface] * (card.u < 0.3 ? 1.6 : 1), 0.06, 1) && hoEnd(pt, me, s, 1, card, rng() < pWin(e), rng);
+    if (r1) return done(r1);
+    if (r1 === null) dropBack(card, 1); else hoReply(c, card, rng);
     pt.aims[2] = { wing: c.st.wing };
     k0 = 3;
   }
@@ -736,8 +749,9 @@ async function hoPlay(c, ui, rng = Math.random) {
     card.e = raw;
     // Bad choices and mistimed balls end points (usually yours); attacking shots end them either way.
     const h = j >= 9 ? 1 : clamp(0.26 * K.end * (card.endMul || 1) * HO_SURF[ev.surface] * (card.u < 0.3 ? 1.7 : 1) * (1 + clamp(-raw * 12, 0, 1.5)) * (card.dir === 'open' ? 1.5 : 1), 0.06, 1);
-    if (rng() < h) return done(hoEnd(pt, me, s, k, card, rng() < pWin(e), rng));
-    hoReply(c, card, rng);
+    const r = rng() < h && hoEnd(pt, me, s, k, card, rng() < pWin(e), rng);
+    if (r) return done(r);
+    if (r === null) dropBack(card, k); else hoReply(c, card, rng);
     pt.aims[k + 1] = { wing: c.st.wing }; // their ball comes to the wing you'll play next
   }
 }
@@ -749,6 +763,8 @@ function hoEnd(pt, me, s, k, card, won, rng) {
   if (card.kind === 'drop') {
     if (won) return set(me, { how: 'drop', len: fix(k + 1, me), drop: { by: me, result: 'won' } });
     if (!hoPerfect(card) && (u < 0.45 || rng() < 0.35)) return set(op, { how: 'dropnet', len: fix(k + 1, me), drop: { by: me, result: 'net' } });
+    // They got to it. That often isn't the end: they're drawn in and the point goes on (null), more so off a good drop.
+    if (rng() < 0.3 + 0.35 * u) return null;
     return set(op, { how: 'dropchased', len: fix(k + 2, op), drop: { by: me, result: 'chased' } });
   }
   if (won) {
@@ -921,7 +937,7 @@ function hoUI(box, c, idle = {}) {
           const pad = box.querySelector('.sgpad'), live = box.querySelector('.sglive');
           trail = new SwipeTrail(pad);
           const idle = live.textContent;
-          const MISS = { wide: 'Out Wide', long: 'Too Long', net: 'Into The Net' };
+          const MISS = { wide: 'Out Wide', long: 'Too Long', net: 'Into The Net', mishit: 'Wrong Side' };
           // Kept short enough to read mid-swing: the spin and where it's going (or that it's going out).
           const short = (g, m) => { const f = g.type === 'disguise' ? g.base : g.type;
             if (isServe) return `${HO_FAMW[f]} · ${({ wide: 'Out Wide', body: 'Body', t: 'Down The T' })[m.card.serve] || ''}`;
@@ -1164,7 +1180,7 @@ const HO_TUT_TIPS = {
     'Your timing appears in the middle of the screen: Perfect, Okay or Mistimed. The better your timing, the better the shot.']],
   swipeOn: ['✍️', 'Swipes', [
     'Instead of tapping a card, you can draw your shot. Swipes is now switched on. Use the Cards / Swipes switch at the top of the screen to change it at any time.',
-    'Each shot has one shape, shown in the key below the drawing area: Flat, Topspin, Slice, Lob and Drop Shot. Drawn as shown, the ball goes straight ahead. Turn the whole stroke to aim it: one way sends it crosscourt, the other way wider. The key shows which way.',
+    'Each shot has one shape, shown in the key below the drawing area: Flat, Topspin, Slice, Lob and Drop Shot. Drawn as shown, the ball goes straight ahead. Turn the whole stroke to aim it: a small turn one way sends it crosscourt, the other way wider. Every few degrees counts, so you can play safe or aim for the lines. The key shows which way. Use the shapes for the side the ball is on: a forehand swung on the backhand side is a mishit.',
     'Your shot is exactly what you draw: its spin from the shape, and its direction from how far you turn it. Turn it further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
     'To follow your shot in to the net, switch on 🏃 Come To The Net before you draw. It appears when your game plan and the ball allow it.',
     'If your strokes are not read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape in your own style.',

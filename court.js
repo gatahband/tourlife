@@ -1128,7 +1128,7 @@ function createCourt() {
     if (!pt.hands && body.length === 3 && body[0].kind === 'serve' && body[2].kind === 'winner' && body[2].by === server && ['Serve +1 Attacker', 'First-Strike Attacker', 'Serve-Dominant'].includes((prof[server] || {}).style)) body[0].aim = 'wide';
     // A drop shot that got dug back: the rally carried on from there.
     if (pt.drop && pt.drop.result === 'retrieved') {
-      const idx = shots.findIndex((sh, i) => i > 0 && i < shots.length - 2 && sh.by === pt.drop.by && sh.kind === 'rally');
+      const idx = pt.drop.at ?? shots.findIndex((sh, i) => i > 0 && i < shots.length - 2 && sh.by === pt.drop.by && sh.kind === 'rally'); // (hands-on: the shot it was)
       if (idx > 0) { shots[idx].kind = 'drop'; shots[idx].dug = true; }
     }
     // A hands-on point (playpoints.js): every shot goes where it was aimed (serve spot, line / cross / middle / angle, a wing, a lob).
@@ -1258,7 +1258,7 @@ function createCourt() {
     const d = dir(shot.by);
     // A drawn shot (Swipe Shots) lands where it was drawn: across by its angle, as deep as the stroke was long.
     if (shot.outWay && shot.kind === 'out') { const sx = (shot.by === 0 ? 1 : -1) * (shot.aimX || 0);
-      return shot.outWay === 'long' ? { x: clamp(sx * 3.9, -3.9, 3.9), y: -d * rand(12.3, 13.4) } : { x: (Math.sign(sx) || 1) * rand(4.4, 5.3), y: -d * rand(7.5, 11.2) }; }
+      return shot.outWay === 'long' ? { x: clamp(sx * 3.9, -3.9, 3.9), y: -d * rand(12.3, 13.4) } : { x: (Math.sign(sx) || 1) * (shot.outWay === 'just' ? rand(4.16, 4.4) : rand(4.4, 5.3)), y: -d * rand(7.5, 11.2) }; } // (just: missed the line by a whisker)
     if (shot.aimX !== undefined && recvPos && ['rally', 'approach', 'pass', 'winner', 'drop'].includes(shot.kind)) {
       const x = clamp((shot.by === 0 ? 1 : -1) * shot.aimX * 3.9, -3.95, 3.95), dp = shot.aimDepth ?? 0.7;
       if (shot.kind === 'drop') return { x: clamp(x, -3.2, 3.2), y: -d * (shot.popped ? rand(2.6, 4.5) : 0.5 + 1.1 * dp) };

@@ -20,7 +20,7 @@ const SG_TYPES = {
 };
 // The thresholds, in pad heights (U) and seconds. Tuned on drawn test strokes (tools/stroke-check.js); real hands vary,
 // so they're generous and all in one place.
-const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.23, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: [1.22, 1.4], bend: [0.45, 0.6, 135], cancelMs: 700, margin: 0.015 };
+const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs: 300, fitBad: 0.23, shortLen: 0.25, longLen: 1.1, longOut: 2.8, netLen: 0.12, hook: [1.22, 1.4], bend: [0.45, 0.6, 135], cancelMs: 700, margin: 0.015, wrong: 0.04 };
 
 const sgAng = (x, y) => Math.atan2(x, y) * 180 / Math.PI; // 0 = straight up the screen, + = to the right
 const sgWrap = a => ((a + 540) % 360) - 180;
@@ -29,13 +29,13 @@ const sgWrap = a => ((a + 540) % 360) - 180;
 // The backhand is the forehand mirrored, and a lefty mirrors them again.
 // One shape per shot (the owner's picks from the key, Nov 2026), as a right-handed forehand. Drawn as shown it goes
 // straight ahead; turned, it angles off (see SG_TURN). The cross shape is the same shape turned, for the guides and drills.
-const SG_TURN = -40; // degrees a forehand stroke is turned (anticlockwise) to go crosscourt; mirrored on the backhand
+const SG_TURN = -25; // degrees a forehand stroke is turned (anticlockwise) to go crosscourt; mirrored on the backhand
 const sgTurn = (P, deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), cx = P.reduce((a, p) => a + p[0], 0) / P.length, cy = P.reduce((a, p) => a + p[1], 0) / P.length;
   return P.map(([x, y]) => [Math.round(cx + (x - cx) * c - (y - cy) * sn), Math.round(cy + (x - cx) * sn + (y - cy) * c)]); };
 const SG_ONE = {
   flat: [[465, 330], [465, 290], [465, 250], [380, 250], [280, 250], [160, 250]], // a "1" on its side: a short stem up into a right angle, then straight across
   topspin: [[205, 338], [240, 355], [295, 342], [340, 295], [357, 225], [340, 150], [300, 105], [250, 90], [205, 100]], // a "C": under, up and round over the top
-  slice: [[232, 212], [220, 185], [224, 155], [240, 136], [262, 136], [280, 152], [340, 245], [385, 315], [428, 390]], // a hook over the top, then a steep cut down
+  slice: [[428, 212], [440, 185], [436, 155], [420, 136], [398, 136], [380, 152], [320, 245], [275, 315], [232, 390]], // a hook over the top, then a steep cut down and to the left
   lob: [[258, 295], [285, 330], [312, 365], [308, 290], [303, 200], [298, 100]], // a dip, then straight up
   drop: [[450, 545], [478, 550], [485, 572], [460, 598], [468, 625], [455, 660], [415, 685], [360, 690], [310, 668], [282, 645]], // a little "3" (or a "w"), then scoop round and up
 };
@@ -87,6 +87,16 @@ function sgBend(N0) {
   const total = Math.abs(d.reduce((a, b) => a + b, 0)), w = 4;
   let peak = 0; for (let i = 0; i + w <= d.length; i++) peak = Math.max(peak, Math.abs(d.slice(i, i + w).reduce((a, b) => a + b, 0)));
   return { total, peak, share: peak / Math.max(1, total) };
+}
+// How far a stroke is turned from a shape (degrees, + = clockwise on screen): the turn where it fits best, searched
+// coarsely then finely.
+function sgTurnOf(N, Ts) {
+  const fit = a => { const r = -a * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), R = sgNorm(N.map(p => ({ x: p.x * c - p.y * sn, y: p.x * sn + p.y * c })), N.length);
+    return Math.min(...Ts.map(T => sgDist(R, T))); };
+  let best = 0, bd = Infinity;
+  for (let a = -90; a <= 90; a += 5) { const d = fit(a); if (d < bd) { bd = d; best = a; } }
+  for (let a = best - 4; a <= best + 4; a += 1) { const d = fit(a); if (d < bd) { bd = d; best = a; } }
+  return best;
 }
 const SG_HEAD = {}, SG_FWDH = {}; // per wing.shot: degrees of turn from forward to cross (signed), and forward's heading
 // Your own drawings (Set Up My Swipes): a right-handed forehand, two of each shape, kept on this device. When there,
@@ -194,7 +204,7 @@ class StrokeGestureEngine {
     const g = { len, dur, speed, dx, dy, lift, straight, tall, turn: sgWrap(head1 - head0), head0, head1, n: P.length };
     if (ctx.wing) {
       const m = StrokeGestureEngine.match(P, ctx);
-      Object.assign(g, { base: m.type, cross: m.cross, fit: m.dist, unclear: m.unclear, awkward: false });
+      Object.assign(g, { base: m.type, cross: m.cross, fit: m.dist, unclear: m.unclear, wrong: m.wrong, awkward: false });
     } else g.base = straight < T.curve ? 'topspin' : lift < T.down ? 'slice' : 'flat'; // a serve: aimed by direction
     g.type = disguised ? 'disguise' : g.base;
     if (g.cross === undefined) g.cross = 0.5;
@@ -218,10 +228,11 @@ class StrokeGestureEngine {
     for (let a = -60; a <= 60; a += 6) { const r = -a * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r); turned.push([a, sgNorm(N.map(p => ({ x: p.x * c - p.y * sn, y: p.x * sn + p.y * c })), N.length)]); } // re-fitted to the box once turned
     // Each shape counts either way round: drawn as on this side's key, or as the other side's (flipped) version of it.
     // The key's own way round is preferred a touch when both fit.
-    const by = {};
+    const by = {}, own0 = {}, oth0 = {};
     for (const ow of [w, w === 'fh' ? 'bh' : 'fh']) for (const t in SG_FH) for (const k in SG_FH[t]) for (const T of SG_NORM[`${ow}.${t}.${k}`]) {
       for (const [a, R] of turned) {
         const dist = sgDist(R, T) + Math.abs(a) * 0.0012 + (ow === w ? 0 : 0.01); // a turned stroke fits a little less well than a straight one
+        const side = ow === w ? own0 : oth0; side[t] = Math.min(side[t] ?? 9, dist);
         if (!by[t] || dist < by[t].dist) by[t] = { type: t, dir: k, turn: a, dist, ow };
       }
     }
@@ -245,9 +256,13 @@ class StrokeGestureEngine {
     const next = ranked.find(r => r.type !== best.type);
     const fs = r => r.type === 'flat' || r.type === 'slice', split = !own && next && fs(best) && fs(next) && next.dist - best.dist < 0.03; // (settled by the wind-up)
     best.unclear = bendBad || best.dist > SG_TUNE.fitBad || (!!next && !split && next.dist - best.dist < SG_TUNE.margin);
-    // The angle: how far the stroke's end is turned from your forward shape's (your cross shape = 1), and on past it.
-    const D = SG_HEAD[`${best.ow}.${best.type}`];
-    best.cross = Math.abs(D) >= 12 ? sgWrap(sgHead(N) - SG_FWDH[`${best.ow}.${best.type}`]) / D : (best.dir === 'fwd' ? 0 : 1) + best.turn / (30 * Math.sign(D || 1));
+    // The wrong wing: a shape that only fits as the other side's version (a forehand swung on the backhand side) is a
+    // mishit. Only when it clearly fits that way and not this side's way.
+    const mineBest = Math.min(...Object.values(own0)), theirs = Math.min(...Object.values(oth0));
+    best.wrong = !best.unclear && best.ow !== w && theirs <= SG_TUNE.fitBad && mineBest - theirs > SG_TUNE.wrong;
+    // The angle: how far the whole stroke is turned from your forward shape (the cross turn = 1), finely, so a few
+    // degrees moves the ball. Measured on the whole shape, not just its end, so a wobbly finish doesn't throw it.
+    best.cross = sgTurnOf(N, SG_NORM[`${best.ow}.${best.type}.fwd`]) / SG_HEAD[`${best.ow}.${best.type}`];
     return best;
   }
 

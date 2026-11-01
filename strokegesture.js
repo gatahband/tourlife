@@ -25,21 +25,21 @@ const SG_TUNE = { minLen: 0.04, curve: 0.82, down: -0.45, still: 0.035, dwellMs:
 const sgAng = (x, y) => Math.atan2(x, y) * 180 / Math.PI; // 0 = straight up the screen, + = to the right
 const sgWrap = a => ((a + 540) % 360) - 180;
 
-// The owner's drawn shapes (sheet 3): a right-handed forehand, in screen points (x right, y down; first point = start,
-// last = stop). Forward goes down the line, cross goes crosscourt. The backhand is the forehand mirrored, and a lefty
-// mirrors them again.
-const SG_FH = {
-  flat: { fwd: [[425, 318], [445, 284], [465, 250], [380, 250], [280, 250], [160, 248]], // like a "1" on its side: a short flag up to a sharp corner, then straight across
-    cross: [[400, 195], [368, 158], [335, 120], [290, 165], [230, 222], [155, 292]] }, // a "1": flag up to a sharp peak, then straight down at 45°
-  topspin: { fwd: [[210, 298], [260, 313], [320, 308], [380, 280], [420, 235], [428, 180], [405, 125], [365, 80]], // under and up, ends going up
-    cross: [[205, 338], [240, 355], [295, 342], [340, 295], [357, 225], [340, 150], [300, 105], [250, 90], [205, 100]] }, // further round, ends going left
-  slice: { fwd: [[412, 275], [438, 268], [452, 250], [450, 232], [432, 222], [408, 226], [300, 272], [200, 315], [120, 352]], // a round hook over the top, then a shallow cut down
-    cross: [[428, 212], [440, 185], [436, 155], [420, 136], [398, 136], [380, 152], [320, 245], [275, 315], [232, 390]] }, // a round hook, then a steep cut down
-  lob: { fwd: [[258, 295], [285, 330], [312, 365], [308, 290], [303, 200], [298, 100]], // a dip, then straight up
-    cross: [[260, 292], [292, 302], [322, 312], [270, 245], [220, 195], [170, 145]] }, // a dip, then up and across
-  drop: { fwd: [[450, 545], [478, 550], [485, 572], [460, 598], [468, 625], [455, 660], [415, 685], [360, 690], [310, 668], [282, 645]], // a "3", then scoop round and up
-    cross: [[385, 488], [415, 478], [432, 500], [418, 520], [450, 545], [470, 590], [460, 650], [420, 700], [365, 715], [305, 705]] }, // bigger scoop, ends going across
+// The shapes are a right-handed forehand in screen points (x right, y down; first point = start, last = stop).
+// The backhand is the forehand mirrored, and a lefty mirrors them again.
+// One shape per shot (the owner's picks from the key, Nov 2026), as a right-handed forehand. Drawn as shown it goes
+// straight ahead; turned, it angles off (see SG_TURN). The cross shape is the same shape turned, for the guides and drills.
+const SG_TURN = -40; // degrees a forehand stroke is turned (anticlockwise) to go crosscourt; mirrored on the backhand
+const sgTurn = (P, deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r), cx = P.reduce((a, p) => a + p[0], 0) / P.length, cy = P.reduce((a, p) => a + p[1], 0) / P.length;
+  return P.map(([x, y]) => [Math.round(cx + (x - cx) * c - (y - cy) * sn), Math.round(cy + (x - cx) * sn + (y - cy) * c)]); };
+const SG_ONE = {
+  flat: [[465, 330], [465, 290], [465, 250], [380, 250], [280, 250], [160, 250]], // a "1" on its side: a short stem up into a right angle, then straight across
+  topspin: [[205, 338], [240, 355], [295, 342], [340, 295], [357, 225], [340, 150], [300, 105], [250, 90], [205, 100]], // a "C": under, up and round over the top
+  slice: [[232, 212], [220, 185], [224, 155], [240, 136], [262, 136], [280, 152], [340, 245], [385, 315], [428, 390]], // a hook over the top, then a steep cut down
+  lob: [[258, 295], [285, 330], [312, 365], [308, 290], [303, 200], [298, 100]], // a dip, then straight up
+  drop: [[450, 545], [478, 550], [485, 572], [460, 598], [468, 625], [455, 660], [415, 685], [360, 690], [310, 668], [282, 645]], // a little "3" (or a "w"), then scoop round and up
 };
+const SG_FH = Object.fromEntries(Object.entries(SG_ONE).map(([t, P]) => [t, { fwd: P, cross: sgTurn(P, SG_TURN) }]));
 const sgMirror = S => Object.fromEntries(Object.entries(S).map(([t, v]) => [t, Object.fromEntries(Object.entries(v).map(([d, P]) => [d, P.map(([x, y]) => [1000 - x, y])]))]));
 const SG_SHAPES = { fh: SG_FH, bh: sgMirror(SG_FH) };
 // A path resampled to n evenly spaced points, centred and scaled to fit a unit box (keeping its shape), so a big and a
@@ -80,19 +80,20 @@ function sgWindup(N) {
 const SG_HEAD = {}, SG_FWDH = {}; // per wing.shot: degrees of turn from forward to cross (signed), and forward's heading
 // Your own drawings (Set Up My Swipes): a right-handed forehand, two of each shape, kept on this device. When there,
 // they're the shapes (the backhand mirrors them), so the shots you draw are read the way you draw them.
-const SG_MINE_KEY = 'tourlife.sgMine';
+const SG_MINE_KEY = 'tourlife.sgMine2'; // (tourlife.sgMine held the old forward-and-cross drawings: left alone)
 const sgMine = () => { try { return JSON.parse(localStorage.getItem(SG_MINE_KEY) || 'null'); } catch { return null; } };
 const sgMeanAng = A => sgAng(A.reduce((s, a) => s + Math.sin(a * Math.PI / 180), 0), A.reduce((s, a) => s + Math.cos(a * Math.PI / 180), 0));
 function sgBuild() {
   const mine = sgMine() || {};
   for (const w of ['fh', 'bh']) for (const t in SG_FH) {
     for (const d in SG_FH[t]) {
-      const own = mine[t] && mine[t][d] && mine[t][d].length ? mine[t][d].map(P => w === 'bh' ? P.map(([x, y]) => [-x, y]) : P) : null;
+      const mf = mine[t] && mine[t].fwd && mine[t].fwd.length ? mine[t].fwd.map(P => d === 'cross' ? sgTurn(P.map(([x, y]) => [x * 1000, y * 1000]), SG_TURN) : P) : null;
+      const own = mf ? mf.map(P => w === 'bh' ? P.map(([x, y]) => [-x, y]) : P) : null;
       SG_NORM[`${w}.${t}.${d}`] = (own || [SG_SHAPES[w][t][d]]).map(P => sgNorm(P));
       SG_NORM[`${w}.${t}.${d}`].own = !!own;
     }
     const h = d => sgMeanAng(SG_NORM[`${w}.${t}.${d}`].map(sgHead));
-    SG_FWDH[`${w}.${t}`] = h('fwd'); SG_HEAD[`${w}.${t}`] = sgWrap(h('cross') - h('fwd'));
+    SG_FWDH[`${w}.${t}`] = h('fwd'); SG_HEAD[`${w}.${t}`] = w === 'bh' ? -SG_TURN : SG_TURN; // every shot turns the same way to go cross
   }
 }
 sgBuild();
@@ -219,10 +220,10 @@ class StrokeGestureEngine {
     // (a straight flag into a sharp corner), a slice a hook. Your own drawings don't need it.
     const own = SG_NORM[`${w}.flat.fwd`].own && SG_NORM[`${w}.slice.fwd`].own;
     // (Clearly straight or clearly hooked decides it; in between, the closer shape does.)
-    if (!own && (best.type === 'flat' || best.type === 'slice')) { const wu = sgWindup(N); if (wu < SG_TUNE.hook[0]) best = by.flat; else if (wu > SG_TUNE.hook[1]) best = by.slice; }
+    if (!own && (best.type === 'flat' || best.type === 'slice') && by.flat && by.slice && Math.abs(by.flat.dist - by.slice.dist) < 0.03) { const wu = sgWindup(N); if (wu < SG_TUNE.hook[0]) best = by.flat; else if (wu > SG_TUNE.hook[1]) best = by.slice; }
     // Not clearly one shot (too far from every shape, or almost as close to another one): it isn't played; draw again.
     const next = ranked.find(r => r.type !== best.type);
-    const fs = r => r.type === 'flat' || r.type === 'slice', split = !own && next && fs(best) && fs(next); // (settled by the wind-up)
+    const fs = r => r.type === 'flat' || r.type === 'slice', split = !own && next && fs(best) && fs(next) && next.dist - best.dist < 0.03; // (settled by the wind-up)
     best.unclear = best.dist > SG_TUNE.fitBad || (!!next && !split && next.dist - best.dist < SG_TUNE.margin);
     // The angle: how far the stroke's end is turned from your forward shape's (your cross shape = 1), and on past it.
     const D = SG_HEAD[`${best.ow}.${best.type}`];

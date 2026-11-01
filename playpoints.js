@@ -469,12 +469,15 @@ function hoSwipeAim(c, stage, g) {
 const hoArrowHead = (z, p, L = 7) => { const a = Math.atan2(z.y - p.y, z.x - p.x), w = k => `${(z.x - L * Math.cos(a + k)).toFixed(1)} ${(z.y - L * Math.sin(a + k)).toFixed(1)}`;
   return `M${w(0.5)} L${z.x.toFixed(1)} ${z.y.toFixed(1)} L${w(-0.5)}`; };
 function hoSwingGuide(wing, lefty) {
-  const w = wing === 'bh' ? 'bh' : 'fh', crossArrow = (w === 'fh') !== !!lefty ? '↖' : '↗';
-  const shape = (t, d) => { const own = SG_NORM[`${w}.${t}.${d}`]; return own.own ? own[0] : SG_SHAPES[w][t][d]; }; // yours, once set up
+  // One shape per shot: drawn as shown it goes straight; the whole stroke turned one way goes crosscourt, the other
+  // way wider down the line. A forehand turns anticlockwise for crosscourt; the backhand and a lefty mirror it.
+  const w = wing === 'bh' ? 'bh' : 'fh', ccw = (w === 'fh') !== !!lefty;
+  const shape = t => { const own = SG_NORM[`${w}.${t}.fwd`]; return own.own ? own[0] : SG_SHAPES[w][t].fwd; }; // yours, once set up
   const svg = pts => { const N = sgNorm(pts, 24).map(p => ({ x: 20 + (lefty ? -p.x : p.x) * 30, y: 20 + p.y * 30 }));
     return `<svg viewBox="0 0 40 40"><path d="M${N.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L')} ${hoArrowHead(N[N.length - 1], N[N.length - 4])}"/></svg>`; };
   return `<div class="sgguide">${['flat', 'topspin', 'slice', 'lob', 'drop'].map(t => `<figure><b>${SG_TYPES[t].label.replace(/ (Drive|Shot)$/, '')}</b><div>` +
-    `<span>${svg(shape(t, 'fwd'))}<i>↑</i></span><span>${svg(shape(t, 'cross'))}<i>${crossArrow}</i></span></div></figure>`).join('')}</div>`;
+    `<span>${svg(shape(t))}</span></div></figure>`).join('')}</div>` +
+    `<p class="sgturn">As shown: straight ahead · Turn it ${ccw ? '↺' : '↻'} for crosscourt · Turn it ${ccw ? '↻' : '↺'} for wider</p>`;
 }
 
 // The serve key: which way to swipe for each target from this side (deuce: wide is well to the left, the body nearly
@@ -485,9 +488,9 @@ const hoServeKey = ad => `<div class="sgguide${ad ? ' flip' : ''}">${[['Out Wide
 // Set Up My Swipes: you draw each shape from the sheet (right-handed forehand) twice, and those become the shapes the
 // game reads (the backhand mirrors them; a lefty's strokes are mirrored to match). Kept on this device only. Then a
 // try-out pad says what any stroke reads as, so you can check it before playing.
-const SG_SETUP_ORDER = ['flat', 'topspin', 'slice', 'lob', 'drop'].flatMap(t => ['fwd', 'cross'].map(d => [t, d]));
+const SG_SETUP_ORDER = ['flat', 'topspin', 'slice', 'lob', 'drop'].map(t => [t, 'fwd']); // one shape each (turning it aims it)
 function hoSwipeSetup(onDone) {
-  const NAME = { flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' }, DIR = { fwd: 'Down The Line', cross: 'Crosscourt' };
+  const NAME = { flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' }, DIR = { fwd: 'As Shown', cross: 'Crosscourt' };
   const got = {}, REPS = 2;
   let i = 0, eng = null, trail = null;
   const sheet = (t, d) => { const N = sgNorm(SG_FH[t][d], 24).map(p => ({ x: 20 + p.x * 30, y: 20 + p.y * 30 }));
@@ -521,7 +524,7 @@ function hoSwipeSetup(onDone) {
       `<div class="horow"><button type="button" class="btn small ghost" data-sg="again">Start Over</button><button type="button" class="btn small" data-sg="done">✅ Done</button></div>`;
     pad('sgTryPad', (g0, pts) => {
       const g = StrokeGestureEngine.read(pts, { wing: tryWing });
-      const dir = !g ? '' : g.cross >= 0.65 ? (g.cross > 1.6 ? 'Crosscourt (Very Sharp)' : 'Crosscourt') : g.cross <= 0.35 ? (g.cross < -0.6 ? 'Down The Line (Very Wide)' : 'Down The Line') : 'Down The Middle';
+      const dir = !g ? '' : g.cross >= 0.65 ? (g.cross > 1.6 ? 'Crosscourt (Very Sharp)' : 'Crosscourt') : g.cross <= 0.35 ? (g.cross < -0.6 ? 'Straight Ahead (Very Wide)' : 'Straight Ahead') : 'Down The Middle';
       $('sgTryOut').textContent = !g || g.unclear ? 'Not A Clear Shot' : `${SG_TYPES[g.base].label} · ${dir}${g.type === 'disguise' ? ' · Disguised' : ''}`;
     });
   };
@@ -906,7 +909,7 @@ function hoUI(box, c, idle = {}) {
         const swipePad = () => isServe
           ? `<div class="sgpad"><div class="sglive">Swipe Your Serve</div><small class="sglegend">Swipe upwards from the bottom towards where you want the serve to land.</small></div>` + hoServeKey(c.ad)
           : `<div class="sgpad ${bs < 0 ? 'bl' : 'br'}" data-wing="${c.st.wing === 'bh' ? 'bh' : 'fh'}" data-lefty="${lefty ? 1 : 0}">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive"></div>` +
-            `<small class="sglegend">Draw the shape for your shot and finish where the arrow points. A longer stroke hits deeper. Hold still before you swing to disguise it.</small></div>` + hoSwingGuide(c.st.wing, lefty);
+            `<small class="sglegend">Draw your shot's shape and turn it to aim. A longer stroke hits deeper. Hold still before you swing to disguise it.</small></div>` + hoSwingGuide(c.st.wing, lefty);
         // Draw it (Swipe Shots) or pick a card; either way the cards show what's on for this ball.
         const render = () => {
           if (eng) { eng.detach(); eng = null; } if (trail) { trail.remove(); trail = null; }
@@ -1161,8 +1164,8 @@ const HO_TUT_TIPS = {
     'Your timing appears in the middle of the screen: Perfect, Okay or Mistimed. The better your timing, the better the shot.']],
   swipeOn: ['✍️', 'Swipes', [
     'Instead of tapping a card, you can draw your shot. Swipes is now switched on. Use the Cards / Swipes switch at the top of the screen to change it at any time.',
-    'Draw one of the shapes shown in the key below the drawing area: Flat, Topspin, Slice, Lob or Drop Shot. The first shape of each pair goes down the line and the second goes crosscourt. Finish your stroke where the arrow points.',
-    'Your shot is exactly what you draw: its spin from the shape, and its direction from where the stroke ends. Turn your stroke further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
+    'Each shot has one shape, shown in the key below the drawing area: Flat, Topspin, Slice, Lob and Drop Shot. Drawn as shown, the ball goes straight ahead. Turn the whole stroke to aim it: one way sends it crosscourt, the other way wider. The key shows which way.',
+    'Your shot is exactly what you draw: its spin from the shape, and its direction from how far you turn it. Turn it further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
     'To follow your shot in to the net, switch on 🏃 Come To The Net before you draw. It appears when your game plan and the ball allow it.',
     'If your strokes are not read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape in your own style.',
     'Next is a short drill: draw a few shots and see how each one is read.']],
@@ -1287,7 +1290,7 @@ function hoSwipeDrill(inMatch = true) {
       const [t, d] = HO_DRILL[i];
       $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length}</p>` +
         `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, d, lefty)}<i>${d === 'fwd' ? '↑' : lefty ? '↗' : '↖'}</i></span></div>` +
-        `<b>${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}</b></div>` +
+        `<b>${NAME[t]} · ${d === 'fwd' ? 'Straight Ahead' : 'Crosscourt (Turned)'}</b></div>` +
         `<p class="hint">Draw this shape and finish where the arrow points. It does not have to be perfect: close enough counts.</p>` +
         `<div class="sgpad ${lefty ? 'bl' : 'br'}" id="drPad">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive" id="drOut">Draw Here</div></div>` +
         (tries >= 2 ? `<button type="button" class="btn small ghost" id="drSkip">Skip This One</button>` : '');
@@ -1297,7 +1300,7 @@ function hoSwipeDrill(inMatch = true) {
         move: (g, pts) => trail.set(pts, g && g.len >= 0.2 && !g.unclear && out(g.cross) ? '#ff3b30' : '#f5f5f7'),
         cancel: () => trail.set([]),
         commit: (g, pts) => {
-          const dir = g.cross >= 0.5 ? 'Crosscourt' : 'Down The Line', isOut = out(g.cross);
+          const dir = g.cross >= 0.5 ? 'Crosscourt' : 'Straight Ahead', isOut = out(g.cross);
           const said = g.unclear ? 'Not A Clear Shot' : `${SG_TYPES[g.base].label} · ${dir}${isOut ? ' (Out Wide)' : ''}`;
           const ok = !g.unclear && g.base === t && (d === 'fwd' ? g.cross < 0.5 : g.cross >= 0.5);
           trail.set(pts, ok ? '#3dff6e' : '#ff3b30'); trail.done();
@@ -1316,7 +1319,7 @@ function hoSwipeDrill(inMatch = true) {
 function hoShapesGuide() {
   const lefty = ((readJSON(TL_NS + 'player') || {}).hand || 'right') === 'left';
   openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><div class="help"><h2 class="itop">🗺️ Swipe Shapes Guide</h2>` +
-    `<p>Each shot has two shapes: the first goes down the line and the second goes crosscourt. Draw the shape and finish where the arrow points.</p>` +
+    `<p>Each shot has one shape. Drawn as shown, the ball goes straight ahead. Turn the whole stroke to aim it: one way sends it crosscourt, the other way wider, as shown under each key.</p>` +
     `<h3 class="ssec">Forehand</h3>${hoSwingGuide('fh', lefty)}<h3 class="ssec">Backhand</h3>${hoSwingGuide('bh', lefty)}` +
     `<ul class="tutlist"><li><b>Angle:</b> turn your stroke further to angle the ball more. Turn it too far and the ball goes out wide.</li>` +
     `<li><b>Depth:</b> a longer stroke hits deeper. A very long stroke is overhit, and a tiny flick is underhit into the net.</li>` +

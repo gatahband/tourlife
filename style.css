@@ -1634,7 +1634,7 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .horow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .hopause { min-height: 44px; min-width: 110px; font-size: 15px; color: #f5f5f7; }
 .callbox.ho.held .hopause { display: none; }
-.callbox.ho.held .hocards, .callbox.ho.held .sgpad, .callbox.ho.held .sgguide, .callbox.ho.held .hogauge, .callbox.ho.held .hotag, .callbox.ho.held .hobwait, .callbox.ho.held .hoshot, .callbox.ho.held .hohit small { display: none; }
+.callbox.ho.held .hocards, .callbox.ho.held .sgpad, .callbox.ho.held .sgguide, .callbox.ho.held .sgturn, .callbox.ho.held .hogauge, .callbox.ho.held .hotag, .callbox.ho.held .hobwait, .callbox.ho.held .hoshot, .callbox.ho.held .hohit small { display: none; }
 .horing.shaky .hoband, .horing.shaky .hoclean { animation: hoshake .16s infinite alternate; }
 @keyframes hoshake { from { transform: translate(calc(-50% - var(--wob)), -50%); } to { transform: translate(calc(-50% + var(--wob)), calc(-50% + var(--wob))); } }
 .hohit small { color: #f5f5f7; font-size: 13px; }
@@ -1767,3 +1767,4 @@ body.hofixed { overflow: hidden; }
 /* Play The Points: the Come To The Net switch (Swipes) and the plan report at breaks. */
 .hoswap.hocome.on { border-color: #3dff6e; color: #3dff6e; font-weight: 700; }
 .hoplanrep small { display: block; margin-top: 4px; opacity: .85; text-transform: none; }
+.sgturn { margin: 4px 0 0; font-size: 12px; color: #ffd60a; text-align: center; font-weight: 700; }

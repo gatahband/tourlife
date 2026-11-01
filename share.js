@@ -478,3 +478,47 @@ async function shareBuild(p) {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   toast('📸 Build saved', 'The picture is in your downloads.');
 }
+
+
+// --- Report a bug ------------------------------------------------------------------------
+// Sent to the site owner through the same Netlify form as "Join Real Tournaments" (marked as a bug report, with no
+// player code, so it's never taken for a player). The owner reads them under Admin → Players → Bug Reports.
+// It adds what helps find the bug: the version, the screen size and browser, where you were, and recent errors.
+const BUG_ERRS = [];
+addEventListener('error', e => { BUG_ERRS.push(String(e.message || e.error || 'error').slice(0, 160)); if (BUG_ERRS.length > 5) BUG_ERRS.shift(); });
+addEventListener('unhandledrejection', e => { BUG_ERRS.push(('promise: ' + String((e.reason && e.reason.message) || e.reason)).slice(0, 160)); if (BUG_ERRS.length > 5) BUG_ERRS.shift(); });
+function bugContext() {
+  const p = readJSON(SAVE_KEY), c = readJSON(CAREER_KEY), en = readJSON(ENTRY_KEY), screenNow = [...document.querySelectorAll('main.wrap')].find(m => !m.hidden);
+  const live = en && en.live, m = live && live.m;
+  return [`Version ${window.TL_VERSION || 'local'}`, `Screen ${innerWidth}×${innerHeight} (${screen.width}×${screen.height})`, navigator.userAgent.slice(0, 140),
+    `Page: ${screenNow ? screenNow.id : '?'}${isTestMatch() ? ' (test/practice save)' : ''}`,
+    p ? `Player ${p.name}, ${overall(p).toFixed(1)} OVR, ${p.hand || 'right'}-handed` : 'No player', c ? `Week ${c.week}, season ${c.season || 1}` : '',
+    live ? `Match: mode ${live.mode || 'not chosen'}, sets ${(m && m.sets || []).map(x => x.join('-')).join(' ')} games ${m && m.games ? m.games.join('-') : ''}` : '',
+    `Swipes ${localStorage.getItem('tourlife.hoSwipe') === '1' ? 'on' : 'off'}`].filter(Boolean).join(' · ');
+}
+async function sendBug(what, contact) {
+  const p = readJSON(SAVE_KEY) || {};
+  const body = new URLSearchParams({
+    'form-name': 'send-player', 'bot-field': '', player: '🐞 Bug Report', nation: '-', ovr: '', rank: p.name || '',
+    record: bugContext(), contact, note: what + (BUG_ERRS.length ? `\n\nRecent errors: ${BUG_ERRS.join(' | ')}` : ''), code: 'BUG',
+  });
+  const live = location.hostname.endsWith('.netlify.app');
+  const res = await fetch(live ? '/' : 'https://tourlife-gatah.netlify.app/', { method: 'POST', mode: live ? 'same-origin' : 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
+  if (live && !res.ok) throw new Error(`status ${res.status}`);
+}
+function openBugReport() {
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🐞 Report A Bug</h2>` +
+    `<p class="hint">Tell us what went wrong. Your game's version, screen and the page you were on are sent with it, so you don't need to add them.</p>` +
+    `<label class="lbl" for="bugWhat">What Happened?</label><textarea id="bugWhat" class="inp" rows="5" placeholder="What went wrong, and what were you doing just before?"></textarea>` +
+    `<label class="lbl" for="bugWho">Your Name Or How To Reach You (Optional)</label><input id="bugWho" class="inp" maxlength="80">` +
+    `<button type="button" class="btn huge" id="bugSend">Send Report</button><p class="hint" id="bugMsg"></p>`);
+  $('mx').onclick = closeModal;
+  $('bugSend').onclick = async () => {
+    const what = $('bugWhat').value.trim();
+    if (what.length < 5) { $('bugMsg').textContent = 'Please say a little about what went wrong.'; return; }
+    $('bugSend').disabled = true; $('bugMsg').textContent = 'Sending…';
+    try { await sendBug(what.slice(0, 2000), $('bugWho').value.trim()); $('bugMsg').textContent = '✅ Sent. Thank you for helping make the game better.'; $('bugSend').textContent = 'Sent'; setTimeout(closeModal, 1600); }
+    catch (e) { $('bugSend').disabled = false; $('bugMsg').textContent = `❌ It didn't send (${e.message}). Check your connection and try again.`; }
+  };
+}

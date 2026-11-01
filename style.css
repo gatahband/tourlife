@@ -1748,3 +1748,8 @@ body.hofixed { overflow: hidden; }
 .sgracket .str { stroke-width: 1.2; opacity: .7; }
 .sgpad.br .sgracket { right: 44px; }
 .sgpad.bl .sgracket { left: 44px; transform: translateY(-50%) scaleX(-1); }
+
+/* Report A Bug */
+.bugbtn { display: block; margin: 18px auto 8px; width: auto; min-width: 220px; }
+.bugrow { border-top: 1px solid var(--line); padding: 10px 0; text-align: left; } .bugrow p { margin: 6px 0; white-space: normal; }
+.bugrow small { color: var(--muted); } .bugrow .bugctx { display: block; font-size: 11px; }

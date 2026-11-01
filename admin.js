@@ -169,6 +169,26 @@ async function fetchNewPlayers() {
   return ingestPlayers(found);
 }
 
+// Bug reports players sent (🐞 Report A Bug): they arrive on the same Netlify form, newest first.
+async function fetchBugReports() {
+  const site = await nfSite(), forms = await nfApi(`/sites/${site}/forms`), form = forms.find(f => f.name === 'send-player'), out = [];
+  if (!form) return out;
+  for (const state of ['verified', 'spam']) for (let page = 1; page < 10; page++) {
+    const subs = await nfApi(`/forms/${form.id}/submissions?state=${state}&per_page=100&page=${page}`);
+    for (const sub of subs) { const d = sub.data || {}; if (d.code === 'BUG') out.push({ at: sub.created_at, who: d.contact || '', from: d.rank || '', what: d.note || '', ctx: d.record || '' }); }
+    if (subs.length < 100) break;
+  }
+  return out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+function openBugReports() {
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🐞 Bug Reports</h2><div id="bugList"><p class="hint">Loading…</p></div>`, { wide: true });
+  $('mx').onclick = closeModal;
+  fetchBugReports().then(list => {
+    $('bugList').innerHTML = list.length ? list.map(b => `<div class="bugrow"><small>${esc(new Date(b.at).toLocaleString())} · ${esc(b.from || 'no player')}${b.who ? ` · ${esc(b.who)}` : ''}</small>` +
+      `<p>${esc(b.what).replace(/\n/g, '<br>')}</p><small class="bugctx">${esc(b.ctx)}</small></div>`).join('') : '<p class="hint">No bug reports yet.</p>';
+  }).catch(e => { $('bugList').innerHTML = `<p class="hint">❌ ${esc(e.message)}</p>`; });
+}
+
 // GitHub hosting (gatahband.github.io/tourlife): results.json is updated straight in the repository.
 const GH_REPO = 'gatahband/tourlife';
 async function publishGitHub() {
@@ -243,6 +263,7 @@ function renderAdPlayers() {
   $('adBody').innerHTML = (connected && nfConf().gh ? '' : connectHtml()) +
     `<section class="card"><h2>Players who joined</h2>` +
     (connected ? `<button type="button" class="btn huge" id="adFetch">🔄 Get new players</button>` +
+      `<button type="button" class="btn ghost" id="adBugs">🐞 Bug Reports</button>` +
       `<p class="hint">Picks up everyone who pressed "Join Real Tournaments" in their game. Sending again just updates their player.</p>` : '') +
     `<details class="paste"><summary>Other ways to add players</summary>` +
     `<label class="btn ghost small filebtn">Open a CSV from Netlify<input type="file" id="adCsv" accept=".csv,.txt,text/csv,text/plain" hidden></label>` +
@@ -262,6 +283,7 @@ function renderAdPlayers() {
     }).join('')}</div>` : '<p class="hint">No players yet.</p>') + `</section>`;
   const report = r => { $('adLoadMsg').textContent = r.total ? `Found ${r.total}: ${r.added} new, ${r.updated} updated${r.bad ? `, ${r.bad} unreadable` : ''}.` : 'No player codes found in that.'; };
   bindConnect(renderAdmin);
+  if ($('adBugs')) $('adBugs').onclick = openBugReports;
   if ($('adFetch')) $('adFetch').onclick = async () => {
     $('adFetch').disabled = true; $('adFetch').textContent = 'Getting players…';
     try { const r = await fetchNewPlayers(); renderAdmin(); report(r); }

@@ -65,7 +65,7 @@ function openWelcome(step = 0, done) {
 // --- Spotlight tour ------------------------------------------------------------------------
 let tourOpen = false;
 function runTour(id, tries = 0) {
-  if (tipsOff() || tipsSeen()[id] || tourOpen || !TOURS[id]) return;
+  if (tipsOff() || tipsSeen()[id] || tourOpen || !TOURS[id] || (typeof hoTutOn === 'function' && hoTutOn())) return; // the tutorial has its own tips
   // Wait for any open window (season review, an offer…) to close first.
   if (!$('modal').hidden) { if (tries < 30) setTimeout(() => runTour(id, tries + 1), 1000); return; }
   const steps = TOURS[id].filter(([sel]) => { const el = document.querySelector(sel); return el && el.offsetParent !== null; });
@@ -124,6 +124,10 @@ function startOnboarding() {
 // matches), a short set of slides explains it on Home. Each shows once per player.
 const FEATURES_KEY = 'tourlife.features';
 const FEATURES = [
+  { id: 'playpoints', when: c => c.history.length >= 1 && typeof playPointsOn === 'function' && playPointsOn(), icon: '🎮', title: 'New: Play The Points', tutorial: true, slides: [
+    'Play the key games of your matches yourself, shot by shot: pick your serve and your shots, then time them.',
+    'You can tap shot cards, or switch on Swipe Shots and draw each shot with your finger.',
+    'Choose 🎮 Play The Points before the first ball of any match. A short practice match shows you how it works first.'] },
   { id: 'prep', when: c => c.history.length >= 1 && c.money >= 1500, icon: '🧰', title: 'Prepare For Each Tournament', slides: [
     'Before your first match of a week, open "Prepare For The Week" on the draw screen.',
     'Pick up to 3 items: detailed scouting, a hitting partner who plays like your opponent, a surface camp, recovery, a sports psychologist or video analysis.',
@@ -166,7 +170,7 @@ const FEATURES = [
     'Between rounds you can book premium recovery (each one this week helps less). Spend wisely: the right plan still decides the match.'] },
 ];
 function featureIntro(c, p) {
-  if (!c || !p || !$('modal').hidden) return;
+  if (!c || !p || !$('modal').hidden || (typeof isTestMatch === 'function' && isTestMatch())) return; // never in a practice or test save
   const seen = readJSON(FEATURES_KEY) || {};
   const f = FEATURES.find(x => !seen[x.id] && (() => { try { return x.when(c, p); } catch { return false; } })());
   if (!f) return;
@@ -175,8 +179,10 @@ function featureIntro(c, p) {
     const last = i === f.slides.length - 1;
     openModal(`<div class="help welcome"><div class="helpicon">${f.icon}</div><div class="newtag">New</div><h2 class="itop">${f.title}</h2><p class="big">${f.slides[i]}</p>` +
       `<div class="helpdots">${f.slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>` +
-      `<button type="button" class="btn huge" id="ftNext">${last ? 'Got It' : 'Next'}</button></div>`);
-    $('ftNext').onclick = () => { if (last) closeModal(); else show(i + 1); };
+      `<button type="button" class="btn huge" id="ftNext">${last ? (f.tutorial ? '🎓 Take The Tutorial' : 'Got It') : 'Next'}</button>` +
+      (last && f.tutorial ? `<button type="button" class="btn ghost" id="ftLater">Not Now</button>` : '') + `</div>`);
+    $('ftNext').onclick = () => { if (last) { closeModal(); if (f.tutorial && typeof hoStartTutorial === 'function') hoStartTutorial(); } else show(i + 1); };
+    if ($('ftLater')) $('ftLater').onclick = closeModal;
   };
   // Never cover another window (season review, an offer…): try again next time Home opens.
   setTimeout(() => { if (!$('modal').hidden) { const s2 = readJSON(FEATURES_KEY) || {}; delete s2[f.id]; writeJSON(FEATURES_KEY, s2); return; } show(0); }, 700);

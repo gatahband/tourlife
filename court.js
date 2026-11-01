@@ -1008,11 +1008,11 @@ function createCourt() {
   const FLIGHT = {
     serve:   { apex: 0.12, h: () => 2.8,             mps: 40, bounce: 1.2,  split: 0.6 },
     kick:    { apex: 0.14, h: () => 3.0,             mps: 30, bounce: 2.3,  split: 0.55 },
-    topspin: { apex: 0.42, h: () => rand(2.4, 3.2),  mps: 27, bounce: 1.7,  split: 0.62 },
-    slice:   { apex: 0.56, h: () => rand(1.15, 1.5), mps: 20, bounce: 0.55, split: 0.68 },
-    flat:    { apex: 0.5,  h: () => rand(1.05, 1.35), mps: 35, bounce: 1.0, split: 0.6 },
+    topspin: { apex: 0.42, h: () => rand(2.4, 3.2),  mps: 28, bounce: 1.7,  split: 0.62 },
+    slice:   { apex: 0.56, h: () => rand(1.15, 1.5), mps: 22, bounce: 0.55, split: 0.68 },
+    flat:    { apex: 0.5,  h: () => rand(1.05, 1.35), mps: 32, bounce: 1.0, split: 0.6 },
     lob:     { apex: 0.5,  h: () => rand(7, 9.5),    mps: 11, bounce: 2.4,  split: 0.78 },
-    drop:    { apex: null, h: () => 1.3,             mps: 11, bounce: 0.5,  split: 0.6 },
+    drop:    { apex: null, h: () => rand(1.3, 2.3),  mps: 12, bounce: 0.5,  split: 0.6 },
     popped:  { apex: null, h: () => 2.3,             mps: 12, bounce: 0.9,  split: 0.62 },
     volley:  { apex: 0.4,  h: () => 1.35,            mps: 19, bounce: 1.0,  split: 0.6 },
     smash:   { apex: 0.05, h: () => 2.9,             mps: 32, bounce: 2.0,  split: 0.55 },
@@ -1103,13 +1103,16 @@ function createCourt() {
       shots = [];
       for (let k = 0; k < n; k++) {
         let kind = k === 0 ? 'serve' : 'rally';
-        if (k === n - 1) kind = clean ? (app === winner ? 'volley' : 'winner') : (Math.random() < 0.45 ? 'net' : 'out');
+        if (k === n - 1) kind = clean ? (app === winner ? 'volley' : 'winner') : (pt.missNet ?? Math.random() < 0.45) ? 'net' : 'out'; // hands-on points choose it up front (playpoints.js)
+        else if (app !== null && pt.net.at !== undefined) { if (k === pt.net.at && k > 0) kind = 'approach'; } // hands-on: the shot you came in on, however the point ends
         else if (app !== null && hitter(n - 1) === app && k === n - 3 && k > 0) kind = 'approach';
         else if (app !== null && hitter(n - 1) !== app && k === n - 2 && k > 0) kind = 'approach'; // never replaces the serve (serve-and-volley points ending on the return)
         if (app === hitter(n - 1) && k === n - 2 && kind !== 'serve') kind = 'pass';
         shots.push({ by: hitter(k), kind, passWin: k === n - 1 && clean && app !== null && app === loser });
       }
       if (app !== null && !clean && hitter(n - 1) === app) shots[n - 1].volleyErr = true;
+      // Hands-on points: approach, their pass attempt, your volley (it went in), then they pass you anyway.
+      if (pt.net && pt.net.after && n >= 4) { if (n - 4 > 0) shots[n - 4].kind = 'approach'; shots[n - 3].kind = 'pass'; shots[n - 2].kind = 'volleyx'; }
       end = clean ? (app === winner ? 'volley' : app === loser ? 'pass' : 'winner')
         : n === 2 && loser === returner ? 'return-error' : pt.how === 'ue' ? 'ue' : 'fe';
     }
@@ -1122,18 +1125,39 @@ function createCourt() {
       if (fin.kind === 'winner' && pt.wing === 'fh' && ['Aggressive Baseliner', 'Heavy-Topspin Attacker', 'All-Court', 'Flat Attacker'].includes(st) && Math.random() < 0.45) body[body.length - 2].aimWing = 'bh', fin.insideOut = true;
     }
     // Serve +1: a big server goes wide, then puts the next ball into the open court.
-    if (body.length === 3 && body[0].kind === 'serve' && body[2].kind === 'winner' && body[2].by === server && ['Serve +1 Attacker', 'First-Strike Attacker', 'Serve-Dominant'].includes((prof[server] || {}).style)) body[0].aim = 'wide';
+    if (!pt.hands && body.length === 3 && body[0].kind === 'serve' && body[2].kind === 'winner' && body[2].by === server && ['Serve +1 Attacker', 'First-Strike Attacker', 'Serve-Dominant'].includes((prof[server] || {}).style)) body[0].aim = 'wide';
     // A drop shot that got dug back: the rally carried on from there.
     if (pt.drop && pt.drop.result === 'retrieved') {
       const idx = shots.findIndex((sh, i) => i > 0 && i < shots.length - 2 && sh.by === pt.drop.by && sh.kind === 'rally');
       if (idx > 0) { shots[idx].kind = 'drop'; shots[idx].dug = true; }
     }
+    // A hands-on point (playpoints.js): every shot goes where it was aimed (serve spot, line / cross / middle / angle, a wing, a lob).
+    if (pt.aims) handAims(body, pt);
+    // A speciality move's point: its lob, smash, inside-out forehand or fake drop (specials.js).
+    if (pt.spec && typeof specCourt === 'function') specCourt(shots, pt);
     // A net cord mid-rally: the ball clips the tape and play goes on.
     if (pt.netcord && pt.netcord.result === 'continue' && shots.length > 2) {
       const mid = shots.slice(1, -1).filter(s => s.kind === 'rally');
       if (mid.length) mid[Math.floor(Math.random() * mid.length)].cordTick = true;
     }
     return { shots: [...pre, ...shots], end, length: n };
+  }
+
+  // A hands-on point (playpoints.js): every shot goes where it was aimed (serve spot, line / cross / middle / angle, a wing, a lob).
+  function handAims(body, pt) {
+    body.forEach((sh, i) => {
+      const a = pt.aims[i];
+      if (!a) return;
+      if (sh.kind === 'serve' || sh.kind === 'ace') { if (a.serve) sh.aim = a.serve; return; }
+      if (a.dir) sh.dir = a.dir;
+      if (a.wing && !sh.aimWing) sh.aimWing = a.wing;
+      if (a.lob) sh.lob = true;
+      if (a.pace) sh.pace = a.pace;
+      // Swipe Shots: the spin you drew, and exactly how far across (aimX −1…1, screen left to right) and how deep.
+      if (a.flight) sh.swFlight = a.flight;
+      if (a.aimX !== undefined) { sh.aimX = a.aimX; sh.aimDepth = a.depth; }
+      if (a.out) sh.outWay = a.out; // a drawn shot that misses: out wide or long
+    });
   }
 
   // Where the ball will be met, relative to where the player starts, decides the wing.
@@ -1168,10 +1192,13 @@ function createCourt() {
     const out = (type, flight) => ({ type, wing, racket: wing.toLowerCase(), flight: flight || TYPE_FLIGHT[type] });
     if (c.overhead) return { type: 'SMASH!', wing: null, racket: 'serve', flight: 'smash' };
     if (k === 'underarm') return { type: 'UNDERARM!', wing: null, racket: 'underarm', flight: 'drop' };
+    if (shot.fake) return out('FAKE DROP!', 'flat');
+    if (shot.lob && k !== 'approach') return out('LOB!'); // a lob the point was built around
     if (k === 'cordOver' || k === 'cordBack') return out('NET CORD!', 'flat');
     if (k === 'drop' || shot.dropNet) return out('DROP SHOT!');
     if (k === 'volley' || k === 'volleyx' || shot.volleyErr) return out('VOLLEY!');
-    if (k === 'approach') return out(c.chip || Math.random() < 0.6 ? 'SLICE!' : 'TOPSPIN!');
+    if (shot.swFlight) return out({ topspin: 'TOPSPIN!', flat: 'FLAT!', slice: 'SLICE!', lob: 'LOB!', drop: 'DROP SHOT!' }[shot.swFlight] || 'TOPSPIN!', shot.swFlight); // the spin you drew
+    if (k === 'approach') return out(shot.drive ? 'FLAT!' : c.chip ? 'SLICE!' : c.topApp ? 'TOPSPIN!' : Math.random() < 0.6 ? 'SLICE!' : 'TOPSPIN!'); // (hands-on points settle it up front)
     // Pulled far wide near the net: sometimes the only way back is around the net post.
     if (c.cornered && (k === 'winner' || k === 'pass') && Math.random() < 0.4) { shot.post = true; return out('AROUND THE POST!'); }
     if (c.chasingLob && Math.random() < 0.15) { shot.lob = true; return out('TWEENER!'); }
@@ -1217,9 +1244,35 @@ function createCourt() {
     return { x: rand(-1.4, 1.4), y: -d * rand(yMin, yMax) };
   }
 
+  // The lane an aimed ball (hands-on points) must land in, so nudging it within reach never changes its direction:
+  // down the line stays by the sideline, crosscourt on the far side, down the middle in the middle.
+  function inLane(shot, from, x) {
+    const sd = from.x >= 0 ? 1 : -1, c = shot.dir === 'fhc' ? fhDir(1 - shot.by) : shot.dir === 'bhc' ? -fhDir(1 - shot.by) : 0;
+    const lane = { line: [2.1, 3.9, sd], cross: [1.7, 3.9, -sd], angle: [2.4, 4, -sd], fhc: [2.1, 3.9, c], bhc: [2.1, 3.9, c] }[shot.dir];
+    if (shot.dir === 'middle') return clamp(x, -1.4, 1.4);
+    return lane ? lane[2] * clamp(x * lane[2], lane[0], lane[1]) : x;
+  }
+
   // Where a shot lands.
   function landing(shot, from, deuce, recvPos) {
     const d = dir(shot.by);
+    // A drawn shot (Swipe Shots) lands where it was drawn: across by its angle, as deep as the stroke was long.
+    if (shot.outWay && shot.kind === 'out') { const sx = (shot.by === 0 ? 1 : -1) * (shot.aimX || 0);
+      return shot.outWay === 'long' ? { x: clamp(sx * 3.9, -3.9, 3.9), y: -d * rand(12.3, 13.4) } : { x: (Math.sign(sx) || 1) * rand(4.4, 5.3), y: -d * rand(7.5, 11.2) }; }
+    if (shot.aimX !== undefined && recvPos && ['rally', 'approach', 'pass', 'winner', 'drop'].includes(shot.kind)) {
+      const x = clamp((shot.by === 0 ? 1 : -1) * shot.aimX * 3.9, -3.95, 3.95), dp = shot.aimDepth ?? 0.7;
+      if (shot.kind === 'drop') return { x: clamp(x, -3.2, 3.2), y: -d * (shot.popped ? rand(2.6, 4.5) : 0.5 + 1.1 * dp) };
+      return { x, y: -d * (shot.lob ? 8.8 + 2.7 * dp : 6.6 + 4.8 * dp) };
+    }
+    // Aimed (hands-on points): down the line goes straight ahead, crosscourt goes diagonal, and so on. Misses miss on that side.
+    if (shot.dir && !shot.lob && recvPos && ['rally', 'approach', 'pass', 'winner', 'volley', 'volleyx', 'out'].includes(shot.kind)) {
+      const sd = from.x >= 0 ? 1 : -1, deepY = -d * rand(8.6, 11.3);
+      const x = { line: sd * rand(2.7, 3.8), cross: -sd * rand(2.4, 3.7), angle: -sd * rand(3.5, 4), middle: rand(-0.9, 0.9), short: rand(-1.8, 1.8),
+        open: (recvPos.x > 0 ? -1 : 1) * rand(2.8, 3.9), fhc: fhDir(1 - shot.by) * rand(2.7, 3.8), bhc: -fhDir(1 - shot.by) * rand(2.7, 3.8) }[shot.dir] ?? rand(-3, 3);
+      if (shot.kind === 'out') return ['middle', 'short'].includes(shot.dir) ? { x, y: -d * rand(12.4, 13.4) } : { x: Math.sign(x || 1) * rand(4.3, 5.1), y: deepY };
+      const y = shot.dir === 'angle' ? -d * rand(5.2, 7.2) : shot.dir === 'short' ? -d * rand(shot.kind === 'volley' ? 1 : 3.5, shot.kind === 'volley' ? 2.6 : 6) : shot.kind === 'volley' && shot.dir !== 'middle' ? -d * rand(4, 8) : deepY;
+      return { x, y };
+    }
     // Placed to a wing (so the next ball is struck with the wing the engine recorded): a rally ball to that side.
     if (shot.aimWing && recvPos && ['rally', 'approach', 'pass'].includes(shot.kind)) {
       const recv = 1 - shot.by;
@@ -1230,6 +1283,7 @@ function createCourt() {
     // Lobs vary: most go deep, some fall short (and get punished).
     // A winning lob goes right over the player at the net and lands deep behind them.
     if (shot.lob && (shot.kind === 'pass' || shot.kind === 'winner') && recvPos) return { x: clamp(recvPos.x + rand(-0.8, 0.8), -3.8, 3.8), y: -d * rand(9.8, 11.5) };
+    if (shot.lob && shot.kind === 'out') return { x: clamp((shot.aimX ?? rand(-1, 1)) * (shot.by === 0 ? 1 : -1) * 3.9, -3.9, 3.9), y: -d * rand(12.2, 13.2) }; // a lob that misses goes long
     if (shot.lob) return { x: rand(-3.6, 3.6), y: -d * (Math.random() < 0.3 ? rand(6.5, 9) : rand(9.5, 11.6)) };
     if (shot.post) return { x: Math.sign(from.x) * rand(2.6, 3.9), y: -d * rand(5, 10) };
     switch (shot.kind) {
@@ -1237,7 +1291,7 @@ function createCourt() {
         const side = (deuce ? -1 : 1) * d;
         // A serve call aims it: into the body (at the returner) or out wide.
         const aim = shot.aim || (curCall && curCall.side === shot.by && typeof CALL_FX !== 'undefined' ? (CALL_FX[curCall.id] || {}).serve : null);
-        const wide = aim === 'body' && recvPos ? clamp(Math.abs(recvPos.x) + rand(-0.4, 0.3), 0.6, 3.4) : aim === 'wide' ? rand(3.3, 3.95)
+        const wide = aim === 'body' && recvPos ? clamp(Math.abs(recvPos.x) + rand(-0.4, 0.3), 0.6, 3.4) : aim === 'wide' ? rand(3.3, 3.95) : aim === 't' ? rand(0.2, 0.6)
           : shot.kind === 'ace' ? (Math.random() < 0.5 ? 0.35 : 3.8) : rand(0.6, 3.6);
         return { x: side * wide, y: -d * rand(shot.kind === 'ace' ? 5.4 : 3, 6.1) };
       }
@@ -1252,8 +1306,17 @@ function createCourt() {
         : { x: (Math.random() < 0.5 ? -1 : 1) * rand(4.5, 5.3), y: -d * rand(7, 11) };
       case 'approach': return rallyTarget(shot, from, 8.5, 11);
       // A good drop dies just over the net; a poor one sits up a few metres further back.
-      case 'drop': return { x: rand(-3.2, 3.2), y: -d * (shot.popped ? rand(2.6, 4.5) : rand(0.5, 1.6)) };
-      case 'fault': return Math.random() < 0.6
+      case 'drop': {
+        // Drops go every way: crosscourt (short and angled), down the line, or through the middle.
+        const sd = from.x >= 0 ? 1 : -1, way = ['cross', 'angle'].includes(shot.dir) ? 'cross' : shot.dir === 'line' || shot.dir === 'middle' ? shot.dir : ['cross', 'line', 'middle', 'cross'][Math.floor(Math.random() * 4)];
+        const x = way === 'cross' ? -sd * rand(1.8, 3.9) : way === 'line' ? sd * rand(1.5, 3.6) : rand(-1.3, 1.3);
+        return { x, y: -d * (shot.popped ? rand(2.6, 4.5) : way === 'cross' ? rand(0.6, 2.6) : rand(0.5, 1.8)) };
+      }
+      case 'fault':
+        // An aimed serve misses near its target: a wide one long or past the sideline, one down the T long by the centre line.
+        if (shot.aim === 'wide') return Math.random() < 0.5 ? { x: (deuce ? -1 : 1) * d * rand(4.25, 4.8), y: -d * rand(3.5, 6) } : { x: (deuce ? -1 : 1) * d * rand(3, 3.9), y: -d * rand(6.7, 7.4) };
+        if (shot.aim === 't') return { x: (deuce ? -1 : 1) * d * rand(0.2, 0.9), y: -d * rand(6.7, 7.4) };
+        return Math.random() < 0.6
         ? { x: (deuce ? -1 : 1) * d * rand(0.8, 3.6), y: -d * rand(6.7, 7.6) }
         : { x: (deuce ? -1 : 1) * d * rand(4.2, 4.8), y: -d * rand(3, 6) };
       default: return rallyTarget(shot, from, 6.5, 11.3);
@@ -1263,7 +1326,7 @@ function createCourt() {
   // Where the receiver meets the ball. Heavy and deep balls push them back; angles pull them off the court.
   function contactPoint(bounce, recv, shot, next, flight) {
     const d = dir(recv);
-    if (next && (next.kind === 'volley' || next.kind === 'volleyx')) return { x: clamp(bounce.x * 0.7, -4, 4), y: d * rand(1.8, 3) };
+    if (next && (next.kind === 'volley' || next.kind === 'volleyx' || next.volleyErr)) return { x: clamp(bounce.x * 0.7, -4, 4), y: d * rand(1.8, 3) }; // (a missed volley is struck at the net too)
     if (shot.kind === 'drop' || shot.kind === 'underarm') return { x: clamp(bounce.x * 1.05, -DOUBLES, DOUBLES), y: d * rand(0.9, 1.8) };
     const carry = { serve: rand(3.5, 5.5), topspin: rand(2.2, 4.4), flat: rand(1.8, 3.4), slice: rand(1.0, 2.2),
       lob: rand(1.5, 4.5), smash: rand(3, 6), post: rand(1.5, 3), volley: rand(1.2, 2.4), popped: rand(1, 2) }[flight] ?? rand(1.3, 2.8);
@@ -1307,11 +1370,18 @@ function createCourt() {
     segs.push({ t: 'pause', base: 150, real: 700 });
 
     const rally = buildRally(pt, info);
+    if (pt.aims) {
+      // Aces, unreturned serves and double faults skip the rally builder: they still go where they were aimed.
+      if (['ace', 'unreturned', 'df'].includes(rally.end)) handAims(rally.shots.filter(s => s.kind !== 'fault'), pt);
+      // Faults miss near where the serve was aimed (a first-serve fault keeps the first serve's aim).
+      rally.shots = rally.shots.map(s => s.kind === 'fault' ? { ...s } : s); // a double fault's two faults are one object
+      rally.shots.filter(s => s.kind === 'fault').forEach((f, i) => { const a = i === 0 && pt.aims.f1 || pt.aims[0]; if (a && a.serve) f.aim = a.serve; });
+    }
     // Serves are struck at the hitting point: a little to the racket side and in front of the server.
     let from = { x: cur[server].x + fhDir(server) * 0.2, y: cur[server].y - dir(server) * 0.45 }, fromH = 2.6;
     const wingNext = [null, null], defensive = [false, false], chasingLob = [false, false];
     const atNet = side => Math.abs(cur[side].y) < 6;
-    let faults = 0, highlight = null;
+    let faults = 0, highlight = null, specTagged = false;
 
     if (pt.let) {
       const spot = { x: (deuce ? -1 : 1) * dir(server) * rand(1, 3), y: -dir(server) * rand(2.5, 5.5) };
@@ -1331,19 +1401,21 @@ function createCourt() {
       const isServe = shot.kind === 'serve' || shot.kind === 'ace';
       const myWing = wingNext[hitter] || chooseWing(hitter, h0.x, from.x);
       const cornered = Math.abs(from.x) > DOUBLES + 1.2 && Math.abs(from.y) < BASE - 1;
-      const chip = !!(pt.net && pt.net.style === 'chip' && pt.net.by === hitter);
+      const chip = !!(pt.net && pt.net.style === 'chip' && pt.net.by === hitter), topApp = !!(pt.net && pt.net.style === 'top' && pt.net.by === hitter);
       const call = nameShot(shot, myWing, faults ? pt.kmh2 : pt.kmh1,
-        { defensive: defensive[hitter], oppAtNet: atNet(recv) && !isServe, cornered, overhead: shot.smash || shot.bounceSmash, chasingLob: chasingLob[hitter], chip, k: k - faults }, hitter);
+        { defensive: defensive[hitter], oppAtNet: atNet(recv) && !isServe, cornered, overhead: shot.smash || shot.bounceSmash, chasingLob: chasingLob[hitter], chip, topApp, k: k - faults }, hitter);
       // Big-point calls show on the callout: the big serve, the chip, the serve-and-volley.
       { const sv = isServe && pt.call && pt.call.side === hitter && !faults && typeof CALL_FX !== 'undefined' ? (CALL_FX[pt.call.id] || {}).serve : null;
-        if (sv) call.type += { big: ' · BIG SERVE', body: ' · BODY SERVE', wide: ' · OUT WIDE', kick: ' · KICK SERVE', safe: ' · FIRST SERVE IN' }[sv] || ''; }
+        if (sv && !pt.spec) call.type += { big: ' · BIG SERVE', body: ' · BODY SERVE', wide: ' · OUT WIDE', kick: ' · KICK SERVE', safe: ' · FIRST SERVE IN' }[sv] || ''; }
+      // A speciality move names itself on that player's first shot of the point.
+      if (pt.spec && pt.spec.by === hitter && !specTagged && typeof specById === 'function') { specTagged = true; const sp = specById(pt.spec.id); if (sp) call.type += ' · ' + sp.tag; }
       // Serve-and-volley: the server follows the serve straight in.
       const rushIn = isServe && pt.net && pt.net.style === 'snv' && pt.net.by === hitter;
       if (rushIn) call.type += ' · S&V';
       if (shot.kind === 'drop' && !final && !shot.dug) shot.popped = true;
       if (shot.kind === 'underarm') fromH = 0.55;
       // Second serves are kicked: a higher, longer bounce that pushes the returner back.
-      const kick = isServe && (faults > 0 || !!(pt.call && pt.call.side === hitter && typeof CALL_FX !== 'undefined' && (CALL_FX[pt.call.id] || {}).serve === 'kick'));
+      const kick = isServe && (faults > 0 && !(pt.spec && pt.spec.bomb2) || !!(pt.call && pt.call.side === hitter && typeof CALL_FX !== 'undefined' && (CALL_FX[pt.call.id] || {}).serve === 'kick'));
       if (kick) call.type += ' · KICK';
       let fl = FLIGHT[shot.popped ? 'popped' : kick ? 'kick' : call.flight || 'topspin'];
       // Shot depth shows in the flight: moonballs loop high and kick up; deep drives skim low and fast.
@@ -1393,7 +1465,7 @@ function createCourt() {
       chasingLob[recv] = false;
       if (shot.lob && next && atNet(recv)) {
         // A deep lob gets chased; only a lob that falls short gets smashed out of the air.
-        if (Math.abs(bounce.y) < 9 || Math.random() < 0.35) { next.smash = true; if (Math.abs(bounce.y) > 8.5) bounce.y = Math.sign(bounce.y) * rand(6.5, 8.5); }
+        if (shot.shortLob || Math.abs(bounce.y) < 9 || Math.random() < 0.35) { next.smash = true; if (Math.abs(bounce.y) > 8.5) bounce.y = Math.sign(bounce.y) * rand(6.5, 8.5); }
         else chasingLob[recv] = true;
       }
       // A short lob to a player at the back: they move in and smash it after the bounce.
@@ -1404,7 +1476,13 @@ function createCourt() {
       const serveMps = (faults ? pt.kmh2 : pt.kmh1) / 3.6 * 0.75;
       // Put-aways are struck harder than rally balls.
       const power = 0.88 + (prof[hitter].ground ?? 50) / 400; // a 50-rated hitter ≈ 1.0, a 90 ≈ 1.1
-      let v = (isServe ? serveMps : fl.mps * power * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.2 : 1)) * surf().pace;
+      let v = (isServe ? serveMps : fl.mps * power * (final && (shot.kind === 'winner' || shot.kind === 'volley') ? 1.1 : 1)) * surf().pace;
+      // A drive struck from up by the net (after running in for a drop) is a short, controlled swing, not a full one;
+      // a drop's pace depends on how far it has to carry.
+      if (!isServe && shot.kind !== 'drop' && Math.abs(from.y) < 6.4 && (call.flight === 'topspin' || call.flight === 'flat')) v *= 0.8;
+      if (shot.kind === 'drop') v *= clamp(dist(from, bounce) / 14, 0.8, 1.3);
+      if (!isServe && pt.hands && shot.pace) v *= shot.pace === 'hard' ? 1.08 : 0.78; // a hands-on shot is hit the way the card says: slammed or floated
+      let reachK = 1; // how hard the receiver has to sprint to get to it
       // Where the receiver would like to meet it. Returns are taken back at the returner's depth.
       const desiredFor = b => next && next.smash ? { x: b.x * 0.9, y: lerp(r0.y, b.y, 0.5) }
         : next && next.bounceSmash ? { x: b.x * 1.05, y: dir(recv) * (Math.abs(b.y) + rand(0.3, 1)) } // step in and take it high off the bounce
@@ -1429,7 +1507,7 @@ function createCourt() {
           if (inAir && !(next && next.smash) && Math.abs(pnt.y) > (firstVolley ? 8.6 : 6.5)) continue;
           const ms = inAir ? clamp(sv / v * 1000, 150, 3800) : flightMs(L, sv, v);
           const body = bodyFor(recv, wing, pnt);
-          const need = dist(r0, body), can = runDist(ms / 1000);
+          const need = dist(r0, body), can = runDist(ms / 1000) * reachK;
           const ok = need <= can + 0.05;
           const score = ok ? Math.abs(sv - sWant) : 100 + need - can;
           if (!best || score < best.score) best = { score, ok, contact: pnt, body, wing, ms, need, can, L };
@@ -1438,18 +1516,29 @@ function createCourt() {
       };
       let met = meet(bounce);
       // A ball that comes back must be reachable: if not, it was placed a little closer to them.
+      const aimed = !!(shot.dir && !shot.lob && pt.hands);
       if (!final) for (let it = 0; it < (inAir ? 8 : 4) && !met.ok; it++) {
         const b2 = landing(shot, from, deuce, r0);
         b2.x = lerp(b2.x, r0.x, Math.min(0.9, (inAir ? 0.15 : 0.25) * (it + 1)));
+        if (aimed) b2.x = shot.aimX !== undefined ? clamp(b2.x, -3.95, 3.95) : inLane(shot, from, b2.x); // an aimed ball stays in its lane (a drawn one, in the court)
         const m2 = meet(b2);
         if (m2.ok || m2.need - m2.can < met.need - met.can) { bounce = b2; met = m2; }
+      }
+      // Still out of reach in its lane: a ball you slammed keeps its pace and they have to sprint and lunge for it;
+      // anything else was a softer ball, so they get there (the direction never changes).
+      if (!final && aimed && !inAir && !met.ok) {
+        for (const k of shot.pace === 'hard' ? [1.25, 1.5, 1.8, 2.2] : [1.2, 1.4, 1.7]) { reachK = k; const m2 = meet(bounce); if (m2.ok || m2.need - m2.can < met.need - met.can) met = m2; if (met.ok) break; }
+      }
+      if (!final && aimed && !inAir && !met.ok) {
+        const v0 = v;
+        for (const f of shot.pace === 'hard' ? [0.92, 0.85] : [0.9, 0.8]) { v = v0 * f; /* only a little softer: every spin keeps its own pace */ const m2 = meet(bounce); if (m2.ok || m2.need - m2.can < met.need - met.can) met = m2; if (met.ok) break; }
       }
       // A ball the net player volleys has to reach them: if it still can't, it was a softer, dipping ball
       // (so the volley is played where they are, never with the ball turning back short of them).
       if (!final && inAir && !met.ok) {
         const v0 = v;
-        for (const f of [0.85, 0.72, 0.6, 0.5]) { v = v0 * f; const m2 = meet(bounce); if (m2.ok || m2.need - m2.can < met.need - met.can) met = m2; if (met.ok) break; }
-        if (!met.ok) { v = v0 * 0.5; const near = { x: lerp(bounce.x, r0.x, 0.8), y: bounce.y }; const m2 = meet(near); if (m2.ok || m2.need - m2.can < met.need - met.can) { bounce = near; met = m2; } }
+        for (const f of [0.88, 0.78]) { v = v0 * f; const m2 = meet(bounce); if (m2.ok || m2.need - m2.can < met.need - met.can) met = m2; if (met.ok) break; }
+        if (!met.ok) { v = v0 * 0.75; const near = { x: lerp(bounce.x, r0.x, 0.8), y: bounce.y }; if (aimed) near.x = shot.aimX !== undefined ? clamp(near.x, -3.95, 3.95) : inLane(shot, from, near.x); const m2 = meet(near); if (m2.ok || m2.need - m2.can < met.need - met.can) { bounce = near; met = m2; } }
       }
       // A winner has to beat them: if they could get to it, it was hit further from them.
       const isWinner = final && ['winner', 'volley', 'drop', 'underarm', 'ace'].includes(shot.kind) || (final && shot.post);
@@ -1457,7 +1546,7 @@ function createCourt() {
       if (isWinner) met = meet(bounce, WIN_WINDOW);
       if (isWinner) for (let it = 0; it < 8 && (met.ok || met.need - met.can < 1.2); it++) {
         const b2 = landing(shot, from, deuce, r0);
-        if (shot.kind === 'winner' || shot.kind === 'volley') b2.x = -Math.sign(r0.x || 1) * rand(3.3, 4.05);
+        if (shot.kind === 'winner' || shot.kind === 'volley') b2.x = shot.dir === 'middle' ? -Math.sign(r0.x || 1) * rand(0.7, 1.4) : (shot.dir && shot.dir !== 'short' ? Math.sign(b2.x || 1) : -Math.sign(r0.x || 1)) * rand(3.3, 4.05); // aimed winners keep their side
         const m2 = meet(b2, WIN_WINDOW);
         if (!m2.ok || m2.need - m2.can > met.need - met.can) { bounce = b2; met = m2; }
       }
@@ -1500,8 +1589,9 @@ function createCourt() {
       const crossU = softShot && cross !== null ? 1 - (1 - cross) ** (1 / SOFT) : cross;
       const ua = softShot && cross !== null ? clamp(crossU * 0.65, 0.15, 0.8) : fl.apex ?? clamp(cross ?? 0.5, 0.15, 0.9);
       let peak = isServe ? fromH + (kick ? 0.15 : 0.03) : fl.h() * (((shotStyle(hitter).h || {})[call.flight]) || 1); // style shapes ball height
+      if (shot.kind === 'drop' && Math.abs(from.y) < 6.4) peak = rand(1.0, 1.4); // a drop from up by the net (a counter-drop) barely rises
       // Every ball clears the net, except shots going around the post.
-      if (cross !== null && !shot.post) while (arc(crossU, fromH, ua, peak, endH) < NET_H + 0.12 && peak < 9) peak += 0.1;
+      if (cross !== null && !shot.post) while (arc(crossU, fromH, ua, peak, endH) < NET_H + (isServe ? 0.12 : softShot ? 0.15 : 0.4) && peak < 9) peak += 0.1; // rally balls clear it comfortably
       // After the bounce it carries straight on along the same line.
       const L = dist(from, bounce), ux = (bounce.x - from.x) / (L || 1), uy = (bounce.y - from.y) / (L || 1);
       const postTo = !final ? contact
@@ -1536,7 +1626,7 @@ function createCourt() {
       // Only call it a deep drive if it really lands deep (near the baseline).
       if (call.type === 'DEEP DRIVE!' && (inAir || !bounce || Math.abs(bounce.y) < 9)) call.type = call.prevType || 'FLAT!';
       segs.push({
-        t: 'shot', hitter, recv, call, final, kind: shot.kind, rush: rushIn, cordTick: !!shot.cordTick,
+        t: 'shot', hitter, recv, call, final, kind: shot.kind, rush: rushIn, cordTick: !!shot.cordTick, aim: shot.dir && !shot.lob ? shot.dir : undefined, sw: shot.swFlight,
         // What the receiver is getting ready to hit (drives their wind-up during this flight).
         nextWing: final ? null : wingNext[recv], nextKind: final ? null : next.smash || next.bounceSmash ? 'smash' : next.dropNet ? 'drop' : next.kind,
         from: { ...from }, fromH, to0, bounce: inAir ? null : bounce, postTo, ua, peak, endH, tb,
@@ -1566,7 +1656,8 @@ function createCourt() {
   // Cinematic zoom on a big moment. Each frame the camera frames everything that matters (ball, both
   // players and the hitter's callout, landing spot) and zooms only as far as all of it still fits.
   let focusMax = 1;
-  function focus(zMax) { focusMax = zMax; }
+  let focusGen = 0;
+  function focus(zMax) { focusMax = zMax; focusGen++; }
   function followFocus(s) {
     const pts = [P(ball.x, ball.y, ball.h), P(s.to0 ? (s.bounce || s.to0).x : s.at.x, s.to0 ? (s.bounce || s.to0).y : s.at.y)];
     for (const side of [s.hitter, s.recv]) {
@@ -1585,9 +1676,9 @@ function createCourt() {
     cam.cy += (cyT - cam.cy) * 0.12;
   }
   async function unfocus() {
-    const z0 = cam.zoom, x0 = cam.cx, y0 = cam.cy;
-    await tween(420, t => { const e = ease(t); cam.zoom = lerp(z0, camBase, e); cam.cx = lerp(x0, W / 2, e); cam.cy = lerp(y0, H / 2, e); });
-    focusMax = 1;
+    const z0 = cam.zoom, x0 = cam.cx, y0 = cam.cy, g = focusGen;
+    await tween(420, t => { if (g !== focusGen) return; const e = ease(t); cam.zoom = lerp(z0, camBase, e); cam.cx = lerp(x0, W / 2, e); cam.cy = lerp(y0, H / 2, e); });
+    if (g === focusGen) focusMax = 1; // a new zoom (a drop answered with a drop) takes over
   }
 
   // Plays a planned point. o: { speed (normal views), real (true pace), slow (replay slow-mo), cinematic }.
@@ -1668,7 +1759,10 @@ function createCourt() {
       });
     };
 
-    for (const s of script.segs) {
+    // A hands-on point can stop before any step (o.beforeSeg) and swap in the rest of the point (playpoints.js).
+    for (let si = 0; si < script.segs.length; si++) {
+      if (o.beforeSeg) await o.beforeSeg(si);
+      const s = script.segs[si];
       if (s.t === 'walk') {
         const p0 = pos.map(p => ({ ...p })), z0 = cam.zoom;
         await tween(Math.max(T(s), zoomTo !== z0 ? 450 : 0), t => {
@@ -1748,10 +1842,10 @@ function createCourt() {
         // everything else plays at real speed.
         const dropMoment = s.kind === 'drop' || s.kind === 'underarm';
         const big = !isFps() && ((o.cinematic && s.fx === 'zoom') || dropMoment);
-        const ms = (o.real ? s.realMs : s.realMs / o.speed) * slow;
+        const ms0 = (o.real ? s.realMs : s.realMs / o.speed) * slow;
         if (big) focus(1.5);
         let marked = false, ticked = false;
-        await tween(ms, t => {
+        const frame = t => {
           if (t <= s.tb) {
             const u = t / s.tb;
             let h = arc(u, s.fromH, s.ua, s.peak, s.endH);
@@ -1796,7 +1890,14 @@ function createCourt() {
             labels[s.recv].sw = sw;
           }
           if (big) followFocus(s);
-        });
+        };
+        // A hands-on point can also stop part-way through the ball's flight (o.beforeSeg(si + 0.5)), so you choose
+        // your shot while the ball is still coming, before you've run to it.
+        if (s.holdAt && o.beforeSeg) {
+          await tween(ms0 * s.holdAt, t => frame(t * s.holdAt));
+          await o.beforeSeg(si + 0.5);
+          await tween(ms0 * (1 - s.holdAt), t => frame(s.holdAt + t * (1 - s.holdAt)));
+        } else await tween(ms0, frame);
         // Point over: the ball carries on from where it was (it never freezes mid-air).
         if (s.final && ball.on && s.bounce) {
           const post = Math.max(0.05, (s.realMs || 600) * (1 - s.tb) / 1000);
@@ -1806,8 +1907,9 @@ function createCourt() {
           const vz = s.goodDrop ? 0 : s.bounceH * 0.7 * Math.PI * Math.cos(0.7 * Math.PI) / post;
           await settle(vx, vy, vz, big ? 700 : 1100);
         }
-        // Hold the moment on a point-ending shot; mid-rally, ease straight back out.
-        if (big) { await unfocus(); }
+        // Hold the moment on a point-ending shot; mid-rally, ease back out while the next shot is already on its way
+        // (waiting for the camera here froze the rally for a moment after every drop shot).
+        if (big) { if (s.final) await unfocus(); else unfocus(); }
         if (s.review) {
           review = { ...s.review, t: 0 };
           await tween(2800 * slow, t => { review.t = t; });
@@ -1835,6 +1937,21 @@ function createCourt() {
   return {
     mount, scene, sceneArgs, draw, playPoint, play, reset, setView, setAngle, setOptions,
     planOnly: (pt, info) => plan(pt, info), // testing: the shot-by-shot script for a point, without playing it
+    // Hands-on points (playpoints.js): plan a point from set start positions with a fixed random seed, so different
+    // endings share the same opening, then play it with a hook before each step.
+    planSeeded(pt, info, seed, start) {
+      const keep = Math.random, keepPos = pos;
+      Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+      if (start) pos = start.map(p => ({ ...p }));
+      try { return plan(pt, info); } finally { Math.random = keep; pos = keepPos; }
+    },
+    async playScript(script, speed, beforeSeg) {
+      breakTime = false;
+      const real = view === 'gatah';
+      const rally = await play(script, { speed, real, cinematic: real, slow: real ? liveSlow / (speed || 1) : 1, beforeSeg });
+      rally.script = script; rally.highlight = script.highlight;
+      return rally;
+    },
     setSlow(v) { liveSlow = v; },
     set pauseCheck(fn) { pauseCheck = fn; },
     banner(text) { banner = text ? { text, t0: clock() } : null; draw(); },

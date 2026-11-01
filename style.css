@@ -175,20 +175,19 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 520px) { .btn-row.three { grid-template-columns: 1fr 1fr; } .btn-row.three .speed { grid-column: span 2; } }
 
 .choose { text-align: center; margin: 4px 0 12px; }
-.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
-@media (max-width: 900px) { .modes { grid-template-columns: repeat(2, 1fr); } }
+/* A cross: Play The Points on top, Watch Live · Set By Set · Full Match across, Read The Match below. */
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: ". play ." "watch sets full" ". read ."; gap: 8px; max-width: 580px; margin: 0 auto 22px; }
 .mode {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; color: var(--text);
-  padding: 18px 10px; font: inherit; cursor: pointer; transition: .15s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; min-height: 92px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; color: var(--text);
+  padding: 10px 6px; font: inherit; cursor: pointer; transition: .15s;
 }
 .mode:hover { border-color: var(--accent); box-shadow: 0 0 24px rgba(10,132,255,.25); }
-.mode span { font-size: 28px; }
-.mode b { font-size: 15px; }
-.mode small { font-size: 12px; color: var(--muted); }
+.mode span { font-size: 22px; }
+.mode b { font-size: 14px; }
+.mode small { font-size: 11px; color: var(--muted); line-height: 1.25; }
 .btn-row.four { grid-template-columns: 1fr 1fr 1fr auto; }
 @media (max-width: 600px) {
-  .modes { grid-template-columns: 1fr; }
   .btn-row.four { grid-template-columns: 1fr 1fr; }
   .btn-row.four .speed { grid-column: span 2; }
 }
@@ -1597,3 +1596,136 @@ li::first-letter, p::first-letter, .chip::first-letter, .keyfacts em::first-lett
 .pricetip small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
 .prepitem .pricewrap .btn:disabled { pointer-events: none; }
 .pricetip .ptwhy.ok { color: var(--good); }
+
+/* Speciality Moves: the fourth big-point button (specials.js). */
+.cbopts > button.spbtn { border: 2px solid #bf5af2; background: linear-gradient(160deg, rgba(60,30,80,.95), rgba(23,27,34,.95)); padding-top: 14px; }
+.cbopts > button.spbtn.rec { border-color: #ffd60a; }
+.sppill { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-style: normal; font-size: 10px; font-weight: 800;
+  background: #bf5af2; color: #fff; border-radius: 99px; padding: 2px 8px; text-transform: capitalize; }
+/* Play The Points (playpoints.js): shot cards against the clock, then the timing rings */
+.callbox.ho { gap: 10px; background: rgba(8, 10, 14, .38); backdrop-filter: none; }
+.callbox.ho.pick { justify-content: center; align-items: center; background: rgba(8, 10, 14, .8); } /* dark enough that the court's own words never show through the text */
+.hohead { text-align: center; } .hohead b { display: block; font: italic 900 clamp(15px, 3vw, 22px)/1.1 -apple-system, BlinkMacSystemFont, sans-serif; color: #ffd60a; }
+.hohead small { display: block; color: #f5f5f7; font-size: 13px; margin-top: 3px; }
+.hotimer { width: min(420px, 90%); height: 8px; background: rgba(255, 255, 255, .15); border-radius: 999px; overflow: hidden; flex: none; }
+.hotimer i { display: block; height: 100%; background: linear-gradient(90deg, #ff453a, #ffd60a 40%, #30d158); transform-origin: left; }
+.hocards { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 6px; width: min(calc(var(--n, 3) * 150px), 100%); margin: 0 auto; } /* every option in one row */
+.hocards button { background: rgba(23, 27, 34, .95); border: 1.5px solid var(--line); border-radius: 14px; color: var(--text); min-height: 76px; padding: 8px 6px;
+  font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; touch-action: manipulation; }
+.hocards button:hover, .hocards button:active { border-color: var(--accent); }
+.hocards span { font-size: 22px; } .hocards b { font-size: 13px; line-height: 1.15; overflow-wrap: break-word; }
+@media (max-width: 480px) { .hocards button { padding: 6px 3px; } .hocards b { font-size: 12px; } .hocards small, .hocards em { font-size: 10px; } }
+.hocards small { font-size: 11px; color: var(--muted); } .hocards em { font-size: 11px; color: #ff9f0a; font-style: normal; font-weight: 700; }
+.hosit { font-size: 15px; font-weight: 800; color: #f5f5f7; text-align: center; } .hosit.good { color: var(--good); } .hosit.bad { color: #ff9f0a; }
+.hohit { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 100%; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.hoshot { font-weight: 800; font-size: 16px; color: #f5f5f7; }
+.horing { position: relative; width: 290px; height: 290px; max-width: 86vw; max-height: 86vw; overflow: hidden; flex: none; border-radius: 50%;
+  background: radial-gradient(circle closest-side, rgba(0, 0, 0, .62) 97%, transparent 100%); } /* a dark disc so the rings stand out on any court */
+.horing i { position: absolute; left: 50%; top: 50%; border-radius: 50%; box-sizing: border-box; }
+.hoband, .hoclean { transform: translate(-50%, -50%); border-style: solid; }
+.hoband { border-color: rgba(255, 255, 255, .5); } .hoclean { border-color: #3dff6e; box-shadow: 0 0 10px rgba(61, 255, 110, .6); }
+.hoouter { border: 4px solid #ffd60a; box-shadow: 0 0 0 2px rgba(0, 0, 0, .7), 0 0 12px rgba(255, 214, 10, .55); transform: translate(-50%, -50%) scale(2.6); }
+.hoflash { position: fixed; z-index: 60; transform: translate(-50%, -50%); pointer-events: none; font: 900 22px/1 system-ui, sans-serif; letter-spacing: .05em;
+  text-shadow: 0 0 3px #000, 0 2px 6px rgba(0, 0, 0, .8); animation: hoflash .9s ease-out forwards; }
+.hoflash.good { color: #3dff6e; } .hoflash.ok { color: #f5f5f7; } .hoflash.bad { color: #ff6b5e; }
+@keyframes hoflash { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -90%); } }
+.hoheld { display: none; font: 800 20px/1.2 system-ui, sans-serif; color: #fff; letter-spacing: .04em; padding: 16px 26px; margin: 10px auto; background: rgba(0, 0, 0, .6); border: 2px solid #fff; border-radius: 14px; cursor: pointer; min-height: 56px; }
+.callbox.ho.held .hoheld { display: block; }
+.horow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.hopause { min-height: 44px; min-width: 110px; font-size: 15px; color: #f5f5f7; }
+.callbox.ho.held .hopause { display: none; }
+.callbox.ho.held .hocards, .callbox.ho.held .sgpad, .callbox.ho.held .sgguide, .callbox.ho.held .hogauge, .callbox.ho.held .hotag, .callbox.ho.held .hobwait, .callbox.ho.held .hoshot, .callbox.ho.held .hohit small { display: none; }
+.horing.shaky .hoband, .horing.shaky .hoclean { animation: hoshake .16s infinite alternate; }
+@keyframes hoshake { from { transform: translate(calc(-50% - var(--wob)), -50%); } to { transform: translate(calc(-50% + var(--wob)), calc(-50% + var(--wob))); } }
+.hohit small { color: #f5f5f7; font-size: 13px; }
+.hosay { font: italic 900 clamp(20px, 4vw, 30px)/1.1 -apple-system, BlinkMacSystemFont, sans-serif; color: #f5f5f7; }
+.hosay.good { color: var(--good); } .hosay.bad { color: #ff9f0a; }
+@media (max-height: 520px) { .callbox.ho { gap: 6px; } .hocards button { min-height: 60px; } }
+
+/* Admin test match bar */
+.testbar { position: sticky; top: 0; z-index: 45; /* under any open window */ display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; background: #3b2a00; border-bottom: 2px solid #f5c400; color: #ffe27a; font-size: 14px; }
+.testbar span { opacity: .8; font-size: 12px; }
+.testbar .btn { margin: 0; }
+/* Play The Points: the key for each card (computers only: phones tap) */
+.hocards button { position: relative; }
+.hokey { display: none; position: absolute; top: 5px; left: 6px; font: 600 11px/1 system-ui, sans-serif; color: var(--muted, #9aa4b2);
+  border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; background: rgba(255, 255, 255, .04); }
+@media (hover: hover) and (pointer: fine) { .hokey { display: block; } }
+
+/* Play The Points: the bar gauges (hold and release, sweep). Green perfect, grey okay. */
+.hohit { -webkit-touch-callout: none; }
+.hobar { position: relative; width: 300px; max-width: 86vw; height: 34px; flex: none; border-radius: 17px; background: rgba(0, 0, 0, .65);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .18); overflow: hidden; }
+.hobar i { position: absolute; top: 0; bottom: 0; }
+.hobband { background: rgba(255, 255, 255, .35); }
+.hobclean { background: #3dff6e; box-shadow: 0 0 10px rgba(61, 255, 110, .7); }
+.hobfill { left: 0; width: 0; background: linear-gradient(90deg, rgba(255, 214, 10, .15), rgba(255, 214, 10, .55)); }
+.hobmark { width: 5px; margin-left: -2.5px; background: #ffd60a; box-shadow: 0 0 0 2px rgba(0, 0, 0, .75), 0 0 10px rgba(255, 214, 10, .8); left: 0; }
+.hobar.sweep .hobfill { display: none; }
+.hotag { font-size: 13px; letter-spacing: .5px; text-transform: uppercase; color: #ffd60a; background: rgba(0, 0, 0, .55); border-radius: 10px; padding: 2px 10px; }
+.hotag.hold { color: #ff9f0a; }
+.hobar.hold { height: 42px; border-radius: 21px; }
+.hobar.hold .hobmark { width: 3px; margin-left: -1.5px; }
+.hobar.hold.down { box-shadow: 0 0 0 2px #ff9f0a; }
+.hobar.hold .hobfill { background: linear-gradient(90deg, rgba(255, 159, 10, .2), rgba(255, 159, 10, .7)); }
+.hobwait { width: 300px; max-width: 86vw; height: 6px; border-radius: 3px; background: rgba(0, 0, 0, .55); overflow: hidden; }
+.hobwait i { display: block; height: 100%; background: #ff9f0a; transform-origin: left; }
+.hobar.shaky .hobband, .hobar.shaky .hobclean { animation: hobshake .16s infinite alternate; }
+@keyframes hobshake { from { transform: translateX(calc(-1 * var(--wob))); } to { transform: translateX(var(--wob)); } }
+
+/* Play The Points: Swipe Shots (strokegesture.js) */
+.sgpad { position: relative; width: min(900px, 100%); height: clamp(280px, 50vh, 560px); border-radius: 16px; background: rgba(0, 0, 0, .45); border: 1.5px dashed rgba(255, 255, 255, .35);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; box-sizing: border-box; touch-action: none; cursor: crosshair;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sglive { font: 800 16px/1.2 system-ui, sans-serif; color: #f5f5f7; text-align: center; pointer-events: none; z-index: 1; }
+.sglive.out { color: #ff3b30; }
+.sglegend { position: absolute; left: 12px; right: 12px; bottom: 8px; font-size: 11px; color: rgba(255, 255, 255, .7); text-align: center; pointer-events: none; z-index: 1; }
+.sgtrail { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sgchips button { min-height: 40px; padding: 4px; opacity: .8; }
+.sgchips button > span, .sgchips small, .sgchips em { display: none; }
+.sgchips button.on { opacity: 1; border-color: #ffd60a; box-shadow: 0 0 0 2px rgba(255, 214, 10, .5); }
+.sgchips span { font-size: 16px; }
+.hoswap { background: none; border: 1px solid var(--line); border-radius: 10px; color: var(--muted, #9aa4b2); font-size: 13px; padding: 6px 12px; cursor: pointer; }
+.sgread { font-size: 12px; color: #ffd60a; font-weight: 700; }
+.sgball { position: absolute; top: 50%; transform: translateY(-50%); font-size: 26px; pointer-events: none; opacity: .85; }
+.sgpad.bl .sgball { left: 10px; } .sgpad.br .sgball { right: 10px; }
+.sgguide { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; }
+.sgguide figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sgguide svg { width: 34px; height: 34px; fill: none; stroke: #f5f5f7; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sgguide.flip svg { transform: scaleX(-1); }
+.sgguide figcaption { font-size: 10px; color: rgba(255, 255, 255, .75); }
+.sgguide figure > b { font-size: 11px; color: #f5f5f7; }
+.sgguide figure > div { display: flex; gap: 4px; }
+.sgguide:has(figure > div) { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 5px; width: min(440px, 100%); }
+.sgguide figure > div { width: 100%; }
+.sgguide figure > div span { flex: 1; min-width: 0; }
+.sgguide figure > div svg { width: 100%; max-width: 34px; height: auto; aspect-ratio: 1; }
+.sgguide span { display: flex; flex-direction: column; align-items: center; background: rgba(0, 0, 0, .35); border-radius: 8px; padding: 2px; }
+.sgguide span i { font-style: normal; font-size: 11px; color: #ffd60a; line-height: 1; }
+@media (max-height: 620px) { .sgpad { height: 62vh; } }
+
+/* Set Up My Swipes */
+.sgsetup { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.sgsetup .sgpad { height: clamp(260px, 45vh, 460px); }
+.sgstep { margin: 0; color: var(--muted, #9aa4b2); font-size: 13px; }
+.sgwant { display: flex; align-items: center; gap: 12px; } .sgwant b { font-size: 20px; }
+.sgguide.one { display: flex; } .sgguide.one span { padding: 6px; } .sgguide.one svg { width: 64px; height: 64px; stroke-width: 2.5; }
+
+/* Play The Points on phones: the decision is a game screen (court on top, controls fixed below it). */
+body.hofixed { overflow: hidden; }
+.callbox.ho.hofix { position: fixed; inset: auto 0 0 0; z-index: 50; border-radius: 16px 16px 0 0; background: rgba(8, 10, 14, .96); backdrop-filter: none;
+  justify-content: flex-start; overflow-y: auto; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); gap: 8px; }
+.callbox.ho.hofix .sgpad { flex: 1 1 auto; height: auto; min-height: 170px; }
+.callbox.ho.hofix .hohit { justify-content: center; }
+/* While a hands-on decision is up, the court's own buttons (camera, speed, pause, skip) step aside: no overlap. */
+#mCourtWrap:has(> .callbox.ho:not([hidden])) > .ov { visibility: hidden; }
+
+/* The Play The Points tutorial */
+.tutnote { margin: 0 auto 12px; max-width: 580px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 214, 10, .12); border: 1.5px solid rgba(255, 214, 10, .55); color: #ffd60a; font-weight: 700; text-align: center; line-height: 1.35; }
+.modes .mode.tutoff { opacity: .35; pointer-events: none; }
+.tutnote ~ .modes .mode[data-mode="play"] { box-shadow: 0 0 0 3px #ffd60a; }
+
+/* The decision's header sits on its own dark backing, so nothing drawn on the court shows through the words. */
+.callbox.ho .hohead { background: rgba(8, 10, 14, .9); padding: 6px 16px; border-radius: 12px; }
+.sgchips button { padding-left: 26px; padding-right: 8px; } /* room for the key number, so it never sits on the words */

@@ -288,10 +288,19 @@ function moraleLine(rec) {
 
 // Big-point calls: how many you made and how many came off.
 function callsLine(rec) {
-  if (!rec.calls) return '';
-  const { made, won } = rec.calls;
-  return `On the big points you made ${made} call${made === 1 ? '' : 's'} and won ${won} of ${made === 1 ? 'it' : 'them'}.` +
-    (won / made >= 0.66 ? ' Clutch.' : won / made <= 0.34 ? ' The big moments got away from you.' : '');
+  return (rec.calls ? (() => {
+    const { made, won } = rec.calls;
+    return `On the big points you made ${made} call${made === 1 ? '' : 's'} and won ${won} of ${made === 1 ? 'it' : 'them'}.` +
+      (won / made >= 0.66 ? ' Clutch.' : won / made <= 0.34 ? ' The big moments got away from you.' : '');
+  })() : '') + specialsLine(rec);
+}
+// Speciality moves: yours and theirs, and how they came off.
+function specialsLine(rec) {
+  const x = rec.specials;
+  if (!x) return '';
+  const mine = x.made ? ` You went to your speciality move ${x.made} time${x.made === 1 ? '' : 's'} and won ${x.made > 1 && x.won === x.made ? 'every one' : `${x.won} of ${x.made}`}.` : '';
+  const theirs = x.opp ? ` Your opponent pulled out theirs ${x.opp} time${x.opp === 1 ? '' : 's'}, winning ${x.oppWon}.` : '';
+  return mine + theirs;
 }
 
 // Set-break plan changes: what you changed, and whether it worked.

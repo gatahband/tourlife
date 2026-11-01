@@ -625,6 +625,8 @@ function advance(entry) {
 
 // Called once the player's match is over: finish the round, then either move on or wrap up the event.
 function afterPlayerMatch(entry) {
+  // An admin test match is a single match: done once it's played.
+  if (entry.test) { const sl = entry.rounds[0][0]; if (sl.winner !== undefined) entry.result = { reached: sl.winner === 0 ? 1 : 0, points: 0, champion: sl.winner }; return; }
   if (inQual(entry)) {
     const q = entry.qual, won = q.slot && q.slot.winner === 0;
     q.slot = null;
@@ -1200,10 +1202,12 @@ async function playOneSet(animate = true) {
         // Read The Match: routine points go by fast, but break points and set points play out on court,
         // and every finished game gets a short recap so you can follow the match.
         const big = fresh.some(p => p.bp !== null || p.press), was = Court.skip, endPt = fresh[fresh.length - 1];
-        if (L.mode === 'read' && shown >= target && !Court.skip && !anim.finishAfter) {
+        // Play The Points: the games you don't play go by on the skip screen, like Read The Match between its live moments.
+        const playSkip = L.mode === 'play' && !fresh.some(p => p.hands);
+        if ((L.mode === 'read' || playSkip) && shown >= target && !Court.skip && !anim.finishAfter) {
           // Read The Match, like a broadcast: big points and the points after a Match Read play live on court;
           // in between, the court fades out and the scoreboard and meter tick through each point.
-          if (big || (L.liveLeft || 0) > 0) {
+          if (L.mode === 'read' && (big || (L.liveLeft || 0) > 0)) {
             await courtFade(false);
             if ($('mMeter')) $('mMeter').classList.add('live');
             await A.play(fresh, false);
@@ -1246,7 +1250,7 @@ async function playOneSet(animate = true) {
       const lastPt = fresh[fresh.length - 1];
       let readNow = false;
       // (Read The Match: one read a set, after game 5, with more riding on it.)
-      if (lastPt && lastPt.end && !lastPt.tb && (L.mode === 'read' ? [5] : [3, 7]).includes(lastPt.games[0] + lastPt.games[1]) && ['watch', 'read'].includes(L.mode)) {
+      if (lastPt && lastPt.end && !lastPt.tb && (L.mode === 'read' ? [5] : [3, 7]).includes(lastPt.games[0] + lastPt.games[1]) && ['watch', 'read', 'play'].includes(L.mode)) {
         readNow = true;
         if (shown < target) {
           const pc = (L.calls || []).find(c => c.step === step && c.id === 'plan');
@@ -1266,14 +1270,23 @@ async function playOneSet(animate = true) {
         if (shown < target) {
           const pc = (L.calls || []).find(c => c.step === step && c.id === 'plan');
           if (pc) { ps[me].plan = { ...pc.plan }; m.exec[me] = pc.exec; }
-        } else if (!Court.skip && !anim.finishAfter && !anim.noChangeovers) await changeover(entry, ps, me, step);
+        } else if (!Court.skip && !anim.finishAfter && !anim.noChangeovers) { await courtFade(false); await changeover(entry, ps, me, step); } // (Play The Points: off the skip screen, or it waits unseen under it)
       }
-      if (info.bp !== null || info.press) {
+      // Play The Points: this point is yours, shot by shot (a refresh replays the recorded result).
+      const hoRec = shown < target && (L.calls || []).find(c => c.step === step && c.id === 'ho');
+      if (hoRec || (shown >= target && L.mode === 'play' && typeof hoPointHere === 'function' && hoPointHere(m, info) && !Court.skip && !anim.finishAfter)) {
+        if (hoRec) { if (hoRec.res) m.forced = hoRec.res; } // left half-played by a refresh: the engine plays it
+        else await playHandsOn(entry, m, ps, me, ev, info, step);
+      } else if (info.bp !== null || info.press) {
         if (shown < target) {
-          const rc = (L.calls || []).find(c => c.step === step && c.id !== 'plan' && c.id !== 'pen'), call = rc && callById(info.s === me ? 'serve' : 'ret', rc.id);
+          const rc = (L.calls || []).find(c => c.step === step && !['plan', 'pen', 'ai', 'ho'].includes(c.id)), call = rc && callById(info.s === me ? 'serve' : 'ret', rc.id);
           if (rc && rc.id === 'off') anim.noCalls = true;
           if (call) makeCall(m, ps, me, call);
-        } else { anim.step = step; if (L.mode === 'read') await courtFade(false); await bigPoint(info, ps, me); }
+          // Speciality moves (specials.js): yours, then the opponent's, exactly as they were played.
+          if (rc && rc.id === 'sp') { const sp = specialFor(m, ps, me, info.s === me ? 'serve' : 'ret'); if (sp) makeSpecial(m, ps, me, sp, ev); }
+          const ac = (L.calls || []).find(c => c.step === step && c.id === 'ai'), osp = ac && specById(ac.sp);
+          if (osp && !m.call && !m.spec) makeSpecial(m, ps, op, osp, ev);
+        } else if (L.mode !== 'play') { anim.step = step; if (L.mode === 'read') await courtFade(false); await bigPoint(info, ps, me); oppSpecial(info, ps, me, step); } // (Play The Points sims its other games)
       }
     }, rng);
     await A.play(m.points.slice(shown), true);
@@ -1365,16 +1378,19 @@ function bigPoint(info, ps, me) {
   // Coach Mode: the big points are your player's to play. You watch from the box.
   if (isCoachMode()) return new Promise(r => setTimeout(r, 900));
   const serving = info.s === me, calls = callsFor(ps[me], serving ? 'serve' : 'ret');
+  const ev = eventOf(current.entry), spc = specialFor(m, ps, me, serving ? 'serve' : 'ret');
   const pct = e => `${e >= 0 ? '+' : '−'}${(Math.abs(e) * 100).toFixed(1)}%`;
   const box = $('mCallBox');
   box.className = 'callbox bp';
   box.innerHTML = `<div class="bphead"><div class="cbtitle">${text}</div><div class="cbsub">${serving ? "You're Serving" : "You're Returning"} · Make A Call</div></div>` +
     // The Master coach points to the best call for this point (highlighted in gold).
     (() => {
-      const edges = calls.map(c => callEdge(m, ps, me, c));
-      const pick = teamLevel(current.career, 'coach') >= 4 ? edges.indexOf(Math.max(...edges)) : -1;
+      const edges = calls.map(c => callEdge(m, ps, me, c)), spEdge = spc ? specialEdge(m, ps, me, spc, ev) : -1;
+      const best = Math.max(...edges, spEdge), coachOn = teamLevel(current.career, 'coach') >= 4;
+      const pick = coachOn && spEdge < best ? edges.indexOf(best) : -1;
       return `<div class="bpmid"><div class="cbopts eq">${calls.map((c, i) => `<button type="button" data-call="${c.id}" class="${i === pick ? 'rec' : ''}"><span>${c.icon}</span><b>${c.title}</b>` +
-        `<small class="${edges[i] >= 0 ? 'up' : 'down'}">${pct(edges[i])} On This Point</small>${i === pick ? '<em class="recpill">🧑‍🏫 Coach\'s Pick</em>' : ''}</button>`).join('')}</div>` +
+        `<small class="${edges[i] >= 0 ? 'up' : 'down'}">${pct(edges[i])} On This Point</small>${i === pick ? '<em class="recpill">🧑‍🏫 Coach\'s Pick</em>' : ''}</button>`).join('')}` +
+        (spc ? specialButton(m, ps, me, spc, ev, coachOn && spEdge >= best) : '') + `</div>` +
         '';
     })() +
     bpContextHtml(m, ps, me, serving, calls) + `</div>` +
@@ -1391,6 +1407,7 @@ function bigPoint(info, ps, me) {
       if (L && L.inSet && id) { L.calls = (L.calls || []).filter(c => c.step !== anim.step || c.id === 'plan' || c.id === 'pen'); L.calls.push({ step: anim.step, id }); }
       const call = calls.find(c => c.id === id);
       if (call) makeCall(m, ps, me, call);
+      if (id === 'sp' && spc) { makeSpecial(m, ps, me, spc, ev); Court.banner(`${spc.icon} ${spc.title.toUpperCase()}`); }
       box.hidden = true; box.onclick = null; box.className = 'callbox';
       done();
     };
@@ -1398,15 +1415,29 @@ function bigPoint(info, ps, me) {
   });
 }
 
+// The opponent's speciality move on a big point you're watching (recorded, so a refresh replays it the same).
+function oppSpecial(info, ps, me, step) {
+  const L = current.entry.live, m = L.m, op = 1 - me;
+  if (Court.skip || anim.finishAfter || m.call || m.spec || isCoachMode()) return;
+  const sp = oppWantsSpecial(m, ps, op, info.s === op ? 'serve' : 'ret', eventOf(current.entry), Math.random());
+  if (!sp) return;
+  L.calls = [...(L.calls || []), { step, id: 'ai', sp: sp.id }];
+  makeSpecial(m, ps, op, sp, eventOf(current.entry));
+  Court.banner(`${sp.icon} ${shortName(ps[op]).toUpperCase()}: ${sp.title.toUpperCase()}`);
+}
+
 // Watch mode: replay every set on court until the match ends (or you jump to the end).
 // Switch how the match is played at any point (mid-set too): you're never locked into one way.
 const MODES = [['watch', '🎾', 'Watch Live'], ['read', '🧠', 'Read The Match'], ['sets', '⏭️', 'Set By Set'], ['full', '⚡', 'Full Match']];
+// Play The Points (playpoints.js) is admin-only while it's being tested.
+const matchModes = () => typeof playPointsOn === 'function' && playPointsOn() ? [...MODES.slice(0, 2), ['play', '🎮', 'Play The Points'], ...MODES.slice(2)] : MODES;
+const liveMode = k => k === 'watch' || k === 'read' || k === 'play';
 function renderModeBar() {
   const el = $('mModes'), L = current.entry && current.entry.live;
   if (!el) return;
   el.hidden = !L || !L.mode || !!L.done;
   if (el.hidden) return;
-  el.innerHTML = `<span>Play This Match As</span><div class="modebtns">${MODES.map(([k, i, t]) => `<button type="button" data-sw="${k}" class="${L.mode === k ? 'on' : ''}"><span>${i}</span>${t}</button>`).join('')}</div>`;
+  el.innerHTML = `<span>Play This Match As</span><div class="modebtns">${matchModes().map(([k, i, t]) => `<button type="button" data-sw="${k}" class="${L.mode === k ? 'on' : ''}"><span>${i}</span>${t}</button>`).join('')}</div>`;
   el.onclick = e => { const b = e.target.closest('[data-sw]'); if (b && b.dataset.sw !== L.mode) switchMode(b.dataset.sw); };
 }
 async function switchMode(k) {
@@ -1415,12 +1446,12 @@ async function switchMode(k) {
   renderModeBar();
   if (anim.running) {
     // Mid-set: watching and reading take over from the next point; simming finishes the set, then carries on.
-    if (k === 'watch') { courtFade(false); }
+    if (k === 'watch' || k === 'play') { courtFade(false); }
     else if (k === 'sets') { anim.paused = false; Court.skip = true; }
     else if (k === 'full') { anim.watching = false; anim.paused = false; anim.finishAfter = true; Court.skip = true; }
     return;
   }
-  if (k === 'watch' || k === 'read') watchMatch();
+  if (liveMode(k)) watchMatch();
   else if (k === 'full') { while (!entry.live.done) await playOneSet(false); renderMatch(); }
   else renderMatch();
 }
@@ -1475,7 +1506,9 @@ function makeAnimator(prior, setNo) {
 
     const mapBy = o => o && { ...o, by: view(o.by) };
     const review = (pt.bp !== null || pt.press) ? anim.review : Math.random() < 0.05;
-    const rally = await Court.playPoint({ ...pt, review, w: view(pt.w), net: mapBy(pt.net), drop: mapBy(pt.drop), netcord: mapBy(pt.netcord),
+    // A hands-on point was already played out on court as you played it (playpoints.js).
+    const shownLive = pt.hands && anim.hoRally; anim.hoRally = null;
+    const rally = shownLive || await Court.playPoint({ ...pt, review, w: view(pt.w), net: mapBy(pt.net), drop: mapBy(pt.drop), netcord: mapBy(pt.netcord),
       call: pt.call && { ...pt.call, side: view(pt.call.side) } },
       { server: view(pt.s), deuce: inGame % 2 === 0 }, anim.speed);
     // Points actually watched (not skipped) earn the watching bonus.
@@ -1578,6 +1611,7 @@ function concludeMatch() {
   if (m.rally) rec.rally = { sum: m.rally.sum, n: m.rally.n, long: [m.rally.long[me], m.rally.long[op]], short: [m.rally.short[me], m.rally.short[op]] };
   const myCalls = (m.callLog || []).filter(x => x.side === me);
   if (myCalls.length) rec.calls = { made: myCalls.length, won: myCalls.filter(x => x.won).length };
+  { const sr = specialRecord(m, me); if (sr) rec.specials = sr; }
   // Set-break plan changes, and how the sets after each one went.
   const adj = entry.live.adjusts || [];
   if (adj.length) rec.adjusts = adj.map((a, i) => {
@@ -1618,7 +1652,7 @@ function renderMatch() {
   setTimeout(renderModeBar, 0);
   const ps = matchPlayers(entry, m);
   const me = m.a === 0 ? 0 : 1, op = 1 - me;
-  $('mTitle').textContent = `${roundLabel(entry)} · ${ev.city} ${tierLabel(ev.tier)}`;
+  $('mTitle').textContent = entry.tutorial ? 'Play The Points: Practice Match' : `${roundLabel(entry)} · ${ev.city} ${tierLabel(ev.tier)}`;
   $('mMeta').textContent = `${surfaceLabel(ev.surface)}${ev.indoor ? ' · Indoor' : ''}${ev.weather ? ` · ${wxLabel(ev)}` : ''}`;
   const opp = ps[op];
   $('mOpp').textContent = `Opponent: ${opp.atpRank ? `ATP #${opp.atpRank} · ` : ''}age ${opp.age} · ${lefty(opp) ? 'left-handed' : 'right-handed'}${opp.seed ? ` · No. ${opp.seed} seed` : ''}`;
@@ -1707,13 +1741,18 @@ function renderMatch() {
     };
     if (!mode) {
       // Before the first ball: how do you want to play this one?
-      $('mActions').innerHTML = `<h2 class="choose">How do you want to play this match?</h2><div class="modes">` +
+      // (The tutorial points you to Play The Points.)
+      const tutMode = typeof hoTutOn === 'function' && hoTutOn();
+      $('mActions').innerHTML = (tutMode ? `<div class="tutnote">🎓 Choose 🎮 Play The Points. In your own matches you'll find it right here, before the first ball.</div>` : '') +
+        `<h2 class="choose">How do you want to play this match?</h2><div class="modes">` +
         [['watch', '🎾', 'Watch Live', 'Every point on court, with Match Reads'],
          ['read', '🧠', 'Read The Match', 'Fast play: big calls and Match Reads'],
+         ...(typeof playPointsOn === 'function' && playPointsOn() ? [['play', '🎮', 'Play The Points', 'Play the key games yourself, shot by shot']] : []),
          ['sets', '⏭️', 'Set By Set', 'Sim one set at a time'],
          ['full', '⚡', 'Full Match', 'Straight to the result']].map(([k, icon, t, d]) =>
-          `<button type="button" class="mode" data-mode="${k}"><span>${icon}</span><b>${t}</b><small>${d}</small></button>`).join('') +
+          `<button type="button" class="mode${tutMode && k !== 'play' ? ' tutoff' : ''}" data-mode="${k}" style="grid-area:${k}" ${tutMode && k !== 'play' ? 'disabled' : ''}><span>${icon}</span><b>${t}</b><small>${d}</small></button>`).join('') +
         `</div>` +
+        (!tutMode && typeof hoStartTutorial === 'function' && playPointsOn() && !isTestMatch() ? `<p class="center"><button type="button" class="link" id="mTut">🎓 New To Play The Points? Take The Tutorial</button></p>` : '') +
         scoutCard(opp, ev, ps[me], eventPlan(entry), { planBtn: 'mPlan' });
       pbRerender = renderMatch;
       if ($('coachUse')) $('coachUse').onclick = () => {
@@ -1733,18 +1772,20 @@ function renderMatch() {
         $('pmDone').onclick = closeModal;
         $('mx').onclick = closeModal;
       };
+      if ($('mTut')) $('mTut').onclick = () => hoStartTutorial();
       $('mActions').querySelectorAll('[data-mode]').forEach(b => {
         b.onclick = () => {
+          if (b.dataset.mode === 'play' && typeof hoTutOffer === 'function' && !b.__offered) { b.__offered = 1; return hoTutOffer(() => b.onclick()); }
           entry.live.mode = b.dataset.mode;
           writeJSON(ENTRY_KEY, entry);
-          if (entry.live.mode === 'watch' || entry.live.mode === 'read') watchMatch();
+          if (liveMode(entry.live.mode)) watchMatch();
           else if (entry.live.mode === 'full') simAll();
           else renderMatch();
         };
       });
-    } else if (mode === 'watch' || mode === 'read') {
+    } else if (liveMode(mode)) {
       $('mActions').innerHTML = (m.sets.length ? setBreak() : '') +
-        `<div class="btn-row four">${btn('mWatch', mode === 'read' ? `Read Set ${m.sets.length + 1}` : m.sets.length ? `Watch Set ${m.sets.length + 1}` : 'Resume Watching')}` +
+        `<div class="btn-row four">${btn('mWatch', mode === 'read' ? `Read Set ${m.sets.length + 1}` : mode === 'play' ? `Play Set ${m.sets.length + 1}` : m.sets.length ? `Watch Set ${m.sets.length + 1}` : 'Resume Watching')}` +
         (m.sets.length ? btn('mSet', `Sim Set ${m.sets.length + 1}`, true) : '') + `${btn('mAll', 'Sim to End', true)}${speeds}</div>`;
       bindBreak();
       $('mWatch').onclick = watchMatch;
@@ -1774,7 +1815,7 @@ function renderMatch() {
           `<div class="sbadv">${breakAdviceHtml()}</div>` +
           `<button type="button" class="btn ghost small sbadj" id="sbAdj">📝 Adjust My Plan</button>` +
           `<div class="sbhead">Play Set ${n} As</div><div class="modebtns">` +
-          [['watch', '🎾', `Watch Set ${n}`], ['read', '🧠', `Read Set ${n}`], ['sets', '⏭️', `Sim Set ${n}`], ['full', '⚡', 'Full Match']].map(([k, i, t]) =>
+          [['watch', '🎾', `Watch Set ${n}`], ['read', '🧠', `Read Set ${n}`], ...(matchModes().length > MODES.length ? [['play', '🎮', `Play Set ${n}`]] : []), ['sets', '⏭️', `Sim Set ${n}`], ['full', '⚡', 'Full Match']].map(([k, i, t]) =>
             `<button type="button" data-nb="${k}" class="${mode === k ? 'on' : ''}"><span>${i}</span>${t}</button>`).join('') + `</div>`;
         // Everything for the set break lives on the court now, so the old controls under it go.
         $('mActions').innerHTML = '';
@@ -1792,7 +1833,7 @@ function renderMatch() {
         };
         bb.querySelectorAll('[data-nb]').forEach(b => { b.onclick = () => {
           const k = b.dataset.nb; entry.live.mode = k; writeJSON(ENTRY_KEY, entry); bb.hidden = true; $('mCourtWrap').classList.remove('veiled');
-          if (k === 'watch' || k === 'read') watchMatch(); else if (k === 'sets') playOneSet(false); else simAll();
+          if (liveMode(k)) watchMatch(); else if (k === 'sets') playOneSet(false); else simAll();
         }; });
       }
     }

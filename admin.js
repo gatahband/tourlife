@@ -697,32 +697,84 @@ checkAdminHash();
 
 // --- One-on-one matches ----------------------------------------------------------------------
 // Any two players (or a player against a computer player at a chosen level), any surface and weather.
+// Test players: one of every playstyle at 75 OVR, stats leaning the way that style leans, plan to match.
+function styleEntrant(i) {
+  const sty = STYLES[i], attrs = {};
+  ATTR_KEYS.forEach((k, j) => { attrs[k] = 75 + (sty.w ? sty.w[j] * 4 : 0); });
+  for (let n = 0; n < 5; n++) { const d = 75 - overall({ attrs }); ATTR_KEYS.forEach(k => { attrs[k] = clamp(attrs[k] + d, 20, 99); }); }
+  ATTR_KEYS.forEach(k => { attrs[k] = Math.round(attrs[k]); });
+  // serve, return position, aggression, net, drops, spin
+  const P = { 'Serve-Dominant': 'big normal aggressive sometimes rarely flat', 'Serve +1 Attacker': 'big normal aggressive sometimes rarely mixed',
+    'First-Strike Attacker': 'big inside aggressive sometimes rarely flat', 'Aggressive Baseliner': 'balanced normal aggressive rarely sometimes mixed',
+    'Flat Attacker': 'big inside aggressive rarely rarely flat', 'Solid Baseliner': 'balanced normal balanced rarely rarely mixed',
+    'Counterpuncher': 'safe deep patient rarely sometimes mixed', 'Defensive Grinder': 'safe deep patient rarely rarely topspin',
+    'Heavy-Topspin Baseliner': 'balanced deep patient rarely rarely topspin', 'Heavy-Topspin Attacker': 'balanced normal aggressive sometimes rarely topspin',
+    'All-Court': 'balanced normal balanced sometimes sometimes mixed', 'Net Attacker': 'balanced normal aggressive often sometimes mixed',
+    'Serve-and-Volley': 'big inside aggressive often sometimes mixed', 'Variety / Slice-Heavy': 'safe normal balanced sometimes often mixed',
+    'Creative Shotmaker': 'balanced normal balanced sometimes often mixed' }[sty.name].split(' ');
+  const plan = { ...DEFAULT_PLAN, serve: P[0], returnPos: P[1], aggression: P[2], net: P[3], drops: P[4], spin: P[5], sig: 'on' };
+  return { name: sty.name, nation: 'USA', attrs, temperament: 'stoic', hand: 'right', backhand: 'two', plan, formSd: 0.02, seed: null,
+    realStyle: sty.name };
+}
+
+// Play a one-on-one yourself: Player 1 becomes you in a throwaway test save (tourlife.test.*), Player 2 the computer.
+// The page reloads into that save at the draw; the bar at the top brings you back to admin and your own career.
+function playTestMatch(st, players) {
+  const pick1 = v => /^sty\d+$/.test(v) ? styleEntrant(+v.slice(3)) : realEntrant(players.find(x => x.id === v));
+  const a = pick1(st.a), b = st.b === 'cpu' ? generateOpponent(pick(Math.random, Object.keys(REGION_OF)), st.cpu) : pick1(st.b);
+  const base = readJSON('tourlife.player') || (players[0] && players[0].player);
+  if (!base) { toast('No Player On This Device', 'Make a career on this device first: the test match borrows its settings.'); return; }
+  const me = JSON.parse(JSON.stringify(base));
+  Object.assign(me, { name: a.name, nation: a.nation, attrs: { ...a.attrs }, plan: { ...a.plan }, temperament: a.temperament || me.temperament,
+    hand: a.hand || 'right', backhand: a.backhand || 'two', fatigue: 0, injury: null, realStyle: a.realStyle || undefined, bhGap: a.bhGap });
+  me.playstyle = styleOf(me).name;
+  const career = JSON.parse(JSON.stringify(readJSON('tourlife.career') || {}));
+  Object.assign(career, { injury: null, notice: null, offer: null, money: TEST_MONEY });
+  const opp = { ...b, seed: null, isPlayer: false };
+  const you = { name: me.name, nation: me.nation, attrs: { ...me.attrs }, temperament: me.temperament, fav: me.fav, worst: me.worst,
+    hand: me.hand, backhand: me.backhand, plan: planOf(me), formSd: 0.02, seed: null, isPlayer: true, realStyle: me.realStyle, bhGap: me.bhGap };
+  const id = 'test' + Date.now();
+  const ev = { id, city: 'Test Match', name: 'Test Match', nation: a.nation, tier: st.b === 'cpu' ? st.cpu : 'ATP250', surface: st.surface,
+    indoor: st.weather === 'indoor', weather: st.weather, week: career.week || 1 };
+  const entry = { id, test: true, event: ev, entrants: [you, opp], rounds: [[{ a: 0, b: 1 }]], live: null, matches: [], result: null, plan: planOf(me), acclimated: true };
+  for (const [k, v] of [['player', me], ['career', career], ['entry', entry]]) localStorage.setItem('tourlife.test.' + k, JSON.stringify(v));
+  localStorage.setItem('tourlife.mode', 'test');
+  location.hash = '';
+  location.reload();
+}
+
 function renderAdExh(st = { a: null, b: null, cpu: 'ATP250', surface: 'hard', weather: 'sunny' }) {
   const players = adminPlayers().sort((x, y) => overall(y.player) - overall(x.player));
   const opt = (sel, extra = '') => `<option value="">Choose…</option>` + players.map(x =>
     `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${flagOf(x.player.nation)} ${esc(x.player.name)} (OVR ${overall(x.player).toFixed(1)})</option>`).join('') + extra;
-  const cpuOpt = `<option value="cpu" ${st.b === 'cpu' ? 'selected' : ''}>🤖 A computer player…</option>`;
+  const styOpt = sel => `<optgroup label="Playstyles (OVR 75)">` + STYLES.map((y, i) =>
+    `<option value="sty${i}" ${sel === 'sty' + i ? 'selected' : ''}>🎾 ${esc(y.name)} (OVR 75)</option>`).join('') + `</optgroup>`;
+  const cpuOpt = `<option value="cpu" ${st.b === 'cpu' ? 'selected' : ''}>🤖 A computer player…</option>` + styOpt(st.b);
   const seg = (key, opts) => `<div class="seg" style="grid-template-columns:repeat(${opts.length},1fr)" data-key="${key}">${opts.map(([v, l]) =>
     `<button type="button" data-v="${v}" class="${st[key] === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   $('adBody').innerHTML = `<section class="card"><h2>🎾 One-on-one match</h2>` +
-    `<label class="lbl">Player 1</label><select id="exA" class="inp big">${opt(st.a)}</select>` +
+    `<label class="lbl">Player 1</label><select id="exA" class="inp big">${opt(st.a, styOpt(st.a))}</select>` +
     `<label class="lbl">Player 2</label><select id="exB" class="inp big">${opt(st.b, cpuOpt)}</select>` +
     (st.b === 'cpu' ? `<label class="lbl">Computer player's level</label><select id="exCpu" class="inp">${TITLE_LADDER.slice().reverse().map(t => `<option value="${t}" ${st.cpu === t ? 'selected' : ''}>${TIERS[t].label} level (OVR ~${TIERS[t].level})</option>`).join('')}</select>` : '') +
     `<label class="lbl">Surface</label>${seg('surface', [['hard', 'Hard'], ['clay', 'Clay'], ['grass', 'Grass']])}` +
     `<label class="lbl">Conditions</label>${seg('weather', Object.entries(WEATHER).map(([k, w]) => [k, w.icon]))}` +
     `<p class="hint">${WEATHER[st.weather].name}: ${WEATHER[st.weather].desc}</p>` +
-    `<button type="button" class="btn huge" id="exGo" ${st.a && st.b && st.a !== st.b ? '' : 'disabled'}>Set up the match</button>` +
+    `<button type="button" class="btn huge" id="exPlay" ${st.a && st.b && st.a !== st.b ? '' : 'disabled'}>🎾 Play It Myself</button>` +
+    `<p class="hint">You play as Player 1 with every match mode; Player 2 is the computer. Played in a separate test save: your own career isn't touched.</p>` +
+    `<button type="button" class="btn ghost" id="exGo" ${st.a && st.b && st.a !== st.b ? '' : 'disabled'}>Set Up The Match To Watch</button>` +
     `<p class="hint">${players.length < 2 ? 'Tip: get players on the Players tab first, or pick a computer player as Player 2.' : 'One-on-ones give no ranking points; players see the result in their game.'}</p></section>` +
     `<button type="button" class="link" id="exBack">Back</button>`;
   const keep = () => { st.a = $('exA').value || null; st.b = $('exB').value || null; if ($('exCpu')) st.cpu = $('exCpu').value; };
   $('adBody').onchange = () => { keep(); renderAdExh(st); };
   $('adBody').onclick = e => { const b = e.target.closest('.seg [data-v]'); if (!b) return; keep(); st[b.parentElement.dataset.key] = b.dataset.v; renderAdExh(st); };
   $('exBack').onclick = () => { $('adBody').onclick = $('adBody').onchange = null; renderAdmin(); };
+  $('exPlay').onclick = () => { keep(); playTestMatch(st, players); };
   $('exGo').onclick = () => {
     keep();
     $('adBody').onclick = $('adBody').onchange = null;
-    const A = players.find(x => x.id === st.a), B = st.b === 'cpu' ? null : players.find(x => x.id === st.b);
-    const entrants = [realEntrant(A), B ? realEntrant(B) : generateOpponent(pick(Math.random, Object.keys(REGION_OF)), st.cpu)];
+    const who = v => /^sty\d+$/.test(v) ? styleEntrant(+v.slice(3)) : realEntrant(players.find(x => x.id === v));
+    const B = st.b !== 'cpu';
+    const entrants = [who(st.a), B ? who(st.b) : generateOpponent(pick(Math.random, Object.keys(REGION_OF)), st.cpu)];
     entrants.forEach(e => { e.seed = null; });
     const ev = { id: Date.now(), created: Date.now(), exhibition: true, tier: B ? 'ATP250' : st.cpu, surface: st.surface,
       indoor: st.weather === 'indoor', weather: st.weather, size: 2, nation: entrants[0].nation,
@@ -730,4 +782,25 @@ function renderAdExh(st = { a: null, b: null, cpu: 'ATP250', surface: 'hard', we
     writeJSON(ADMIN_EVENTS, [...adminEvents(), ev]);
     renderAdDraw(ev.id);
   };
+}
+
+// Left a test match: its throwaway save goes (the page can write it once more on the way out).
+if (!isTestMatch()) try { for (const k of Object.keys(localStorage)) if (k.startsWith('tourlife.test.')) localStorage.removeItem(k); } catch {}
+// In an admin test match: a bar to get back to admin (and your own career), and straight to the match's draw.
+if (isTestMatch()) {
+  const bar = document.createElement('div');
+  bar.className = 'testbar';
+  const tut = typeof hoTutOn === 'function' && hoTutOn();
+  bar.innerHTML = tut ? `<b>🎓 Tutorial</b><span>Practice only: your career isn't touched</span><button type="button" class="btn small">Leave Tutorial</button>`
+    : `<b>🧪 Test Match</b><span>Your own career isn't touched</span><button type="button" class="btn small">Back To Admin</button>`;
+  document.body.prepend(bar);
+  bar.querySelector('button').onclick = () => {
+    if (tut) return hoTutLeave(false);
+    for (const k of Object.keys(localStorage)) if (k.startsWith('tourlife.test.')) localStorage.removeItem(k);
+    localStorage.setItem('tourlife.mode', 'player');
+    location.hash = '#admin';
+    location.reload();
+  };
+  if (current.career && current.career.money !== TEST_MONEY) { current.career.money = TEST_MONEY; writeJSON(CAREER_KEY, current.career); }
+  if (current.entry && current.entry.test && !current.entry.result && location.hash !== '#admin') { if (tut) openMatch(); else openDraw(); }
 }

@@ -2,8 +2,10 @@
 
 // Game mode, read once at load: 'player' (your own career) or 'coach' (Coach Mode). Coach Mode keeps its saves under
 // their own keys (tourlife.coach.*), so switching modes can never touch a player career. Switching reloads the page.
-const TL_MODE = (() => { try { return localStorage.getItem('tourlife.mode') === 'coach' ? 'coach' : 'player'; } catch { return 'player'; } })();
-const TL_NS = TL_MODE === 'coach' ? 'tourlife.coach.' : 'tourlife.';
+// 'test': an admin test match, played in its own throwaway saves (tourlife.test.*), so it can't touch a real career.
+const TL_MODE = (() => { try { const v = localStorage.getItem('tourlife.mode'); return v === 'coach' || v === 'test' ? v : 'player'; } catch { return 'player'; } })();
+const TL_NS = TL_MODE === 'coach' ? 'tourlife.coach.' : TL_MODE === 'test' ? 'tourlife.test.' : 'tourlife.';
+const isTestMatch = () => TL_MODE === 'test';
 const isCoachMode = () => TL_MODE === 'coach';
 
 const FAMILY_FIRST = new Set(['CHN', 'KOR']);

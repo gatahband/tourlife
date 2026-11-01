@@ -5,7 +5,8 @@
 //  3. Housekeeping on start-up keeps localStorage well under its limit.
 //  4. "Find My Lost Progress" lists every copy of every career on this device and restores one in a tap.
 
-const MIRROR_KEYS = ['player', 'career', 'entry', 'saves', 'backups', 'marks'].map(k => TL_NS + k); // this mode's saves (Coach Mode has its own)
+// This mode's saves (Coach Mode has its own). An admin test match is throwaway: never mirrored, never recovered.
+const MIRROR_KEYS = isTestMatch() ? [] : ['player', 'career', 'entry', 'saves', 'backups', 'marks'].map(k => TL_NS + k);
 const IDB_NAME = 'tourlife', IDB_STORE = 'kv';
 let idbPromise = null;
 function idb() {
@@ -39,7 +40,10 @@ const parse = t => { try { return JSON.parse(t); } catch { return null; } };
 // Start-up: if the mirror holds a further-along copy of the open career (a save that didn't make it into
 // localStorage, or storage the browser cleared), bring it back without asking.
 async function recoverFromMirror() {
+  if (isTestMatch()) return;
   const all = await idbGetAll();
+  // Test-match copies mirrored before they were kept out of it: never needed.
+  for (const k of Object.keys(all)) if (k.startsWith('tourlife.test.')) idb().then(db => db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).delete(k)).catch(() => {});
   const mP = all[SAVE_KEY] && parse(all[SAVE_KEY].text);
   const mC = all[CAREER_KEY] && parse(all[CAREER_KEY].text);
   if (!mP || !mC) { mirrorNow(); return; }

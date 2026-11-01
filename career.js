@@ -72,8 +72,10 @@ const crewTripCost = (c, ev) => { const t = travelDays(c.location || current.pla
 // Fatigue from the journey: long flights in economy wear you down; business class halves it.
 const travelFatigue = (c, from, to) => travelDays(from, to) * 4 * (c.business || (c.perks && c.perks.jet && c.perks.jet.weeks > 0) ? 0.5 : 1);
 
+const TEST_MONEY = 1e9; // admin test matches: money is no object
 function charge(c, amount, why) {
   c.money = (c.money ?? START_MONEY) - amount;
+  if (typeof isTestMatch === 'function' && isTestMatch()) c.money = TEST_MONEY;
   c.ledger = [...(c.ledger || []), { week: c.week, amount: -amount, why }].slice(-60);
 }
 function earn(c, amount, why) {

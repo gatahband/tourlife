@@ -680,6 +680,7 @@ function pointProb(m, ps, ev, s, clutch, ad = false) {
     + LEGEND_X * (legendPressure(m, ps, s) - legendPressure(m, ps, r)) // a legend's aura, and every adjustment you haven't answered
     + 0.012 * (Math.min(4, readHits(A, B, ev)) * clamp(m.exec ? m.exec[s] : 1, 0, 1.3) - Math.min(4, readHits(B, A, ev)) * clamp(m.exec ? m.exec[r] : 1, 0, 1.3)); // exploiting a known weakness
   if (m.call) p += m.call.side === s ? m.call.edge : -m.call.edge; // big-point call
+  if (m.spec) p += m.spec.side === s ? m.spec.edge : -m.spec.edge; // speciality move (specials.js)
   // Momentum and nerves (see gameMood).
   if (m.mo) p += s === 0 ? m.mo : -m.mo;
   if (m.nerves) p += m.nerves[s] - m.nerves[r];
@@ -792,8 +793,10 @@ function finalWing(m, ps, h, clean) {
   const u = Math.abs(Math.sin((n + 1) * 12.9898 + h * 78.233) * 43758.5453) % 1;
   return u < pBh ? 'bh' : 'fh';
 }
-function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
-  const r = 1 - s, A = ps[s], B = ps[r], st = m.stats[s];
+// The server's odds on this point: first serve in (a), double fault (df), winning the point after a first (w1) or
+// second serve (w2) goes in, and the ace odds. Shared by servePoint and the hands-on points (playpoints.js).
+function serveOdds(m, ps, ev, s, clutch, ad = false) {
+  const r = 1 - s, A = ps[s], B = ps[r];
   const sp = planOf(A), rp = planOf(B), SP = SERVE_PLAN[sp.serve];
   const p = pointProb(m, ps, ev, s, clutch, ad);
   const a0 = clamp(0.62 - (A.attrs.serve - 50) * 0.0015 + (A.attrs.mental - 50) * 0.0015, 0.5, 0.75);
@@ -818,6 +821,17 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   if (sgR === 'Serve-and-Volley') { w2 -= 0.04 * xR; w1 += 0.005; }
   w1 = clamp(w1 + edge, 0.3, 0.95);
   w2 = clamp(w2 + edge, 0.15, 0.85);
+  const sty = m.styles || [], tr = m.traits || [];
+  const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_SERVER[tr[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (ACE_RETURNER[tr[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (typeof wxOf === 'function' ? wxOf(ev).ace : 1) * (sigOf(m, ps, s) === 'Serve-Dominant' ? 1 + 0.45 * sigEx(m, s) : 1);
+  return { p, a, df, w1, w2, aceK, aceP: Math.max(0, A.attrs.serve - 30) / 280 * SP.ace * aceK };
+}
+
+function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
+  if (m.forced && typeof forcedPoint === 'function') return forcedPoint(m, ps, s); // a point you played yourself (playpoints.js)
+  if (m.spec && typeof specialPoint === 'function') return specialPoint(m, ps, ev, s, clutch, rng, ad); // a speciality move plays its own pattern
+  const r = 1 - s, A = ps[s], B = ps[r], st = m.stats[s];
+  const sp = planOf(A), rp = planOf(B), SP = SERVE_PLAN[sp.serve];
+  const { a, df, w1, w2, aceK, aceP } = serveOdds(m, ps, ev, s, clutch, ad);
 
   // Occasionally, by plan, a cheeky underarm serve instead.
   const under = tryUnderarm(m, ps, s, rng);
@@ -852,9 +866,7 @@ function servePoint(m, ps, ev, s, clutch, rng, ad = false) {
   }
   const done = () => { if (w === s) pt.serve2 ? st.secondWon++ : st.firstWon++; return { w, pt }; };
   if (w === s) {
-    const tr = m.traits || [];
-    const aceK = (ACE_SERVER[sty[s]] || 1) * (ACE_SERVER[tr[s]] || 1) * (ACE_RETURNER[sty[r]] || 1) * (ACE_RETURNER[tr[r]] || 1) * (rp.returnPos === 'deep' ? 0.85 : 1) * (typeof wxOf === 'function' ? wxOf(ev).ace : 1) * (sigOf(m, ps, s) === 'Serve-Dominant' ? 1 + 0.45 * sigEx(m, s) : 1);
-    if (!pt.serve2 && rng() < Math.max(0, A.attrs.serve - 30) / 280 * SP.ace * aceK) { st.aces++; pt.how = 'ace'; return done(); }
+    if (!pt.serve2 && rng() < aceP) { st.aces++; pt.how = 'ace'; return done(); }
     if (rng() < (pt.serve2 ? 0.05 : 0.16) * aceK) { pt.how = 'unreturned'; return done(); }
   }
   // Net cord, roughly once a match: the ball clips the tape and trickles over (a winner), falls back
@@ -1281,7 +1293,7 @@ const CALLS = {
 // grinder don't solve a break point the same way. Edges still come from your stats against theirs.
 const CALL_FAMILY = { 'Serve-Dominant': 'serve', 'Serve +1 Attacker': 'serve', 'First-Strike Attacker': 'attack', 'Aggressive Baseliner': 'attack',
   'Flat Attacker': 'attack', 'Heavy-Topspin Attacker': 'attack', 'Solid Baseliner': 'grind', Counterpuncher: 'grind', 'Defensive Grinder': 'grind',
-  'Heavy-Topspin Baseliner': 'grind', 'Net Attacker': 'net', 'Serve-and-Volley': 'net', 'All-Court': 'craft', 'Variety / Slice-Heavy': 'craft', 'Creative Shotmaker': 'craft' };
+  'Heavy-Topspin Baseliner': 'grind', 'Net Attacker': 'net', 'Serve-and-Volley': 'snv', 'All-Court': 'allcourt', 'Variety / Slice-Heavy': 'craft', 'Creative Shotmaker': 'craft' };
 const [cBig, cSafe, cSnv] = CALLS.serve, [cAttack, cDeep, cChip] = CALLS.ret;
 const CALL = (id, icon, title, plan, edge) => ({ id, icon, title, plan, edge });
 const FAMILY_CALLS = {
@@ -1303,9 +1315,21 @@ const FAMILY_CALLS = {
     ret: [cDeep, CALL('extend', '🔁', 'Make Them Hit One More', { aggression: 'patient', returnPos: 'deep' }, (A, B) => 0.004 * rel(A, 'stam') - 0.002 * rel(B, 'ground')),
       CALL('moon', '🌙', 'Moonball Deep', { spin: 'topspin', aggression: 'patient' }, (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'mental') - 0.002 * rel(B, 'ground'))],
   },
+  // Serve-and-Volley lives on the first two shots; Net Attacker builds the point and comes in behind an approach.
+  snv: {
+    serve: [cSnv, CALL('bodyin', '🎯', 'Body Serve, Close In', { serve: 'big', net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'serve') - 0.002 * rel(B, 'ret')),
+      CALL('kicksv', '🌀', 'Kick Serve, Then Close', { serve: 'safe', net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'mental') - 0.002 * rel(B, 'ret'))],
+    ret: [cChip, CALL('blocklow', '🧱', 'Block It Low At Their Feet', { returnPos: 'normal' }, (A, B) => 0.003 * rel(A, 'ret') + 0.002 * rel(A, 'net') - 0.002 * rel(B, 'net')), cAttack],
+  },
   net: {
-    serve: [cSnv, CALL('bodyin', '🎯', 'Body Serve, Close In', { serve: 'big', net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'serve') - 0.002 * rel(B, 'ret')), cSafe],
-    ret: [cChip, CALL('slicein', '🪶', 'Low Slice, Then Close', { net: 'often', spin: 'mixed' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground')), cAttack],
+    serve: [CALL('srvapp', '🎾', 'Serve, Then Approach', { serve: 'balanced', net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'ground') - 0.002 * rel(B, 'ground')), cBig, cSafe],
+    ret: [CALL('slicein', '🪶', 'Low Slice, Then Close', { net: 'often', spin: 'mixed' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'iq') - 0.0015 * rel(B, 'ground')), cAttack, cDeep],
+  },
+  // All-Court has no net habit: it reads the opponent and picks the pattern.
+  allcourt: {
+    serve: [CALL('mixserve', '🔀', 'Mix Up The Serve', { serve: 'balanced' }, (A, B) => 0.004 * rel(A, 'iq') - 0.002 * rel(B, 'iq')), cBig,
+      CALL('s1wk', '🎯', 'Serve, Then Attack The Weak Side', { aggression: 'aggressive' }, (A, B) => 0.003 * rel(A, 'ground') + 0.002 * rel(A, 'iq') - 0.002 * rel(B, 'stam'))],
+    ret: [cAttack, cDeep, CALL('readret', '🧠', 'Read Their Serve', { returnPos: 'normal' }, (A, B) => 0.003 * rel(A, 'iq') + 0.002 * rel(A, 'ret') - 0.002 * rel(B, 'iq'))],
   },
   craft: {
     serve: [CALL('surprise', '🎭', 'Surprise Serve And Volley', { net: 'often' }, (A, B) => 0.003 * rel(A, 'net') + 0.002 * rel(A, 'iq') - 0.002 * rel(B, 'ret')),
@@ -1318,7 +1342,8 @@ const FAMILY_CALLS = {
 const CALL_FX = { big: { serve: 'big' }, body: { serve: 'body' }, bodyin: { serve: 'body', rush: 'serve' }, wide1: { serve: 'wide' }, plus1: { serve: 'wide' },
   safe: { serve: 'safe' }, run: { serve: 'safe' }, kick: { serve: 'kick' }, kick2: { serve: 'kick' }, snv: { rush: 'serve' }, surprise: { rush: 'serve' },
   pace: { drop: true }, chip: { rush: 'return' }, slicein: { rush: 'return' }, attack: { ret: 'inside' }, dtl: { ret: 'inside' }, cut: { ret: 'inside' },
-  deep: { ret: 'deep' }, block: { ret: 'deep' }, extend: { ret: 'deep' }, moon: { moon: true }, dropret: { drop: true }, neut: {} };
+  deep: { ret: 'deep' }, block: { ret: 'deep' }, extend: { ret: 'deep' }, moon: { moon: true }, dropret: { drop: true }, neut: {},
+  kicksv: { serve: 'kick', rush: 'serve' }, blocklow: {}, srvapp: { serve: 'wide' }, mixserve: {}, s1wk: { serve: 'wide' }, readret: {} };
 const callFx = c => (c && CALL_FX[c.id]) || {};
 // The three calls this player gets on serve or return.
 function callsFor(p, side) {
@@ -1344,6 +1369,7 @@ function makeCall(m, ps, i, call) {
 
 // After the point: put the plan back and remember how the call went.
 function endCall(m, ps, winner) {
+  if (m.spec && typeof endSpecial === 'function') endSpecial(m, winner);
   if (!m.call) return;
   const c = m.call;
   ps[c.side].plan = c.savedPlan;

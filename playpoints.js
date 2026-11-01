@@ -496,7 +496,7 @@ function hoSwipeSetup(onDone) {
     const [t, d] = SG_SETUP_ORDER[i], n = (got[t] && got[t][d] || []).length;
     $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">${i + 1} Of ${SG_SETUP_ORDER.length} · Forehand (Right-Handed)</p>` +
       `<div class="sgwant"><div class="sgguide one"><span>${sheet(t, d)}<i>${d === 'fwd' ? '↑' : '↖'}</i></span></div><b>${NAME[t]} · ${DIR[d]}</b></div>` +
-      `<p class="hint">Draw it the way you'll draw it in a match (${n + 1} of ${REPS}).</p><div class="sgpad" id="sgSetPad"></div>` +
+      `<p class="hint">Draw it the way you will draw it in a match (${n + 1} of ${REPS}).</p><div class="sgpad" id="sgSetPad"></div>` +
       `<div class="horow"><button type="button" class="btn small ghost" data-sg="redo">↩ Redo This One</button><button type="button" class="btn small ghost" data-sg="keep">Use The Sheet's Shape</button></div>`;
     pad('sgSetPad', (g, pts) => {
       const P = sgNorm(pts, 24).map(p => [Math.round(p.x * 1000) / 1000, Math.round(p.y * 1000) / 1000]);
@@ -509,7 +509,7 @@ function hoSwipeSetup(onDone) {
     stop();
     try { localStorage.setItem(SG_MINE_KEY, JSON.stringify(got)); } catch {}
     sgBuild();
-    $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Saved. Try Any Stroke</p><p class="hint">Draw any shot below: it says what it reads, so you can check before you play.</p>` +
+    $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Saved. Try Any Stroke</p><p class="hint">Draw any shot below to see how it is read before you play.</p>` +
       `<div class="horow"><button type="button" class="btn small ghost" data-sg="wing">Reading As: <b>${tryWing === 'fh' ? 'Forehand' : 'Backhand'}</b></button></div>` +
       `<div class="sgpad" id="sgTryPad"><div class="sglive" id="sgTryOut">Draw A Shot</div></div>` +
       `<div class="horow"><button type="button" class="btn small ghost" data-sg="again">Start Over</button><button type="button" class="btn small" data-sg="done">✅ Done</button></div>`;
@@ -853,9 +853,9 @@ function hoUI(box, c, idle = {}) {
         // The pad: serves are swiped towards the target; other shots are swung like your arm would, on the ball's side.
         const isServe = stage === 'serve' || stage === 'serve2', bs = hoBallSide(c), lefty = (c.ps[c.me].hand || 'right') === 'left';
         const swipePad = () => isServe
-          ? `<div class="sgpad"><div class="sglive">Swipe Your Serve</div><small class="sglegend">Swipe up from the bottom towards where you want it to land.</small></div>` + hoServeKey(c.ad)
+          ? `<div class="sgpad"><div class="sglive">Swipe Your Serve</div><small class="sglegend">Swipe upwards from the bottom towards where you want the serve to land.</small></div>` + hoServeKey(c.ad)
           : `<div class="sgpad ${bs < 0 ? 'bl' : 'br'}" data-wing="${c.st.wing === 'bh' ? 'bh' : 'fh'}" data-lefty="${lefty ? 1 : 0}">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive"></div>` +
-            `<small class="sglegend">Draw the shape for your shot, ending where the arrow points. Longer trails go deeper. Hold still first to disguise it.</small></div>` + hoSwingGuide(c.st.wing, lefty);
+            `<small class="sglegend">Draw the shape for your shot and finish where the arrow points. A longer stroke hits deeper. Hold still before you swing to disguise it.</small></div>` + hoSwingGuide(c.st.wing, lefty);
         // Draw it (Swipe Shots) or pick a card; either way the cards show what's on for this ball.
         const render = () => {
           if (eng) { eng.detach(); eng = null; } if (trail) { trail.remove(); trail = null; }
@@ -951,12 +951,12 @@ function hoUI(box, c, idle = {}) {
           const px = (S0 - 1) * R0 / T, band = W * px + 2, clean = Pm * px + 2, ring = (r, b) => `width:${2 * (r + b)}px;height:${2 * (r + b)}px;border-width:${2 * b}px`;
           gauge = `<div class="horing hogauge${pf > 0.25 ? ' shaky' : ''}" style="--wob:${(pf * 5).toFixed(1)}px"><i class="hoband" style="${ring(R0, band)}"></i><i class="hoclean" style="${ring(R0, clean)}"></i>` +
             `<i class="hoouter" style="width:${2 * R0 + 4}px;height:${2 * R0 + 4}px"></i></div>`;
-          say = 'Tap, Click Or Press Space When The Rings Meet';
+          say = 'Tap, click or press Space when the rings meet.';
         } else {
           // A bar: the green is perfect, the grey okay. Hold: it fills while you hold and the shot goes when you let go.
           gauge = `<div class="hobar hogauge ${kind}${pf > 0.25 && kind !== 'hold' ? ' shaky' : ''}" style="--wob:${(pf * 4).toFixed(1)}px"><i class="hobband" style="${bar(T - W, T + W)}"></i>` +
             `<i class="hobclean" style="${bar(T - Pm, T + Pm)}"></i><i class="hobfill"></i><i class="hobmark"></i></div>`;
-          say = kind === 'hold' ? 'Press And Hold Before The Timer Runs Out, Let Go In The Green' : 'Tap, Click Or Press Space In The Green';
+          say = kind === 'hold' ? 'Press and hold before the timer runs out, then let go in the green.' : 'Tap, click or press Space in the green.';
           // Hold: a timer to start the swing (you can't wait as long as you like), and a tag so it never looks like the tap bar.
           if (kind === 'hold') gauge = `<b class="hotag hold">✊ Hold</b>${gauge}<div class="hobwait"><i></i></div>`;
           else gauge = `<b class="hotag">👆 Tap</b>${gauge}`;
@@ -1090,26 +1090,26 @@ const hoTutOn = () => typeof isTestMatch === 'function' && isTestMatch() && !!(h
 
 const HO_TUT_TIPS = {
   start: ['🎮', 'Play The Points', [
-    'In Play The Points you play the key games of your match yourself, shot by shot. The rest of the match plays out on its own.',
-    'In this practice match every game is yours, against an opponent at about your level. Nothing here counts for your career.',
-    'There are two ways to play: tap shot cards, or draw each shot with Swipes. You start with cards, then learn Swipes.',
-    'When the match stops, it is your turn: pick a shot before the timer bar runs out. Tap ❚❚ Pause whenever you need a break.']],
-  serve: ['🎾', 'Your Serve', ['Pick where to serve: out wide, into the body or down the T. Wide serves and serves down the T win more aces, but they are harder to land.']],
-  hold: ['✊', 'Hold, Then Let Go', ['Serves are timed with the hold bar. Press and hold anywhere in the box (or hold Space). The bar only fills while you hold. Let go when it reaches the green.',
-    'Green is perfect and grey is okay. Let go outside them and the serve is mistimed.']],
-  ret: ['↩️', 'Returning', ['The line above your cards says what is coming, such as a big serve, or a second serve you can step in on. Pick the return that suits it.']],
-  rally: ['🎯', 'Rally Shots', ['Each card is a shot you can play from where you are on court. The line above them shows whether you are in control (green) or under pressure (red).',
-    'Going for winners under pressure is risky. Work the point until you are in control, then attack. If a card says "They\'re Reading This", you have played it too often.']],
-  ring: ['⭕', 'Tap When The Rings Meet', ['Every shot apart from the serve is timed with the rings. Tap (or press Space) when the yellow ring sits inside the green.',
-    'How well you hit it shows in the middle of the screen: Perfect, Okay or Mistimed. Better timing means better shots.']],
-  swipeOn: ['✍️', 'Now Try Swipe Shots', [
-    'Instead of tapping a card, you can draw your shot. Swipes is now switched on. The Cards / Swipes switch at the top of the screen changes it at any time.',
-    'Draw a shape from the key under the box: Flat, Topspin, Slice, Lob or Drop. The first shape of each goes down the line, the second goes crosscourt. Finish your stroke where the arrow points.',
-    'Turn the stroke further to angle the ball more, and draw a longer trail to hit deeper. If the trail turns red, that stroke sends the ball out: keep your finger still for a moment to cancel it, then draw again.',
-    'If your strokes aren\'t read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape your own way.',
-    'Next, a quick drill: draw a few shots and see how each one is read.']],
-  swserve: ['🎾', 'Swiping Your Serve', ['Swipe up from the bottom of the box towards where you want the serve to land: out wide, into the body or down the T. The key under the box shows the three directions.',
-    'Wide serves and serves down the T win more aces, but they are harder to land.']],
+    'In Play The Points, you play the key games of your match yourself, shot by shot. The rest of the match is played out for you.',
+    'In this practice match, every game is yours, against an opponent of about your level. Nothing here counts towards your career.',
+    'There are two ways to play: tap a shot card, or draw each shot with Swipes. You will start with cards and then learn Swipes.',
+    'When play stops, it is your turn. Choose your shot before the timer bar runs out. Tap ❚❚ Pause whenever you need a break.']],
+  serve: ['🎾', 'Serving', ['Choose where to serve: out wide, into the body or down the T. Serves out wide and down the T win more aces, but they are harder to land.']],
+  hold: ['✊', 'Timing Your Serve', ['Serves are timed with the hold bar. Press and hold anywhere in the box, or hold the Space bar. The bar only fills while you hold. Let go when it reaches the green.',
+    'Green is perfect and grey is good enough. Let go anywhere else and the serve is mistimed.']],
+  ret: ['↩️', 'Returning', ['The line above your cards tells you what is coming, such as a big serve or a second serve you can step in on. Choose the return that suits it.']],
+  rally: ['🎯', 'Rally Shots', ['Each card is a shot you can play from where you are on court. The line above the cards shows whether you are in control (green) or under pressure (red).',
+    'Going for a winner under pressure is risky. Work the point until you are in control, then attack. If a card says "They\'re Reading This", you have played it too often and your opponent is ready for it.']],
+  ring: ['⭕', 'Timing Your Shots', ['Every shot except the serve is timed with the rings. Tap, click or press Space when the yellow ring sits inside the green.',
+    'Your timing appears in the middle of the screen: Perfect, Okay or Mistimed. The better your timing, the better the shot.']],
+  swipeOn: ['✍️', 'Swipes', [
+    'Instead of tapping a card, you can draw your shot. Swipes is now switched on. Use the Cards / Swipes switch at the top of the screen to change it at any time.',
+    'Draw one of the shapes shown in the key below the drawing area: Flat, Topspin, Slice, Lob or Drop Shot. The first shape of each pair goes down the line and the second goes crosscourt. Finish your stroke where the arrow points.',
+    'Turn your stroke further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
+    'If your strokes are not read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape in your own style.',
+    'Next is a short drill: draw a few shots and see how each one is read.']],
+  swserve: ['🎾', 'Swiping Your Serve', ['Swipe upwards from the bottom of the drawing area towards where you want the serve to land: out wide, into the body or down the T. The key below shows all three directions.',
+    'Serves out wide and down the T win more aces, but they are harder to land.']],
 };
 // One tip, shown once in this tutorial; resolves when it's closed. Tips never stack on another open window.
 function hoTutTip(key) {
@@ -1143,7 +1143,7 @@ function hoTutDone() {
   try { localStorage.setItem('tourlife.hoTutDone', '1'); } catch {}
   return new Promise(done => {
     openModal(`<div class="help welcome"><div class="helpicon">🏆</div><div class="newtag">Tutorial</div><h2 class="itop">You're Ready</h2>` +
-      `<p class="big">That is everything. In your own matches, choose 🎮 Play The Points before the first ball, then Cards or Swipes, and you will play the key games yourself.</p>` +
+      `<p class="big">That covers everything. In your own matches, choose 🎮 Play The Points before the first ball, then pick Cards or Swipes. You can replay any part of this from 🎓 Tutorials on the main page.</p>` +
       `<button type="button" class="btn huge" id="tuKeep">Keep Practising</button><button type="button" class="btn ghost" id="tuLeave">Leave The Tutorial</button></div>`, { onClose: () => done() });
     $('tuKeep').onclick = closeModal;
     $('tuLeave').onclick = () => hoTutLeave(true);
@@ -1213,7 +1213,7 @@ const HO_DRILL = [['flat', 'fwd'], ['topspin', 'cross'], ['slice', 'fwd'], ['lob
 const hoShapeSvg = (w, t, d, lefty) => { const own = SG_NORM[`${w}.${t}.${d}`], P = own && own.own ? own[0] : SG_SHAPES[w][t][d];
   const N = sgNorm(P, 24).map(p => ({ x: 20 + (lefty ? -p.x : p.x) * 30, y: 20 + p.y * 30 }));
   return `<svg viewBox="0 0 40 40"><path d="M${N.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L')} ${hoArrowHead(N[N.length - 1], N[N.length - 4])}"/></svg>`; };
-function hoSwipeDrill() {
+function hoSwipeDrill(inMatch = true) {
   const lefty = ((readJSON(TL_NS + 'player') || {}).hand || 'right') === 'left';
   const NAME = { flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' };
   const out = k => k > 1.93 || k < -0.92; // past the sideline (see hoSwipeAim)
@@ -1223,14 +1223,14 @@ function hoSwipeDrill() {
     const step = () => {
       stop();
       if (i >= HO_DRILL.length) {
-        $('sheet').querySelector('.sgsetup').innerHTML = `<p class="big">Well drawn. Now play some points with Swipes: draw your shot, then time it with the rings as before.</p><button type="button" class="btn huge" id="drDone">Back To The Match</button>`;
+        $('sheet').querySelector('.sgsetup').innerHTML = `<p class="big">${inMatch ? 'Well drawn. Now play some points with Swipes: draw your shot, then time it with the rings as before.' : 'Well drawn. You have practised every type of shot.'}</p><button type="button" class="btn huge" id="drDone">${inMatch ? 'Back To The Match' : 'Done'}</button>`;
         $('drDone').onclick = closeModal; return;
       }
       const [t, d] = HO_DRILL[i];
       $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length}</p>` +
         `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, d, lefty)}<i>${d === 'fwd' ? '↑' : lefty ? '↗' : '↖'}</i></span></div>` +
         `<b>${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}</b></div>` +
-        `<p class="hint">Draw this shape, finishing where the arrow points. It doesn't have to be perfect: close enough counts.</p>` +
+        `<p class="hint">Draw this shape and finish where the arrow points. It does not have to be perfect: close enough counts.</p>` +
         `<div class="sgpad ${lefty ? 'bl' : 'br'}" id="drPad">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive" id="drOut">Draw Here</div></div>` +
         (tries >= 2 ? `<button type="button" class="btn small ghost" id="drSkip">Skip This One</button>` : '');
       if ($('drSkip')) $('drSkip').onclick = () => { i++; tries = 0; step(); };
@@ -1252,4 +1252,19 @@ function hoSwipeDrill() {
     openModal(`<h2 class="itop">✍️ Swipe Drill</h2><div class="sgsetup"></div>`, { onClose: () => { stop(); done(); } });
     step();
   });
+}
+
+// The swipe shapes guide (Tutorials menu): every shape for both wings, and how strokes are read.
+function hoShapesGuide() {
+  const lefty = ((readJSON(TL_NS + 'player') || {}).hand || 'right') === 'left';
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><div class="help"><h2 class="itop">🗺️ Swipe Shapes Guide</h2>` +
+    `<p>Each shot has two shapes: the first goes down the line and the second goes crosscourt. Draw the shape and finish where the arrow points.</p>` +
+    `<h3 class="ssec">Forehand</h3>${hoSwingGuide('fh', lefty)}<h3 class="ssec">Backhand</h3>${hoSwingGuide('bh', lefty)}` +
+    `<ul class="tutlist"><li><b>Angle:</b> turn your stroke further to angle the ball more. Turn it too far and the ball goes out wide.</li>` +
+    `<li><b>Depth:</b> a longer stroke hits deeper. A very long stroke is overhit, and a tiny flick is underhit into the net.</li>` +
+    `<li><b>Going out:</b> while you draw, the trail turns red if the ball is heading out. Keep still for a moment to cancel the stroke.</li>` +
+    `<li><b>Disguise:</b> hold still for a moment before you swing to disguise your shot. It is harder to time.</li>` +
+    `<li><b>Serving:</b> swipe upwards towards where you want the serve to land: out wide, into the body or down the T.</li></ul>` +
+    `<button type="button" class="btn huge" id="sgGuideOk">Got It</button></div>`, { wide: true });
+  $('mx').onclick = closeModal; $('sgGuideOk').onclick = closeModal;
 }

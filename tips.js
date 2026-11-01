@@ -169,6 +169,63 @@ const FEATURES = [
     'Premium preparation: an elite fitness camp, an intelligence package, a specialist sparring partner and technical breakthroughs. Big items take two of your three slots.',
     'Between rounds you can book premium recovery (each one this week helps less). Spend wisely: the right plan still decides the match.'] },
 ];
+// One feature's slides (also replayed from the Tutorials menu).
+function showFeature(f, title = f.title, back) {
+  const show = i => {
+    const last = i === f.slides.length - 1;
+    openModal(`<div class="help welcome"><div class="helpicon">${f.icon}</div><h2 class="itop">${title}</h2><p class="big">${f.slides[i]}</p>` +
+      `<div class="helpdots">${f.slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>` +
+      `<button type="button" class="btn huge" id="ftNext">${last ? (back ? 'Back To Tutorials' : 'Got It') : 'Next'}</button></div>`);
+    $('ftNext').onclick = () => { if (!last) show(i + 1); else if (back) back(); else closeModal(); };
+  };
+  show(0);
+}
+
+// --- Tutorials (main page) ----------------------------------------------------------------
+// Every walkthrough in one place, to learn anything you skipped or want to see again.
+const TUT_FEATURES = {
+  prep: ['Preparing For A Tournament', 'Choose up to three preparation items before your first match of the week.'],
+  adapt: ['Smarter Opponents', 'How opponents adjust to your game plan as you climb the rankings.'],
+  coach: ['Hiring A Coach', 'What a coach does for your training and your match planning.'],
+  master: ['The Master Coach', 'Four advanced plan settings, plus advice during your matches.'],
+  changeovers: ['Changeovers', 'Adjust your plan at changeovers in the bigger events.'],
+  reads: ['Match Reads', 'Read the numbers twice a set and decide whether to change your plan.'],
+  staff: ['Building Your Team', 'A fitness trainer, a mental coach, a hitting partner, a stringer and an agent.'],
+  study: ['The Research Lab', 'Simulate any two real ATP players against each other.'],
+  pc: ['The Performance Center', 'Premium preparation, once you have earned the Elite Program.'],
+};
+function openTutorials() {
+  const pp = typeof playPointsOn === 'function' && playPointsOn();
+  const item = (id, icon, title, text, off) => `<button type="button" class="tutitem" data-tut="${id}" ${off ? 'disabled' : ''}><span>${icon}</span><b>${title}</b><small>${text}</small></button>`;
+  const feats = FEATURES.filter(f => TUT_FEATURES[f.id]);
+  openModal(`<button type="button" class="x" id="mx" aria-label="Close">×</button><h2 class="itop">🎓 Tutorials</h2>` +
+    `<p class="hint center">Learn anything you skipped, or go over it again.</p>` +
+    `<h3 class="ssec">Getting Started</h3><div class="tutgrid">` +
+    item('help', '📖', 'How To Play', 'The basics: tournaments, rankings, training and money.') +
+    item('tours', '🧭', 'Screen Tours', 'Replay the guided tours. Each one appears the next time you open its screen.') +
+    item('share', '🌍', 'Real Tournaments', 'Enter your player into tournaments against other people\'s players.') + `</div>` +
+    `<h3 class="ssec">Play The Points</h3>` + (pp ? '' : `<p class="hint">Play The Points is available on computers and tablets.</p>`) + `<div class="tutgrid">` +
+    item('ptp', '🎮', 'Practice Match', 'A full practice match with your own player: serving, returning, rally shots, timing and Swipes, step by step.', !pp) +
+    item('drill', '✍️', 'Swipe Drill', 'Draw each type of shot and see exactly how it is read.', !pp) +
+    item('setup', '🖊️', 'Set Up My Swipes', 'Draw each shape in your own style, so your strokes are read the way you draw them.', !pp) +
+    item('shapes', '🗺️', 'Swipe Shapes Guide', 'Every shape for the forehand and backhand, plus angle, depth, cancelling and serving.', !pp) + `</div>` +
+    `<h3 class="ssec">Your Career</h3><div class="tutgrid">` +
+    feats.map(f => item('f_' + f.id, f.icon, ...TUT_FEATURES[f.id])).join('') + `</div>`, { wide: true });
+  $('mx').onclick = closeModal;
+  $('sheet').onclick = e => {
+    const b = e.target.closest('[data-tut]'); if (!b || b.disabled) return;
+    const k = b.dataset.tut; $('sheet').onclick = null;
+    if (k === 'help') { closeModal(); openHelp(0); }
+    else if (k === 'tours') { const t = tipsSeen(); for (const id of Object.keys(TOURS)) delete t[id]; delete t.off; writeJSON(TIPS_KEY, t); closeModal(); toast('Screen Tours Are Back', 'Each tour plays the next time you open its screen.'); }
+    else if (k === 'share') openShareTour(0);
+    else if (k === 'ptp') { closeModal(); hoStartTutorial(); }
+    else if (k === 'drill') { closeModal(); setTimeout(() => hoSwipeDrill(false), 50); }
+    else if (k === 'setup') { closeModal(); setTimeout(() => hoSwipeSetup(), 50); }
+    else if (k === 'shapes') hoShapesGuide();
+    else { const f = FEATURES.find(x => 'f_' + x.id === k); if (f) showFeature(f, TUT_FEATURES[f.id][0], openTutorials); }
+  };
+}
+
 function featureIntro(c, p) {
   if (!c || !p || !$('modal').hidden || (typeof isTestMatch === 'function' && isTestMatch())) return; // never in a practice or test save
   const seen = readJSON(FEATURES_KEY) || {};

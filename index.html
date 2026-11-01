@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tour Life</title>
-  <link rel="stylesheet" href="style.css?v=1793547290">
+  <link rel="stylesheet" href="style.css?v=1793547470">
 </head>
 <body>
   <main class="wrap" id="creator">
@@ -127,6 +127,7 @@
     <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
     <button id="backup" class="link">More ways to move or back up</button>
     <button type="button" class="link" onclick="openRecovery()">🔎 Find My Lost Progress</button>
+    <button type="button" class="btn ghost bugbtn" onclick="openTutorials()">🎓 Tutorials</button>
     <button id="helpBtn" class="link">❓ How To Play</button>
     <button type="button" class="btn ghost bugbtn" onclick="openBugReport()">🐞 Report A Bug</button>
     <button id="reset" class="link">Switch or start a new career</button>
@@ -236,50 +237,50 @@
 
   <div id="modal" class="modal" hidden><div id="sheet" class="sheet"></div></div>
 
-  <script>window.TL_VERSION = "1793547290";</script>
-  <script src="lang.js?v=1793547290"></script>
-  <script src="names.js?v=1793547290"></script>
-  <script src="sim.js?v=1793547290"></script>
-  <script src="court.js?v=1793547290"></script>
-  <script src="specials.js?v=1793547290"></script>
-  <script src="strokegesture.js?v=1793547290"></script>
-  <script src="playpoints.js?v=1793547290"></script>
-  <script src="story.js?v=1793547290"></script>
-  <script src="stats.js?v=1793547290"></script>
-  <script src="calendar.js?v=1793547290"></script>
+  <script>window.TL_VERSION = "1793547470";</script>
+  <script src="lang.js?v=1793547470"></script>
+  <script src="names.js?v=1793547470"></script>
+  <script src="sim.js?v=1793547470"></script>
+  <script src="court.js?v=1793547470"></script>
+  <script src="specials.js?v=1793547470"></script>
+  <script src="strokegesture.js?v=1793547470"></script>
+  <script src="playpoints.js?v=1793547470"></script>
+  <script src="story.js?v=1793547470"></script>
+  <script src="stats.js?v=1793547470"></script>
+  <script src="calendar.js?v=1793547470"></script>
   <!-- Netlify picks this form up at deploy time; share.js submits it with fetch. -->
   <form name="send-player" data-netlify="true" netlify-honeypot="bot-field" hidden>
     <input name="bot-field"><input name="player"><input name="nation"><input name="ovr"><input name="rank">
     <input name="record"><input name="contact"><textarea name="note"></textarea><textarea name="code"></textarea>
   </form>
-  <script src="ranking.js?v=1793547290"></script>
-  <script src="worldmap.js?v=1793547290"></script>
-  <script src="weather.js?v=1793547290"></script>
-  <script src="morale.js?v=1793547290"></script>
-  <script src="realplayers.js?v=1793547290"></script>
-  <script src="realscout.js?v=1793547290"></script>
-  <script src="realstats.js?v=1793547290"></script>
-  <script src="fairplay.js?v=1793547290"></script>
-  <script src="rivals.js?v=1793547290"></script>
-  <script src="tournaments.js?v=1793547290"></script>
-  <script src="realwatch.js?v=1793547290"></script>
-  <script src="prep.js?v=1793547290"></script>
-  <script src="training.js?v=1793547290"></script>
-  <script src="sponsors.js?v=1793547290"></script>
-  <script src="career.js?v=1793547290"></script>
-  <script src="achievements.js?v=1793547290"></script>
-  <script src="share.js?v=1793547290"></script>
-  <script src="orders.js?v=1793547290"></script>
-  <script src="dayevents.js?v=1793547290"></script>
-  <script src="study.js?v=1793547290"></script>
-  <script src="stylepreview.js?v=1793547290"></script>
-  <script src="planbook.js?v=1793547290"></script>
-  <script src="coachmode.js?v=1793547290"></script>
-  <script src="reads.js?v=1793547290"></script>
-  <script src="help.js?v=1793547290"></script>
-  <script src="tips.js?v=1793547290"></script>
-  <script src="player.js?v=1793547290"></script>
-  <script src="admin.js?v=1793547290"></script>
-  <script src="safety.js?v=1793547290"></script>
+  <script src="ranking.js?v=1793547470"></script>
+  <script src="worldmap.js?v=1793547470"></script>
+  <script src="weather.js?v=1793547470"></script>
+  <script src="morale.js?v=1793547470"></script>
+  <script src="realplayers.js?v=1793547470"></script>
+  <script src="realscout.js?v=1793547470"></script>
+  <script src="realstats.js?v=1793547470"></script>
+  <script src="fairplay.js?v=1793547470"></script>
+  <script src="rivals.js?v=1793547470"></script>
+  <script src="tournaments.js?v=1793547470"></script>
+  <script src="realwatch.js?v=1793547470"></script>
+  <script src="prep.js?v=1793547470"></script>
+  <script src="training.js?v=1793547470"></script>
+  <script src="sponsors.js?v=1793547470"></script>
+  <script src="career.js?v=1793547470"></script>
+  <script src="achievements.js?v=1793547470"></script>
+  <script src="share.js?v=1793547470"></script>
+  <script src="orders.js?v=1793547470"></script>
+  <script src="dayevents.js?v=1793547470"></script>
+  <script src="study.js?v=1793547470"></script>
+  <script src="stylepreview.js?v=1793547470"></script>
+  <script src="planbook.js?v=1793547470"></script>
+  <script src="coachmode.js?v=1793547470"></script>
+  <script src="reads.js?v=1793547470"></script>
+  <script src="help.js?v=1793547470"></script>
+  <script src="tips.js?v=1793547470"></script>
+  <script src="player.js?v=1793547470"></script>
+  <script src="admin.js?v=1793547470"></script>
+  <script src="safety.js?v=1793547470"></script>
 </body>
 </html>

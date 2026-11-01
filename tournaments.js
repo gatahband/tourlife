@@ -1815,7 +1815,7 @@ function renderMatch() {
         const n = m.sets.length + 1;
         bb.innerHTML = `<div class="sbtitle">SET ${m.sets.length} ${last.games[me] > last.games[op] ? 'TO YOU' : 'TO ' + esc(shortName(ps[op])).toUpperCase()} · ${last.games[me]}–${last.games[op]}</div>` +
           `<div class="sbsub">${won > lost ? `You lead ${won}–${lost}` : won < lost ? `You trail ${won}–${lost}` : `${won}–${lost} in sets`}</div>` +
-          `<div class="sbadv">${breakAdviceHtml()}</div>` +
+          `<div class="sbadv">${typeof hoPlanReport === 'function' ? hoPlanReport(entry.live, m, ps, me, true) : ''}${breakAdviceHtml()}</div>` +
           `<button type="button" class="btn ghost small sbadj" id="sbAdj">📝 Adjust My Plan</button>` +
           `<div class="sbhead">Play Set ${n} As</div><div class="modebtns">` +
           [['watch', '🎾', `Watch Set ${n}`], ['read', '🧠', `Read Set ${n}`], ...(matchModes().length > MODES.length ? [['play', '🎮', `Play Set ${n}`]] : []), ['sets', '⏭️', `Sim Set ${n}`], ['full', '⚡', 'Full Match']].map(([k, i, t]) =>
@@ -1868,6 +1868,7 @@ function changeover(entry, ps, me, step) {
   const mainView = () => {
     box.innerHTML = `<div class="cbtitle">CHANGEOVER · YOU ${m.games[me]}–${m.games[1 - me]}</div>` +
       (adv ? adviceHtml(adv) : adaptNotice(m, ps, me) ? `<div class="advice">${adaptNotice(m, ps, me)}</div>` : '') +
+      (typeof hoPlanReport === 'function' ? hoPlanReport(L, m, ps, me, false) : '') +
       `<div class="cbopts eq"><button type="button" data-co="go"><span>▶️</span><b>Keep Playing</b><small>Same Plan</small></button>` +
       (adv ? adv.counters.map((c, i) => `<button type="button" data-co="ct${i}" title="${esc(c.label)}"><span>${i ? '🅱️' : '🅰️'}</span><b>${esc(c.short || c.label)}</b><small>Coach's Counter</small></button>`).join('') : '') +
       (nAdv ? `<button type="button" data-co="advice"><span>💡</span><b>Take The Advice</b><small>${nAdv} Change${nAdv === 1 ? '' : 's'}</small></button>` : '') +

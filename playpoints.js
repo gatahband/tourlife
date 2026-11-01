@@ -356,6 +356,7 @@ function hoWindow(c, card, stage) {
   w *= 1 - Math.min(0.3, fatigue(c.m, A) * 8 + tiredness(A) * 4 + c.j * (({ hustle: 0.02, conserve: 0.045 })[c.adv.energy] || 0.03));
   w *= 1 - 0.6 * c.pf;
   w *= 1 - 0.06 * Math.min(4, Math.max(0, card.readN - 2));
+  if (kind) { const f = hoPlanFit(c, card); w *= f.off.length ? 0.88 : f.on ? 1.05 : 1; } // your plan sets up where you stand
   // Serves are the exception: a thin window, even for a big server, so a perfectly timed serve (and the ace it brings) is hard.
   if (stage === 'serve' || stage === 'serve2') return clamp(w * 0.8, 45, 170);
   return clamp(w * 1.5, 70, 380); // generous: the challenge is the choice, timing just polishes it
@@ -387,9 +388,12 @@ function hoCardSide(c, cd) {
   if (cd.weak || cd.strong) { const w = hoWeak(c), wing = cd.weak ? w : w === 'bh' ? 'fh' : 'bh'; return wing === 'fh' ? fh : -fh; }
   return ({ line: side, cross: -side, angle: -side * 1.2, middle: 0, fhc: fh, bhc: -fh })[cd.dir] ?? null;
 }
-// The dealt card closest to the drawn stroke: spin first, then direction (a sideways stroke wants an angle).
-function hoGesturePick(c, stage, cards, g) {
+// Swipes mode: a rally shot or return is exactly what you drew (its spin, its direction, how far it's turned); the
+// cards aren't used. come: you chose to follow it to the net. A serve goes where you swiped it, hit as the dealt serve
+// closest to it (your plan sets how the serves are hit).
+function hoGesturePick(c, stage, cards, g, come) {
   const fam = g.type === 'disguise' ? g.base : g.type;
+  if (stage !== 'serve' && stage !== 'serve2') return { card: hoImprov(c, g, come), score: 0 };
   let best = null;
   for (const cd of cards) {
     const f = hoCardFam(cd), sd = hoCardSide(c, cd);
@@ -397,7 +401,7 @@ function hoGesturePick(c, stage, cards, g) {
     if (cd.serve) sc = sc * 0.4 + 3 - Math.min(3, Math.abs(g.aim - sd) * 2.4); // a serve is mostly where you draw it
     else if (sd === null) sc += cd.dir === 'open' || cd.dir === 'short' && fam === 'drop' ? 0.9 : 0.5;
     else sc += 1.5 - Math.min(1.5, Math.abs(g.aim - sd) * 1.1) + (cd.dir === 'angle' && g.wide ? 0.4 : 0);
-    if (cd.snv) sc -= 1; // serve and volley is a tap on its card
+    if (cd.snv) sc -= 9; // serve and volley is the switch under the pad
     if (!best || sc > best.score) best = { card: cd, score: sc };
   }
   // A serve goes where you swiped it: if none of the serves you were dealt goes there (a second serve has only two
@@ -409,30 +413,32 @@ function hoGesturePick(c, stage, cards, g) {
       best = { ...best, src: best.card, card: { ...best.card, serve: to, title: `${word} Serve ${({ wide: 'Out Wide', body: 'Into The Body', t: 'Down The T' })[to]}` } };
     }
   }
-  // None of your dealt shots is what you drew (another spin, or well off its direction): you play what you drew.
-  if (best && stage !== 'serve' && stage !== 'serve2') {
-    const f = hoCardFam(best.card), sd = hoCardSide(c, best.card);
-    // The direction must be the one you drew too (down the line, the middle or crosscourt), never just the nearest card.
-    const x = c.st.x === undefined ? 1 : c.st.x, v = sd === null ? null : sd * (x >= 0 ? 1 : -1);
-    const cat = v === null ? null : v > 0.5 ? 'line' : v < -0.5 ? 'cross' : 'middle', drawn = g.cross >= 0.65 ? 'cross' : g.cross <= 0.35 ? 'line' : 'middle';
-    if (f !== fam || (cat !== null && cat !== drawn)) return { card: hoImprov(c, g), score: 0 };
-  }
+  // Following it in: serve and volley.
+  if (best && come) best = { ...best, card: { ...best.card, snv: true, title: `${best.card.title}, Then Volley` } };
   return best;
 }
-// A shot you drew that wasn't dealt: an ordinary shot of its kind (its edge still depends on where you are and the
-// ball), a little harder to time and slightly worse than a dealt one, so drawing never beats the cards.
-const HO_IMP = { flat: 'attack', topspin: 'deep', slice: 'defend', lob: 'lob', drop: 'drop' };
-function hoImprov(c, g) {
-  const fam = g.type === 'disguise' ? g.base : g.type, net = c.st.net === 'you';
-  const kind = net && ['flat', 'topspin', 'slice'].includes(fam) ? 'volley' : HO_IMP[fam];
-  const dir = g.cross >= 0.65 ? 'cross' : g.cross <= 0.35 ? 'line' : 'middle', id = `imp_${fam}_${dir}`;
-  const title = `${c.st.wing === 'bh' ? 'Backhand' : 'Forehand'} ${({ flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' })[fam]}${net && kind === 'volley' ? ' Volley' : ''} ${({ line: 'Down The Line', cross: 'Crosscourt', middle: 'Down The Middle' })[dir]}`;
-  return { id, icon: '✍️', title, kind, dir: fam === 'lob' ? undefined : dir, lob: fam === 'lob' || undefined, read: id, readN: hoReadN(c, id), ring: 0.9, bonus: -0.01, improv: true };
+// The shot you drew, as the game reads it: its kind comes from the spin and the moment (at the net it's a volley; with
+// them at the net a pass; flat is going for it, topspin builds, slice defends) and its direction from the stroke.
+const HO_IMP = { flat: 'attack', topspin: 'deep', slice: 'defend', lob: 'defend', drop: 'drop' };
+const HO_FAMW = { flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' };
+const HO_DIRW = { line: 'Down The Line', cross: 'Crosscourt', middle: 'Down The Middle', angle: 'Sharp Angle' };
+function hoImprov(c, g, come) {
+  const fam = g.type === 'disguise' ? g.base : g.type, st = c.st;
+  let dir = g.cross >= 0.65 ? 'cross' : g.cross <= 0.35 ? 'line' : 'middle', kind = HO_IMP[fam];
+  if (st.net === 'you') kind = fam === 'lob' ? 'lob' : 'volley';
+  else if (st.net === 'them') kind = fam === 'lob' ? 'lob' : 'pass';
+  else if (come && fam !== 'lob' && fam !== 'drop') kind = 'net';
+  else if (fam === 'topspin' && dir === 'cross') kind = 'safe';
+  if (g.cross >= 1.35 && ['attack', 'safe', 'volley'].includes(kind)) { dir = 'angle'; if (kind === 'safe') kind = 'attack'; } // turned well past the cross shape
+  if (fam === 'drop' && kind !== 'drop') dir = 'short';
+  const id = `imp_${fam}_${dir}${kind === 'net' ? '_in' : ''}`, lob = fam === 'lob' || undefined;
+  const title = `${st.wing === 'bh' ? 'Backhand' : 'Forehand'} ${kind === 'volley' && fam === 'drop' ? 'Drop' : HO_FAMW[fam]}${kind === 'volley' ? ' Volley' : ''}${lob ? '' : ` · ${HO_DIRW[dir] || 'Short'}`}${kind === 'net' ? ' · To The Net' : ''}`;
+  return { id, icon: '✍️', title, kind, dir: lob ? undefined : dir, lob, chip: kind === 'net' && fam === 'slice' || undefined, read: id, readN: hoReadN(c, id), improv: true };
 }
 // The card as drawn. A disguised shot can't be read (it's counted on its own) but is harder to time; a swing against
 // the way your arm moves (see SG_TUNE) is a little harder to time and less accurate.
 function hoGestureCard(c, cd, g, ph) {
-  const t = SG_TYPES[g.type], out = { ...cd, sg: { type: g.type, flight: g.type === 'disguise' ? SG_TYPES[g.base].flight : t.flight, awkward: !!g.awkward, miss: g.miss || undefined, ...ph } };
+  const t = SG_TYPES[g.type], out = { ...cd, sg: { type: g.type, fam: g.type === 'disguise' ? g.base : g.type, flight: g.type === 'disguise' ? SG_TYPES[g.base].flight : t.flight, awkward: !!g.awkward, miss: g.miss || undefined, ...ph } };
   if (g.type === 'disguise') Object.assign(out, { read: 'disguise', readN: hoReadN(c, 'disguise'), ring: (cd.ring || 1) * 0.85, title: `Disguised: ${cd.title}` });
   if (g.awkward) out.ring = (out.ring || 1) * 0.9;
   return out;
@@ -542,18 +548,58 @@ const hoTiming = (d, W, P = HO_PERFECT) => d <= W * P ? 1 - 0.15 * d / (W * P) :
 const hoPerfect = card => !card.late && card.u >= 0.85; // a perfect hit never goes out or into the net
 const hoQuality = u => u >= 0.85 ? 'PERFECT' : u >= 0.4 ? 'OKAY' : 'MISTIMED';
 
+// Does this shot fit your game plan? Your plan decides where you stand and how you're set up, so the shots it calls
+// for come a little easier and the ones against it a little harder. off: which parts of the plan it goes against.
+function hoPlanFit(c, card) {
+  const pl = c.plan, k = card.kind, f = card.sg ? card.sg.fam : hoCardFam(card), off = [];
+  if (pl.spin === 'topspin' && f === 'flat' && k !== 'volley') off.push('flat');
+  if (pl.spin === 'flat' && f === 'topspin' && !card.lob) off.push('top');
+  if (pl.aggression === 'patient' && k === 'attack') off.push('att');
+  if (pl.aggression === 'aggressive' && ['defend', 'safe'].includes(k) && c.pos >= 0) off.push('safe');
+  if (pl.net === 'rarely' && k === 'net') off.push('net');
+  if (pl.drops === 'rarely' && k === 'drop') off.push('drop');
+  const on = pl.spin === 'topspin' && f === 'topspin' || pl.spin === 'flat' && f === 'flat' || pl.aggression === 'aggressive' && k === 'attack'
+    || pl.net === 'often' && k === 'net' || pl.drops === 'often' && k === 'drop';
+  return { off, on };
+}
+// The set's tally of shots against the plan (reset each set, and when you change the plan).
+function hoTrackOf(L, m, ps, me) {
+  const key = JSON.stringify(planOf(ps[me]));
+  if (!L.hoTrack || L.hoTrack.set !== m.sets.length || L.hoTrack.plan !== key) L.hoTrack = { set: m.sets.length, plan: key, n: 0 };
+  return L.hoTrack;
+}
+// After a changeover or a set you played yourself: where your shots went against the plan you set.
+function hoPlanReport(L, m, ps, me, setDone) {
+  const T = L && L.mode === 'play' && L.hoTrack;
+  if (!T || T.n < 6 || T.set !== m.sets.length - (setDone ? 1 : 0)) return '';
+  const pl = JSON.parse(T.plan), n = T.n, big = k => (T[k] || 0) >= 3 && T[k] >= n * 0.2, x = k => `${T[k]} of your ${n} shots`;
+  const say = [
+    big('flat') && `Your plan says Heavy Topspin, but ${x('flat')} were hit flat.`,
+    big('top') && `Your plan says Flat, but ${x('top')} were hit with topspin.`,
+    big('att') && `Your plan says Patient, but you went for it on ${x('att')}.`,
+    big('safe') && `Your plan says Aggressive, but you played it safe on ${x('safe')}.`,
+    (T.net || 0) >= 2 && `Your plan says you rarely come to the net, but you came in ${T.net} times.`,
+    (T.drop || 0) >= 2 && `Your plan says you rarely play drop shots, but you played ${T.drop}.`,
+  ].filter(Boolean);
+  if (!say.length) return '';
+  return `<div class="advice hoplanrep"><b>📋 Your Plan Vs. How You Played</b><ul>${say.map(t => `<li>${t}</li>`).join('')}</ul>` +
+    `<small>Your plan sets up where you stand, so the shots it calls for come easier. Play to it, or change it to suit how you're playing.</small></div>`;
+}
+
 async function hoPickAndHit(c, ui, stage, cards) {
   const r = await ui.choose(stage, cards, hoSecs(c, stage), c);
   const card = { ...r.card };
-  if (r.late) { card.u = 0.2; card.late = true; if (ui.flash) ui.flash('TOO LATE'); }
+  const fault = stage === 'serve' ? 'FAULT' : stage === 'serve2' ? 'DOUBLE FAULT' : null; // a mistimed serve never goes in
+  if (r.late) { card.u = 0.2; card.late = true; if (ui.flash) ui.flash(fault ? `TOO LATE · ${fault}` : 'TOO LATE'); }
   else {
     card.u = await ui.hit(card, hoWindow(c, card, stage), c.pf, stage);
     // A drawn shot angled past the sideline, or swung too long or too short, misses however well it was timed.
     const miss = card.sg && card.sg.miss && ({ wide: 'OUT WIDE', long: 'OVERHIT: LONG', net: 'UNDERHIT: NET' })[card.sg.miss];
-    if (ui.flash) ui.flash(miss ? `${hoQuality(card.u)} · ${miss}` : hoQuality(card.u));
+    if (ui.flash) ui.flash(miss ? `${hoQuality(card.u)} · ${miss}` : fault && card.u < 0.4 ? `MISTIMED · ${fault}` : hoQuality(card.u));
   }
   c.uses[card.read] = (c.uses[card.read] || 0) + 1;
   if (card.weak || card.strong) card.weakWing = hoWeak(c);
+  if (c.track && HO_KIND[card.kind]) { const f = hoPlanFit(c, card), T = c.track; T.n = (T.n || 0) + 1; f.off.forEach(k => { T[k] = (T[k] || 0) + 1; }); }
   return card;
 }
 
@@ -620,24 +666,25 @@ async function hoPlay(c, ui, rng = Math.random) {
   if (serving) {
     card = await hoPickAndHit(c, ui, 'serve', serveCards(c, false));
     pt.aims[0] = hoAim(card);
-    // A perfect serve never misses; one that would have missed went in as a safer, softer serve (no free points from it).
-    let first = rng() < clamp(o.a + (card.u - 0.55) * 0.2 * HO_SKILL + (card.inMod || 0), 0.25, 0.95), soft = 0;
-    if (!first && hoPerfect(card)) soft = 1;
-    if (!first && !soft) {
+    // Timing decides the serve: a mistimed one is a fault, a perfect one always goes in, an okay one is up to the odds.
+    let first = hoPerfect(card) || card.u >= 0.4 && rng() < clamp(o.a + (card.u - 0.55) * 0.2 * HO_SKILL + (card.inMod || 0), 0.25, 0.95);
+    if (!first) {
       Object.assign(pt, { serve2: true, kmh2 });
       pt.aims.f1 = pt.aims[0]; // the fault misses near where the first serve was aimed
       await ui.reach(0, probe(0)); // the fault plays out, then you're back on the line
       card = await hoPickAndHit(c, ui, 'serve2', serveCards(c, true, card));
       pt.aims[0] = hoAim(card);
-      if (rng() < clamp(o.df * (1 + (0.55 - card.u) * 1.2 * HO_SKILL) * card.dfMul, 0.01, 0.4)) { if (!hoPerfect(card)) return done(out(op, { how: 'df' })); soft = 2; }
+      if (card.u < 0.4 || !hoPerfect(card) && rng() < clamp(o.df * (1 + (0.55 - card.u) * 1.2 * HO_SKILL) * card.dfMul, 0.01, 0.4)) return done(out(op, { how: 'df' })); // two mistimed serves: a double fault
     }
     // The engine's odds once the serve is in, split into a free point (ace, unreturned) and the rally after it.
-    const W = first ? o.w1 : o.w2, aceB = first ? o.aceP : 0, unr = (first ? 0.16 : 0.05) * o.aceK * (soft ? 0 : 1);
+    const W = first ? o.w1 : o.w2, aceB = first ? o.aceP : 0, unr = (first ? 0.16 : 0.05) * o.aceK;
     const I0 = W * (aceB + (1 - aceB) * unr), Rs = (W - I0) / (1 - I0);
-    if (!soft && rng() < clamp(I0 * (1 + ((card.ace || 1) * (0.75 + 0.45 * card.u) - 1) * HO_SKILL), 0, 0.9)) return done(out(me, { how: aceB && rng() < aceB / (aceB + (1 - aceB) * unr) ? 'ace' : 'unreturned' }));
-    R0 = Rs; R = Rs + ((card.u - 0.55) * 0.03 + (card.edge || 0) - hoReadPen(card)) * HO_SKILL - [0, 0.1, 0.2][soft];
-    c.pos = soft ? -1 : card.u > 0.75 ? 1 : card.u < 0.35 ? -1 : 0;
-    c.st = { wing: rng() < 0.5 ? 'fh' : 'bh', ball: card.u > 0.75 ? 'short' : card.u < 0.35 ? 'deep' : rng() < 0.5 ? 'neutral' : 'deep', open: false, net: null, last: null, first: true };
+    if (rng() < clamp(I0 * (1 + ((card.ace || 1) * (0.75 + 0.45 * card.u) - 1) * HO_SKILL), 0, 0.9)) return done(out(me, { how: aceB && rng() < aceB / (aceB + (1 - aceB) * unr) ? 'ace' : 'unreturned' }));
+    R0 = Rs; R = Rs + ((card.u - 0.55) * 0.03 + (card.edge || 0) - hoReadPen(card)) * HO_SKILL;
+    // A perfect serve puts you in charge of the next ball, unless they're a strong returner standing in to take it early.
+    const early = planOf(B).returnPos === 'inside' && attr(B, 'ret') >= attr(A, 'serve');
+    c.pos = hoPerfect(card) ? (early ? 0 : 1) : card.u > 0.75 ? 1 : card.u < 0.35 ? -1 : 0;
+    c.st = { wing: rng() < 0.5 ? 'fh' : 'bh', ball: hoPerfect(card) && !early || card.u > 0.75 ? 'short' : card.u < 0.35 ? 'deep' : rng() < 0.5 ? 'neutral' : 'deep', open: false, net: null, last: null, first: true };
     if (card.snv) return approach(0, { ...card, kind: 'net' });
     pt.aims[1] = { wing: c.st.wing };
     k0 = 2;
@@ -845,7 +892,11 @@ function hoUI(box, c, idle = {}) {
         show('pick');
         // The clock only runs while the match does: a pause stops it and hides the cards (no free thinking time).
         // Swipe Shots gives a little more time: drawing takes longer than tapping.
-        let left = secs * 1000 * (hoSwipeOn() ? 1.3 : 1), total = left, last = performance.now(), held = false, eng = null, trail = null, bar = null;
+        let left = secs * 1000 * (hoSwipeOn() ? 1.3 : 1), total = left, last = performance.now(), held = false, eng = null, trail = null, bar = null, come = false;
+        // Swipes: following the shot to the net is a switch, there when your plan and the ball allow it (an approach or
+        // serve and volley was on offer).
+        const canCome = cards.some(cd => cd.kind === 'net' || cd.snv);
+        const COME = () => canCome ? `<button type="button" class="hoswap hocome${come ? ' on' : ''}" data-come="1">🏃 Come To The Net: ${come ? 'On' : 'Off'}</button>` : '';
         const cardsHtml = (cls = '') => `<div class="hocards${cls}" style="--n:${cards.length}">${cards.map((cd, i) => `<button type="button" data-ho="${i}"><kbd class="hokey">${i + 1}</kbd><span>${cd.icon}</span><b>${cd.title}</b>` +
           `${cd.sig ? `<small>Your Signature Shot</small>` : ''}${cd.readN >= 3 ? `<em>They're Reading This</em>` : ''}</button>`).join('')}</div>`;
         // Two ways to play, never both at once: tap cards, or draw swipes. A big switch at the top changes it.
@@ -861,20 +912,23 @@ function hoUI(box, c, idle = {}) {
           if (eng) { eng.detach(); eng = null; } if (trail) { trail.remove(); trail = null; }
           const sw = hoSwipeOn();
           box.innerHTML = head(STAGE[stage]) + modeSwitch(sw) + (sit ? `<div class="hosit ${c.pos > 0 || c.st.open ? 'good' : c.pos < 0 || c.st.net === 'them' ? 'bad' : ''}">${sit}</div>` : '') + `<div class="hotimer"><i></i></div>` +
-            (sw ? swipePad() + cardsHtml(' sgchips') : cardsHtml()) + `<div class="horow">${sw && !isServe ? SETUP : ''}${PAUSE}</div>` + HELD;
+            (sw ? swipePad() : cardsHtml()) + `<div class="horow">${sw ? COME() : ''}${sw && !isServe ? SETUP : ''}${PAUSE}</div>` + HELD;
           bar = box.querySelector('.hotimer i'); bar.style.transition = 'transform .1s linear';
           if (!sw) return;
-          const pad = box.querySelector('.sgpad'), live = box.querySelector('.sglive'), chips = [...box.querySelectorAll('.sgchips [data-ho]')];
+          const pad = box.querySelector('.sgpad'), live = box.querySelector('.sglive');
           trail = new SwipeTrail(pad);
           const idle = live.textContent;
-          const MISS = { wide: 'Going Out Wide', long: 'Overhit: Going Long', net: 'Underhit: Into The Net' };
+          const MISS = { wide: 'Out Wide', long: 'Too Long', net: 'Into The Net' };
+          // Kept short enough to read mid-swing: the spin and where it's going (or that it's going out).
+          const short = (g, m) => { const f = g.type === 'disguise' ? g.base : g.type;
+            if (isServe) return `${HO_FAMW[f]} · ${({ wide: 'Out Wide', body: 'Body', t: 'Down The T' })[m.card.serve] || ''}`;
+            return `${HO_FAMW[f]}${m.card.dir && HO_DIRW[m.card.dir] ? ` · ${HO_DIRW[m.card.dir]}` : ''}`; };
           const show1 = (g, drawing) => {
-            const m = g && hoGesturePick(c, stage, cards, hoSwipeAim(c, stage, g));
+            const m = g && hoGesturePick(c, stage, cards, hoSwipeAim(c, stage, g), come);
             if (g && g.unclear) { // mid-stroke it's just not finished yet; only a finished stroke is refused
-              chips.forEach(b => b.classList.remove('on')); live.textContent = drawing ? 'Drawing…' : 'Not A Clear Shot: Draw It Again'; live.classList.toggle('out', !drawing); return { m: null, miss: drawing ? null : 'unclear' }; }
+              live.textContent = drawing ? 'Drawing…' : 'Not Clear: Draw Again'; live.classList.toggle('out', !drawing); return { m: null, miss: drawing ? null : 'unclear' }; }
             const miss = g && g.miss && !(drawing && g.miss === 'net') ? g.miss : null; // too short only counts once you let go
-            chips.forEach((b, i) => b.classList.toggle('on', !!m && cards[i] === (m.src || m.card)));
-            live.textContent = g ? `${SG_TYPES[g.type].label}${g.awkward ? ' (Awkward Swing)' : ''}${m ? ` → ${m.card.title}` : ''}${miss ? ` · ${MISS[miss]}` : ''}` : idle;
+            live.textContent = g && m ? (miss ? `${HO_FAMW[g.type === 'disguise' ? g.base : g.type]} · ${MISS[miss]}` : short(g, m)) : idle;
             live.classList.toggle('out', !!miss);
             return { m, miss };
           };
@@ -882,9 +936,9 @@ function hoUI(box, c, idle = {}) {
             // While you draw, the trail stays plain: a half-drawn stroke would keep changing its reading. It's read when you let go.
             // The words still say which shot it's turning into once there's enough of a stroke to read.
             // It turns red while the stroke would send the ball out; hold still at the end of it to cancel and draw again.
-            move: (g, pts) => { const r = g && g.len >= 0.2 ? show1(g, true) : null; if (!r) { live.textContent = 'Drawing…'; live.classList.remove('out'); chips.forEach(b => b.classList.remove('on')); }
+            move: (g, pts) => { const r = g && g.len >= 0.2 ? show1(g, true) : null; if (!r) { live.textContent = 'Drawing…'; live.classList.remove('out'); }
               trail.set(pts, r && r.miss ? '#ff3b30' : '#f5f5f7'); },
-            cancel: why => { trail.set([]); show1(null); if (why === 'still') live.textContent = 'Cancelled: Draw Again'; },
+            cancel: why => { trail.set([]); show1(null); if (why === 'still') live.textContent = 'Cancelled'; },
             commit: (g, pts) => {
               if (paused()) { trail.set([]); return show1(null); }
               const { m } = show1(g);
@@ -917,6 +971,7 @@ function hoUI(box, c, idle = {}) {
         box.onclick = e => {
           if (e.target.closest('[data-pause]')) return pauseNow();
           if (e.target.closest('[data-setup]')) { pauseNow(); return hoSwipeSetup(() => render()); }
+          const cb = e.target.closest('[data-come]'); if (cb) { come = !come; cb.classList.toggle('on', come); cb.textContent = `🏃 Come To The Net: ${come ? 'On' : 'Off'}`; return; }
           const sb = e.target.closest('[data-swap]');
           if (sb) { const want = sb.dataset.swap === 'swipe'; if (want !== hoSwipeOn()) { try { localStorage.setItem(HO_SWIPE_KEY, want ? '1' : '0'); } catch {} render(); } return; }
           const b = e.target.closest('[data-ho]'); if (b) pick(cards[+b.dataset.ho]);
@@ -1031,7 +1086,7 @@ function hoUI(box, c, idle = {}) {
       el.className = `hoflash ${({ PERFECT: 'good', OKAY: 'ok' })[text] || (text.startsWith('THEIR') ? 'good' : 'bad')}`;
       el.textContent = text; el.style.left = `${innerWidth / 2}px`; el.style.top = `${innerHeight * 0.45}px`; // always the middle of the screen
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 900);
+      setTimeout(() => el.remove(), 1500);
     },
     close() { setKey(null); hide(); },
   };
@@ -1056,6 +1111,7 @@ async function playHandsOn(entry, m, ps, me, ev, info, step) {
   L.calls = [...(L.calls || []), { step, id: 'ho' }];
   writeJSON(ENTRY_KEY, entry);
   const c = hoContext(m, ps, ev, me, info, L.hoUses.c);
+  c.track = hoTrackOf(L, m, ps, me);
   await courtFade(false); // back from the skip screen
   Court.reset(me === info.s ? 0 : 1, (info.pts[0] + info.pts[1]) % 2 === 0);
   Court.draw();
@@ -1096,7 +1152,8 @@ const HO_TUT_TIPS = {
     'When play stops, it is your turn. Choose your shot before the timer bar runs out. Tap ❚❚ Pause whenever you need a break.']],
   serve: ['🎾', 'Serving', ['Choose where to serve: out wide, into the body or down the T. Serves out wide and down the T win more aces, but they are harder to land.']],
   hold: ['✊', 'Timing Your Serve', ['Serves are timed with the hold bar. Press and hold anywhere in the box, or hold the Space bar. The bar only fills while you hold. Let go when it reaches the green.',
-    'Green is perfect and grey is good enough. Let go anywhere else and the serve is mistimed.']],
+    'Green is perfect and grey is good enough. Let go anywhere else and the serve is mistimed.',
+    'A mistimed serve is a fault, and two in a row is a double fault. A perfectly timed serve always goes in.']],
   ret: ['↩️', 'Returning', ['The line above your cards tells you what is coming, such as a big serve or a second serve you can step in on. Choose the return that suits it.']],
   rally: ['🎯', 'Rally Shots', ['Each card is a shot you can play from where you are on court. The line above the cards shows whether you are in control (green) or under pressure (red).',
     'Going for a winner under pressure is risky. Work the point until you are in control, then attack. If a card says "They\'re Reading This", you have played it too often and your opponent is ready for it.']],
@@ -1105,7 +1162,8 @@ const HO_TUT_TIPS = {
   swipeOn: ['✍️', 'Swipes', [
     'Instead of tapping a card, you can draw your shot. Swipes is now switched on. Use the Cards / Swipes switch at the top of the screen to change it at any time.',
     'Draw one of the shapes shown in the key below the drawing area: Flat, Topspin, Slice, Lob or Drop Shot. The first shape of each pair goes down the line and the second goes crosscourt. Finish your stroke where the arrow points.',
-    'Turn your stroke further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
+    'Your shot is exactly what you draw: its spin from the shape, and its direction from where the stroke ends. Turn your stroke further to angle the ball more, and draw a longer stroke to hit deeper. If the trail turns red, the ball is going out. To cancel, keep your finger or mouse still for a moment, then draw again.',
+    'To follow your shot in to the net, switch on 🏃 Come To The Net before you draw. It appears when your game plan and the ball allow it.',
     'If your strokes are not read the way you draw them, tap ✍️ Set Up My Swipes and draw each shape in your own style.',
     'Next is a short drill: draw a few shots and see how each one is read.']],
   swserve: ['🎾', 'Swiping Your Serve', ['Swipe upwards from the bottom of the drawing area towards where you want the serve to land: out wide, into the body or down the T. The key below shows all three directions.',

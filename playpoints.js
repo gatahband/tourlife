@@ -438,6 +438,11 @@ function hoGestureCard(c, cd, g, ph) {
   return out;
 }
 // Which side of the screen the ball comes to you on (you're always at the bottom): a right-hander's forehand is on the right.
+// A racket on the pad, its head pointing to the side the ball is on: your forehand side (right for a right-hander,
+// left for a left-hander) or your backhand side. It says which wing you're hitting with, without words.
+const HO_RACKET = `<svg class="sgracket" viewBox="0 0 130 56" aria-label="Racket"><rect x="4" y="24" width="40" height="9" rx="4.5"/>` +
+  `<path class="throat" d="M44 28.5 L62 18 M44 28.5 L62 39"/><ellipse cx="90" cy="28.5" rx="30" ry="24"/>` +
+  `<path class="str" d="M75 9 V48 M90 5 V52 M105 9 V48 M63 18 H117 M61 28.5 H119 M63 39 H117"/></svg>`;
 const hoBallSide = c => (c.st.wing !== 'bh') === ((c.ps[c.me].hand || 'right') !== 'left') ? 1 : -1;
 // A drawn groundstroke's side on screen: down the line lands on the side you're hitting from, crosscourt on the other.
 function hoSwipeAim(c, stage, g) {
@@ -849,7 +854,7 @@ function hoUI(box, c, idle = {}) {
         const isServe = stage === 'serve' || stage === 'serve2', bs = hoBallSide(c), lefty = (c.ps[c.me].hand || 'right') === 'left';
         const swipePad = () => isServe
           ? `<div class="sgpad"><div class="sglive">Swipe Your Serve</div><small class="sglegend">Swipe up from the bottom towards where you want it to land.</small></div>` + hoServeKey(c.ad)
-          : `<div class="sgpad ${bs < 0 ? 'bl' : 'br'}" data-wing="${c.st.wing === 'bh' ? 'bh' : 'fh'}" data-lefty="${lefty ? 1 : 0}"><span class="sgball">🎾</span><div class="sglive">Ball On Your ${c.st.wing === 'bh' ? 'Backhand' : 'Forehand'}</div>` +
+          : `<div class="sgpad ${bs < 0 ? 'bl' : 'br'}" data-wing="${c.st.wing === 'bh' ? 'bh' : 'fh'}" data-lefty="${lefty ? 1 : 0}">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive"></div>` +
             `<small class="sglegend">Draw the shape for your shot, ending where the arrow points. Longer trails go deeper. Hold still first to disguise it.</small></div>` + hoSwingGuide(c.st.wing, lefty);
         // Draw it (Swipe Shots) or pick a card; either way the cards show what's on for this ball.
         const render = () => {
@@ -1222,11 +1227,11 @@ function hoSwipeDrill() {
         $('drDone').onclick = closeModal; return;
       }
       const [t, d] = HO_DRILL[i], last = d === 'out';
-      $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length} · Ball On Your Forehand</p>` +
+      $('sheet').querySelector('.sgsetup').innerHTML = `<p class="sgstep">Swipe Drill · ${i + 1} Of ${HO_DRILL.length}</p>` +
         `<div class="sgwant"><div class="sgguide one"><span>${hoShapeSvg('fh', t, last ? 'cross' : d, lefty)}<i>${last ? '↖↖' : d === 'fwd' ? '↑' : '↖'}</i></span></div>` +
         `<b>${last ? 'Flat Crosscourt, Angled Out' : `${NAME[t]} · ${d === 'fwd' ? 'Down The Line' : 'Crosscourt'}`}</b></div>` +
         `<p class="hint">${last ? 'Draw the Flat crosscourt shape, but turn it much further across until the trail turns red. Then let go.' : 'Draw this shape, finishing where the arrow points.'}</p>` +
-        `<div class="sgpad" id="drPad"><div class="sglive" id="drOut">Draw Here</div></div>` +
+        `<div class="sgpad ${lefty ? 'bl' : 'br'}" id="drPad">${HO_RACKET}<span class="sgball">🎾</span><div class="sglive" id="drOut">Draw Here</div></div>` +
         (tries >= 2 ? `<button type="button" class="btn small ghost" id="drSkip">Skip This One</button>` : '');
       if ($('drSkip')) $('drSkip').onclick = () => { i++; tries = 0; step(); };
       const el = $('drPad'); trail = new SwipeTrail(el);

@@ -1768,3 +1768,57 @@ body.hofixed { overflow: hidden; }
 .hoswap.hocome.on { border-color: #3dff6e; color: #3dff6e; font-weight: 700; }
 .hoplanrep small { display: block; margin-top: 4px; opacity: .85; text-transform: none; }
 .sgturn { margin: 4px 0 0; font-size: 12px; color: #ffd60a; text-align: center; font-weight: 700; }
+
+/* Phones held sideways: the match is a game screen (phonegame.js). The court fills the middle; the camera views sit in
+   a column on the left and the speed, labels and match buttons on the right, so nothing covers the court. Windows on
+   the court (set break, result, changeovers) fill the screen; while you choose a shot, the court moves to the left and
+   your choice fills the rest. */
+:root { --pgside: 112px; }
+body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); } /* (clear of the notch, sideways) */
+body.phgame { overflow: hidden; }
+body.phgame #mStage { position: fixed; inset: 0; z-index: 45; margin: 0; background: #05070a; display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body.phgame #mStage > .court-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin: 0; padding: 4px 0 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+body.phgame #mStage > .court-card > :not(#mCourtWrap):not(#mBoard) { display: none !important; }
+body.phgame #mActions { display: none !important; }
+body.phgame #mBoard { width: auto; margin: 0 auto 4px; font-size: 13px; flex: none; }
+body.phgame #mBoard th { padding: 1px 12px 1px 0; } body.phgame #mBoard td { width: 26px; }
+body.phgame #mCourtWrap { flex: 1 1 0; min-height: 0; margin: 0; }
+body.phgame #mCourtWrap > #court { margin: 0; border-radius: 8px; }
+body.phgame .ov.ovtopc { top: 0; left: 4px; right: auto; transform: none; width: calc(var(--pgside) - 8px); justify-content: stretch; }
+body.phgame .ov.ovtopc #mView { flex-direction: column; width: 100%; }
+body.phgame .ov.ovtopc #mView button { padding: 6px 4px; font-size: 11px; }
+body.phgame .ov.ovleft { top: 104px; left: 4px; width: calc(var(--pgside) - 8px); }
+body.phgame .ov.ovright { top: 0; right: 4px; width: calc(var(--pgside) - 8px); align-items: stretch; }
+body.phgame .ov.ovright .seg.vert { min-width: 0; }
+body.phgame .ov .fsbtn { display: none; }
+body.phgame .ov.ovbot { left: auto; right: 4px; bottom: 4px; width: calc(var(--pgside) - 8px); flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
+body.phgame .ovbot .btn { padding: 9px 4px; font-size: 12px; }
+body.phgame #mCourtWrap > .callbox, body.phgame #mBreak { overflow-y: auto; background: rgba(5, 7, 10, .94); backdrop-filter: none; }
+/* A window on the court (a call, a changeover, a set break) has the screen to itself: the side buttons step aside. */
+body.phgame #mCourtWrap:has(> .callbox:not([hidden])) > .ov, body.phgame #mCourtWrap:has(> #mBreak:not([hidden])) > .ov { visibility: hidden; }
+/* Choosing a shot: the court on the left, your choice on the right (the court's own buttons step aside). */
+body.phdecide #mCourtWrap > .callbox.ho { inset: 0 0 0 42%; border-radius: 0; background: #0b0e13; padding: 6px 10px; gap: 6px;
+  flex-flow: row wrap; align-content: safe center; justify-content: center; }
+body.phdecide #mCourtWrap > .callbox.ho > * { flex: 0 0 100%; }
+body.phdecide #mCourtWrap > .callbox.ho > .hohead, body.phdecide #mCourtWrap > .callbox.ho > .hoplayas { flex: 1 1 40%; } /* side by side */
+body.phdecide .callbox.ho .hohead { padding: 4px 8px; } body.phdecide .callbox.ho .hohead b { font-size: 16px; } body.phdecide .callbox.ho .hohead small { font-size: 11px; margin-top: 1px; }
+body.phdecide .callbox.ho .hoplayas button { min-height: 38px; font-size: 14px; }
+body.phdecide .callbox.ho .hosit { font-size: 13px; } body.phdecide .callbox.ho .hotimer { width: 100%; height: 6px; }
+body.phdecide .callbox.ho .sgpad { height: max(110px, calc(100dvh - 255px)); min-height: 0; }
+body.phdecide .callbox.ho .sglegend { display: none; }
+body.phdecide .sgguide figure > div svg { max-width: 24px; } body.phdecide .sgguide figure b { font-size: 10px; } body.phdecide .sgturn { margin: 0; font-size: 11px; }
+body.phdecide .callbox.ho .horow .hoswap { padding: 6px 12px; font-size: 13px; min-height: 36px; }
+/* The score sits above the court, in the left part. */
+body.phdecide #mBoard { position: absolute; top: calc(env(safe-area-inset-top) + 4px); left: calc(env(safe-area-inset-left) + 8px); width: calc(42% - 16px); margin: 0; z-index: 4; }
+body.phdecide #mBoard table, body.phdecide #mBoard { display: table; }
+
+/* "Turn your phone sideways" */
+.pgturn { position: fixed; inset: 0; z-index: 60; background: #05070a; color: #f5f5f7; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px; text-align: center; }
+.pgturn[hidden] { display: none; }
+.pgturn h2 { margin: 0; font-size: 26px; color: #f5f5f7; } .pgturn p { margin: 0; max-width: 320px; color: var(--muted); font-size: 16px; line-height: 1.45; }
+.pgturn .btn { width: auto; min-width: 240px; margin-top: 12px; }
+.pgphone { font-size: 72px; animation: pgTurn 2.4s ease-in-out infinite; }
+@keyframes pgTurn { 0%, 30% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .pgphone { animation: none; transform: rotate(-90deg); } }

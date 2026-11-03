@@ -159,7 +159,7 @@ function loadEntry() {
 let current = { player: null, career: null, entry: null, tab: 0 };
 
 function showScreen(name) {
-  if (name !== 'match') leaveFullscreen();
+  if (name !== 'match') leaveFullscreen(true);
   for (const id of ['creator', 'home', 'draw', 'match', 'review', 'train', 'admin']) $(id).hidden = id !== name;
   window.scrollTo(0, 0);
   if (typeof renderStudyBtn === 'function' && current.career) renderStudyBtn(current.career);

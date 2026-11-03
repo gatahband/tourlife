@@ -25,9 +25,10 @@ document.addEventListener('toggle', e => {
 document.addEventListener('DOMContentLoaded', () => restoreFolds());
 
 // Full screen hides everything but the court, so step out of it whenever something needs a click.
-function leaveFullscreen() {
+// (A phone's whole-page full screen, from phonegame.js, shows windows fine, so it stays unless you leave the match: any.)
+function leaveFullscreen(any) {
   const fs = document.fullscreenElement || document.webkitFullscreenElement;
-  if (fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  if (fs && (any || fs !== document.documentElement)) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
 }
 
 function openModal(html, { onClose, wide } = {}) {

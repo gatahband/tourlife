@@ -62,12 +62,16 @@ function createCourt() {
   const FAR_Y = -BASE - 3.6, NEAR_Y = BASE + 3.4, TOP = 0.17, BOTTOM = 1; // TOP keeps the far player's name and callout in frame
   const SIDE_CX = -(DOUBLES + 20), SIDE_Z = 14;
 
+  let fitBox = null; // { w, h }: the phone game view's box for the court (phonegame.js)
   function resize() {
     if (!cv) return;
     dpr = window.devicePixelRatio || 1;
+    // Phone game view (phonegame.js): the court is sized to fit a box, as big as it goes without cropping.
+    if (fitBox) cv.style.width = Math.floor(Math.min(fitBox.w, fitBox.h / (camera() === 'top' ? VIEW_WID / VIEW_LEN : 0.6))) + 'px';
+    else if (cv.style.width) cv.style.width = '';
     W = cv.clientWidth || 600;
     // Full screen lifts the height cap (the width is limited in CSS so it fits).
-    const fs = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+    const fs = !!document.fullscreenElement || !!document.webkitFullscreenElement || !!fitBox;
     H = Math.round(camera() === 'top' ? W * VIEW_WID / VIEW_LEN : Math.min(W * 0.6, fs ? 2000 : 620));
     cv.style.height = H + 'px';
     cv.width = W * dpr; cv.height = H * dpr;
@@ -1968,6 +1972,8 @@ function createCourt() {
       draw();
     },
     resize() { resize(); draw(); },
+    set fit(v) { fitBox = v; resize(); draw(); },
+    get fit() { return fitBox; },
     get view() { return view; },
     set skip(v) { skip = v; },
     get skip() { return skip; },

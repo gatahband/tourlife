@@ -866,7 +866,7 @@ function hoCourt(c) {
 // screen and the controls fill everything below it, fixed in place (the page can't scroll away mid-shot).
 function hoGameScreen(box, on) {
   const wrap = document.getElementById('mCourtWrap');
-  if (!on || innerWidth > 760 || document.fullscreenElement || !wrap) {
+  if (!on || innerWidth > 760 || document.fullscreenElement || document.body.classList.contains('phgame') || !wrap) {
     box.classList.remove('hofix'); box.style.top = ''; document.body.classList.remove('hofixed');
     // Computers and tablets: bring the whole court (and the choice on it) into view if part of it is off screen.
     if (on && wrap && !document.fullscreenElement) { const r = wrap.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight) wrap.scrollIntoView({ block: r.height > innerHeight ? 'start' : 'center' }); }

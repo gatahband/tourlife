@@ -19,13 +19,15 @@ function pgTick() {
   const box = document.getElementById('mCallBox'), wrap = document.getElementById('mCourtWrap'), cv = document.getElementById('court');
   const game = on && land, upright = on && !land && !pgSS(PG_UPRIGHT_KEY);
   const deciding = game && !!box && !box.hidden && box.classList.contains('ho');
-  const key = `${game}|${upright}|${deciding}|${innerWidth}x${innerHeight}|${typeof Court !== 'undefined' && Court.view}`;
+  const board = document.getElementById('mBoard'), bh0 = game && board ? board.offsetHeight : 0;
+  const key = `${game}|${upright}|${deciding}|${innerWidth}x${innerHeight}|${typeof Court !== 'undefined' && Court.view}|${bh0}`;
   if (key === pgLast) return;
   pgLast = key;
   body.classList.toggle('phgame', game);
   body.classList.toggle('phdecide', deciding);
   pgTurnNotice(upright);
   if (typeof Court === 'undefined' || !wrap || !cv) return;
+  if (bh0) body.style.setProperty('--pgbh', `${bh0 + 8}px`); // (the right-hand buttons start below the score)
   if (!game) {
     if (Court.fit) { cv.style.position = cv.style.left = cv.style.top = ''; Court.fit = null; }
     return;

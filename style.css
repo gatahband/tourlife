@@ -1773,7 +1773,7 @@ body.hofixed { overflow: hidden; }
    a column on the left and the speed, labels and match buttons on the right, so nothing covers the court. Windows on
    the court (set break, result, changeovers) fill the screen; while you choose a shot, the court moves to the left and
    your choice fills the rest. */
-:root { --pgside: 112px; }
+:root { --pgside: 132px; }
 body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); } /* (clear of the notch, sideways) */
 body.phgame { overflow: hidden; }
 body.phgame #mStage { position: fixed; inset: 0; z-index: 45; margin: 0; background: #05070a; display: flex; flex-direction: column;
@@ -1781,19 +1781,32 @@ body.phgame #mStage { position: fixed; inset: 0; z-index: 45; margin: 0; backgro
 body.phgame #mStage > .court-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin: 0; padding: 4px 0 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 body.phgame #mStage > .court-card > :not(#mCourtWrap):not(#mBoard) { display: none !important; }
 body.phgame #mActions { display: none !important; }
-body.phgame #mBoard { width: auto; margin: 0 auto 4px; font-size: 13px; flex: none; }
-body.phgame #mBoard th { padding: 1px 12px 1px 0; } body.phgame #mBoard td { width: 26px; }
+/* The score sits at the top of the right-hand column, so the court gets the full height. */
+body.phgame #mBoard { position: absolute; top: calc(env(safe-area-inset-top) + 4px); right: calc(env(safe-area-inset-right) + 4px); width: calc(var(--pgside) - 8px);
+  margin: 0; font-size: 12px; flex: none; z-index: 4; background: rgba(23, 27, 34, .9); border-radius: 8px; table-layout: fixed; }
+body.phgame #mBoard th { padding: 2px 2px 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.phgame #mBoard td { width: 15px; } body.phgame #mBoard td.pts { width: 24px; padding-right: 3px; }
+body.phgame #mBoard th .seed { display: none; } body.phgame #mBoard .serve-dot { margin-right: 3px; }
 body.phgame #mCourtWrap { flex: 1 1 0; min-height: 0; margin: 0; }
 body.phgame #mCourtWrap > #court { margin: 0; border-radius: 8px; }
 body.phgame .ov.ovtopc { top: 0; left: 4px; right: auto; transform: none; width: calc(var(--pgside) - 8px); justify-content: stretch; }
 body.phgame .ov.ovtopc #mView { flex-direction: column; width: 100%; }
-body.phgame .ov.ovtopc #mView button { padding: 6px 4px; font-size: 11px; }
-body.phgame .ov.ovleft { top: 104px; left: 4px; width: calc(var(--pgside) - 8px); }
-body.phgame .ov.ovright { top: 0; right: 4px; width: calc(var(--pgside) - 8px); align-items: stretch; }
+body.phgame .ov.ovtopc #mView button { padding: 6px 4px; font-size: 12px; }
+body.phgame .ov.ovleft { top: 96px; left: 4px; width: calc(var(--pgside) - 8px); }
+body.phgame .ov.ovright { top: var(--pgbh, 48px); right: 4px; width: calc(var(--pgside) - 8px); align-items: stretch; }
 body.phgame .ov.ovright .seg.vert { min-width: 0; }
 body.phgame .ov .fsbtn { display: none; }
-body.phgame .ov.ovbot { left: auto; right: 4px; bottom: 4px; width: calc(var(--pgside) - 8px); flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
-body.phgame .ovbot .btn { padding: 9px 4px; font-size: 12px; }
+body.phgame .ov.ovbot { left: 4px; right: auto; bottom: 4px; width: calc(var(--pgside) - 8px); flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
+body.phgame .ovbot .btn { padding: 8px 4px; font-size: 12px; min-height: 0; }
+/* GATAH VISION's extra camera angles and speeds sit two to a row, so each column fits a short screen. */
+body.phgame #mGvBar, body.phgame #mGvSpeed { display: grid; grid-template-columns: 1fr 1fr; }
+body.phgame #mGvBar[hidden], body.phgame #mGvSpeed[hidden] { display: none; }
+body.phgame #mGvBar button, body.phgame #mGvSpeed button { padding: 5px 2px; font-size: 11px; }
+body.phgame #mGvSpeed .segsep { display: none; }
+/* Big-point choices: one row across the screen. */
+body.phgame .callbox.bp { padding: 8px 10px; }
+body.phgame .callbox.bp .cbopts.eq { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); max-width: 820px; margin: 0 auto; }
+body.phgame .callbox.bp .cbopts.eq > button { min-height: 0; padding: 8px 6px; }
 body.phgame #mCourtWrap > .callbox, body.phgame #mBreak { overflow-y: auto; background: rgba(5, 7, 10, .94); backdrop-filter: none; }
 /* A window on the court (a call, a changeover, a set break) has the screen to itself: the side buttons step aside. */
 body.phgame #mCourtWrap:has(> .callbox:not([hidden])) > .ov, body.phgame #mCourtWrap:has(> #mBreak:not([hidden])) > .ov { visibility: hidden; }

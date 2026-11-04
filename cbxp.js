@@ -7,7 +7,7 @@
   const q = (el, s) => el.querySelector(s);
   const pause = ms => new Promise(r => setTimeout(r, ms));
   // How slowly the ball travels (1 = real time). The saved setting keeps its old values; they now mean quicker speeds.
-  const SPEED_OF = { 2.4: 1.5, 1.6: 1.1, 1.1: 0.8 };
+  const SPEED_OF = { 2.4: 1.7, 1.6: 1.3, 1.1: 1.05 };
   const speed = () => { const v = +(cbData().speed || 1.6); return SPEED_OF[v] || v; };
   const speedKey = () => +(cbData().speed || 1.6);
 
@@ -243,7 +243,7 @@
     const tA = (sh.met ? Math.hypot(sh.contact.x - p0.x, sh.contact.y - p0.y) : dA) / v;
     // Pace you can feel: a big ball flies visibly quicker than a rally ball, so the firepower grows with the level.
     const punch = sh.type === 'lob' || sh.type === 'drop' ? 1 : cbClamp(Math.pow((sh.kmh || 110) / 110, 1.1), 0.85, 1.7);
-    const T = (tA + tB) * 1000 * Math.max(0.85, slow / punch), gA = tA / (tA + tB);
+    const T = (tA + tB) * 1000 * Math.max(1, slow / punch), gA = tA / (tA + tB);
     const h0 = { x: H.x, y: H.y }, hTo = sh.after || h0, r0 = { x: R.x, y: R.y };
     let rTo = r0;
     if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, 0.7), y: lerp(r0.y, s2.y, 0.7) } : s2; }

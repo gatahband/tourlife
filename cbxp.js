@@ -412,7 +412,7 @@
     const t = { ...st, atNet: [st.atNet[0] || move === 'net', st.atNet[1]], cover: move === 'cross' || move === 'line' ? move : null };
     return cbMoveToward(st.pos[0], cbCoverSpot(t, 0, meet.contact), cbRecoverReach(t, 0, meet));
   }
-  const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint && hint.has(k) ? ' hint' : ''}">${l}</button>`).join('')}</div>`;
+  const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint ? (hint.has(k) ? ' hint' : ' safe') : ''}">${l}</button>`).join('')}</div>`;
   let lastShot = { type: 'topspin', dir: 'cross', depth: 'deep', margin: 'normal' };
   // God Panel: "win/lose this point" while a decision is open.
   const godHook = (U, res, clean) => { U.godReq = g => { clean(); res({ god: g }); }; };

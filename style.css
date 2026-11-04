@@ -2169,3 +2169,4 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xswitch button.xm.on:hover { background: linear-gradient(90deg, #ff375f, #ff9f0a); }
   .xswitch button.xm:hover .xmtip { display: block; }
 }
+.xpseg button.safe:not(.on) { box-shadow: inset 0 0 0 1px rgba(124, 255, 178, .28); } /* a safe choice right now: the faintest green edge */

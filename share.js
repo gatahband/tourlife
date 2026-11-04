@@ -434,7 +434,18 @@ async function shareBuild(p) {
   x.textAlign = 'left'; x.fillStyle = '#f5f5f7'; x.font = `800 52px ${F}`; x.fillText(lv.name, 340, 320);
   x.fillStyle = '#c7c7cc'; x.font = `500 30px ${F}`;
   const wrap = (t, X, Y, w, lh) => { let line = ''; for (const word of t.split(' ')) { const tr = line ? line + ' ' + word : word; if (x.measureText(tr).width > w) { x.fillText(line, X, Y); Y += lh; line = word; } else line = tr; } x.fillText(line, X, Y); return Y; };
-  wrap(lv.note, 340, 370, 660, 40);
+  wrap(lv.note, 340, 370, typeof XL === 'object' ? 400 : 660, 40);
+  // Your player, front on, in the kit you have on, racket in your playing hand (from the front, a right-hander's
+  // racket is on the left of the picture).
+  if (typeof XL === 'object') {
+    const bx = 770, by = 60, bw = 250, bh = 420, sc = 168, X = bx + bw / 2, Y = by + bh - 26, hd = p.hand === 'left' ? 1 : -1;
+    const glow = x.createRadialGradient(X, by + bh * 0.85, 10, X, by + bh * 0.6, bh * 0.75); glow.addColorStop(0, '#2c5a87'); glow.addColorStop(1, '#16222e');
+    rr(bx, by, bw, bh, 40); x.fillStyle = glow; x.fill();
+    x.save(); rr(bx, by, bw, bh, 40); x.clip();
+    x.fillStyle = 'rgba(0,0,0,0.3)'; x.beginPath(); x.ellipse(X, Y, 0.4 * sc, 0.1 * sc, 0, 0, 7); x.fill();
+    XL.drawBody(x, (dx, z) => [X + dx * sc, Y - z * sc], sc, { side: 1, sw: 0, hand: XL.REST(hd), hd, twoHands: false, look: XL.resolve(p.look) });
+    x.restore();
+  }
   // Playstyle.
   x.fillStyle = '#8e8e93'; x.font = `700 26px ${F}`; x.fillText('PLAYSTYLE', 80, 540);
   x.fillStyle = '#ffd60a'; x.font = `800 50px ${F}`; x.fillText(st.name, 80, 600);

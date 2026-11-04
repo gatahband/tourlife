@@ -714,7 +714,7 @@ function scoutCard(opp, ev, me, plan, { moraleData = null, planBtn = 'dPlanBtn' 
   const facts = `<div class="keyfacts">` +
     `<div><span>💪</span><b>Strength</b><em>${r.strengths[0] || 'Nothing stands out'}</em></div>` +
     `<div><span>🩹</span><b>Weakness</b><em>${r.weaknesses[0] || 'No clear hole'}</em></div>` +
-    `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : 'Hire a coach for a read on them'}</em></div></div>`;
+    `<div><span>🧑‍🏫</span><b>${coach ? 'Coach' : 'Tip'}</b><em>${coach && typeof isExtreme === 'function' && isExtreme() ? esc(short(beatLines[0] || 'No obvious holes. Play your game.')) : coach ? (diffs.length ? `Suggests ${diffs.length} plan change${diffs.length === 1 ? '' : 's'}` : 'Your plan is spot on') : 'Hire a coach for a read on them'}</em></div></div>`;
   const pe = prepEdges(current.entry, opp);
   const tags = [...pe.tags, ...(rebuildPen(c) ? [`🔁 New build bedding in (${c.rebuild.weeks} week${c.rebuild.weeks === 1 ? '' : 's'} left)`] : [])];
   const prepTags = tags.length ? `<div class="preptags">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : '';
@@ -1081,6 +1081,8 @@ function openMatch() {
   if (anim.replayKey !== key) { anim.replayKey = key; anim.replays = []; }
   renderPoints();
   renderMatch();
+  // TourLife Extreme: every point is played on the Court Breaker court (cbplay.js).
+  if (typeof isExtreme === 'function' && isExtreme() && !entry.live.done) { cbMatch(entry); return; }
   // Came back mid-set (a refresh): pick the set up right where you left it.
   if (entry.live.inSet && entry.live.snap && !anim.running) watchMatch();
 }
@@ -1713,6 +1715,14 @@ function renderMatch() {
       return;
     }
     if (!m.sets.length) setCall(`${shortName(ps[m.server])} to serve`, 'pre');
+    // TourLife Extreme: no watch or sim modes. Every point is played on the Court Breaker court (cbplay.js).
+    if (typeof isExtreme === 'function' && isExtreme()) {
+      const started = m.sets.length || entry.live.inSet;
+      $('mActions').innerHTML = `<div class="btn-row"><button type="button" class="btn" id="mCb">🎯 ${started ? 'Resume The Match' : 'Play The Match'}</button></div>` +
+        (started ? '' : scoutCard(opp, ev, ps[me], eventPlan(entry), { planBtn: 'mPlan' }));
+      $('mCb').onclick = () => cbMatch(entry);
+      return;
+    }
 
     const simAll = async () => { while (!entry.live.done) await playOneSet(false); };
     const mode = entry.live.mode;

@@ -13,7 +13,7 @@ const HO_RING_MS = 1100; // the moment the rings meet (tighter windows close in 
 const HO_PERFECT = 0.4; // the green: this share of the window either side is a perfect hit
 // Open to everyone on a computer or a tablet. Phones are left out for now: the screen is too small to show the court
 // and a drawing pad together (the owner's call, to be revisited).
-const playPointsOn = () => Math.min(screen.width, screen.height) >= 700 || (typeof isAdminOn === 'function' && isAdminOn());
+const playPointsOn = () => !(typeof isExtreme === 'function' && isExtreme()) && (Math.min(screen.width, screen.height) >= 700 || (typeof isAdminOn === 'function' && isAdminOn()));
 const hoPointHere = (m, info) => !!info.tb || HO_GAMES.includes(m.games[0] + m.games[1]) || hoTutOn(); // the tutorial: every game
 
 // Each kind of shot: its edge by position (stretched −2 … in control +2), how much timing matters, how often it

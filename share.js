@@ -487,13 +487,17 @@ async function shareBuild(p) {
 const BUG_ERRS = [];
 addEventListener('error', e => { BUG_ERRS.push(String(e.message || e.error || 'error').slice(0, 160)); if (BUG_ERRS.length > 5) BUG_ERRS.shift(); });
 addEventListener('unhandledrejection', e => { BUG_ERRS.push(('promise: ' + String((e.reason && e.reason.message) || e.reason)).slice(0, 160)); if (BUG_ERRS.length > 5) BUG_ERRS.shift(); });
+// Never lets a problem gathering the details stop the report itself from sending.
 function bugContext() {
+  try { return bugContextRaw(); } catch (e) { return `Version ${window.TL_VERSION || 'local'} · (details unavailable: ${String(e.message).slice(0, 80)})`; }
+}
+function bugContextRaw() {
   const p = readJSON(SAVE_KEY), c = readJSON(CAREER_KEY), en = readJSON(ENTRY_KEY), screenNow = [...document.querySelectorAll('main.wrap')].find(m => !m.hidden);
   const live = en && en.live, m = live && live.m;
   return [`Version ${window.TL_VERSION || 'local'}`, `Screen ${innerWidth}×${innerHeight} (${screen.width}×${screen.height})`, navigator.userAgent.slice(0, 140),
     `Page: ${screenNow ? screenNow.id : '?'}${isTestMatch() ? ' (test/practice save)' : ''}`,
     p ? `Player ${p.name}, ${overall(p).toFixed(1)} OVR, ${p.hand || 'right'}-handed` : 'No player', c ? `Week ${c.week}, season ${c.season || 1}` : '',
-    live ? `Match: mode ${live.mode || 'not chosen'}, sets ${(m && m.sets || []).map(x => x.join('-')).join(' ')} games ${m && m.games ? m.games.join('-') : ''}` : '',
+    live ? `Match: mode ${live.mode || 'not chosen'}, sets ${(m && m.sets || []).map(x => (Array.isArray(x) ? x : (x && x.games) || []).join('-')).join(' ')} games ${m && m.games ? m.games.join('-') : ''}` : '',
     `Swipes ${localStorage.getItem('tourlife.hoSwipe') === '1' ? 'on' : 'off'}`].filter(Boolean).join(' · ');
 }
 async function sendBug(what, contact) {

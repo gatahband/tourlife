@@ -39,7 +39,7 @@ function openingLine(rec, ev, o) {
   const opp = oppIntro(o, ev);
   const round = ROUND_LONG[rec.round];
   const oppScore = rec.sets.map(s => setScore(s, 1)).join(' ');
-  const straight = rec.sets.length === 2;
+  const straight = rec.sets.length <= 2; // one-set matches (Extreme) count as straight
   const lostGames = rec.sets.reduce((a, s) => a + s.games[1], 0);
   if (rec.won) {
     const feel = straight && lostGames <= 4 ? 'dominant' : rec.sets.some(s => s.tb) ? 'tight' : straight ? 'solid' : 'hard-fought';
@@ -85,6 +85,7 @@ function setsLine(rec, oppName) {
   if (s1.tb) lines.push(won(s1) ? pickOne([`You edged a first-set tiebreak ${tb1}.`, `The first set went your way in a tiebreak, ${tb1}.`, `A ${tb1} tiebreak gave you the first set.`])
     : pickOne([`You lost a first-set tiebreak ${tb1}.`, `The first set slipped away in a tiebreak, ${tb1}.`, `${oppName} nicked the first-set tiebreak ${s1.tb[1]}-${s1.tb[0]}.`]));
   else lines.push(won(s1) ? `You took the opener ${setScore(s1)}.` : `You dropped the opener ${setScore(s1)}.`);
+  if (!s2) return lines.join(' '); // a one-set match (TourLife Extreme)
 
   const lopsided = s => Math.max(...s.games) === 6 && Math.min(...s.games) <= 1;
   if (lopsided(s2)) lines.push(won(s2) ? `Then you raced through the second set ${setScore(s2)}.` : `The second set got away from you, ${setScore(s2)}.`);

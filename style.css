@@ -1835,3 +1835,203 @@ body.phdecide #mBoard table, body.phdecide #mBoard { display: table; }
 .pgphone { font-size: 72px; animation: pgTurn 2.4s ease-in-out infinite; }
 @keyframes pgTurn { 0%, 30% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
 @media (prefers-reduced-motion: reduce) { .pgphone { animation: none; transform: rotate(-90deg); } }
+
+/* --- TourLife Extreme / Court Breaker (cbplay.js) --- */
+.xswitch { display: flex; gap: 6px; max-width: 420px; margin: -28px auto 22px; padding: 4px; background: var(--field); border: 1px solid var(--line); border-radius: 14px; }
+.xswitch button { flex: 1; min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: 600 15px/1.1 inherit; cursor: pointer; }
+.xswitch button.on { background: var(--accent); color: #fff; }
+.xswitch button.xm.on { background: linear-gradient(90deg, #ff375f, #ff9f0a); }
+body.xmode header h1 { background: linear-gradient(90deg, #ff375f, #ff9f0a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.xbhome .xbmodes { display: grid; gap: 10px; }
+.xbhome .xbmodes button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-height: 64px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); color: var(--text); text-align: left; cursor: pointer; }
+.xbhome .xbmodes button b { font-size: 17px; }
+.xbhome .xbmodes button small { color: var(--muted); font-size: 14px; }
+.xbhome .xbopts { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: center; margin: 14px 0 4px; }
+.xbgodbtn { position: fixed; left: 12px; bottom: 14px; z-index: 40; width: 52px; height: 52px; border-radius: 50%; border: 0; background: linear-gradient(135deg, #ff9f0a, #ff375f); color: #fff; font-size: 24px; box-shadow: 0 6px 18px rgba(0,0,0,.4); cursor: pointer; }
+body.xbopen .xbgodbtn { display: none; }
+.gdrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.gdrow input[type=range] { flex: 1; }
+.gdrow b { min-width: 34px; text-align: right; }
+.xbov { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; background: #0b1018; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); user-select: none; -webkit-user-select: none; }
+body.xbopen { overflow: hidden; }
+.xbtop { display: flex; align-items: center; gap: 8px; padding: 8px 10px 4px; max-width: 640px; width: 100%; margin: 0 auto; }
+.xbscore { flex: 1; min-width: 0; }
+.xbrow { display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 1.5; }
+.xbrow .xbn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.xbrow.me .xbn { color: #22d3ee; font-weight: 700; }
+.xbrow.op .xbn { color: #fb923c; font-weight: 600; }
+.xbrow b { min-width: 22px; text-align: center; color: var(--muted); }
+.xbrow b.g { color: var(--text); }
+.xbrow b.p { min-width: 34px; color: #e8ff3a; }
+.xbrow .sv { width: 8px; height: 8px; border-radius: 50%; background: #e8ff3a; flex: none; }
+.xbtag { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #ff9f0a; }
+.xbtag.inrow { min-width: 0; margin-left: 8px; white-space: nowrap; }
+.xbtopb { display: flex; gap: 6px; }
+.xbic { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); font-size: 17px; cursor: pointer; }
+.xbtime { height: 4px; margin: 2px auto 0; max-width: 640px; width: 100%; background: rgba(255,255,255,.08); }
+.xbtime i { display: block; height: 100%; width: 0; background: #4ade80; transition: width .05s linear; }
+.xbtime i.low { background: #f87171; }
+.xbstage { flex: 1; position: relative; min-height: 0; max-width: 640px; width: 100%; margin: 0 auto; touch-action: none; }
+.xbcv { display: block; position: absolute; inset: 0; touch-action: none; }
+.xbmsg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; background: rgba(8,12,18,.86); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 12px 18px; text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 90%; }
+.xbmsg b { font-size: 22px; }
+.xbmsg b.good { color: #4ade80; } .xbmsg b.bad { color: #f87171; }
+.xbmsg small { color: var(--muted); font-size: 14px; }
+.xbmsg.small { top: 18%; padding: 6px 14px; font-weight: 700; color: #fbbf24; }
+.xbtags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.xbtags i { font-style: normal; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+.xbtags i.g { background: rgba(74,222,128,.18); color: #86efac; } .xbtags i.b { background: rgba(248,113,113,.18); color: #fca5a5; }
+.xbpaused { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(5,8,12,.7); font-size: 26px; font-weight: 700; }
+.xbpaused small { font-size: 15px; color: var(--muted); font-weight: 500; }
+.xbbar { min-height: 132px; padding: 8px 10px 12px; max-width: 640px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; justify-content: flex-end; }
+.xbshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.xbshots button { min-height: 64px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); color: var(--text); font: 600 15px/1.1 inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.xbshots button span { font-size: 22px; }
+.xbshots button.on { background: var(--accent); border-color: var(--accent); }
+.xbnet { min-height: 46px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); font: 600 15px/1 inherit; cursor: pointer; }
+.xbnet.on { background: #ff9f0a; color: #111; border-color: #ff9f0a; }
+.xbreadq { text-align: center; font-weight: 700; font-size: 17px; color: #e8ff3a; padding: 6px 0; }
+@media (max-height: 560px) { .xbbar { min-height: 96px; } .xbshots button { min-height: 50px; } .xbshots button span { font-size: 18px; } }
+.xbbar.idle { opacity: .35; pointer-events: none; }
+.xbzones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.xbzones button { min-height: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--text); font: 700 16px/1 inherit; cursor: pointer; }
+.xbzones button.on { background: #facc15; color: #111; border-color: #facc15; }
+.xbhome .xbmodes button small, .xbtags i { text-transform: none; }
+
+/* Extreme: no game plans (you call every shot), so their screens are hidden. */
+body.xmode .cplancard, body.xmode [data-fold="h-plan"], body.xmode [data-fold="h-planbook"],
+body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode [data-fold="d-book"] { display: none !important; }
+
+/* TourLife Extreme: the turn-based Court Breaker screen (cbxp.js). */
+.xpov { position: fixed; inset: 0; z-index: 45; background: #0f1720; color: #e8eef4; overflow-y: auto; padding: 8px max(8px, calc(50% - 260px)) 0; }
+.xptop { display: flex; align-items: center; gap: 8px; background: #16222e; border-radius: 12px; padding: 6px 10px; }
+.xptopb { display: flex; gap: 6px; }
+.xptopb button { background: #1e2b38; color: #e8eef4; border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; padding: 0 10px; font: 600 14px system-ui; text-transform: none; }
+.xpstage { position: relative; margin-top: 8px; }
+.xpcourt { display: block; width: 100%; height: min(42vh, 360px); border-radius: 12px; }
+.xpmsg { position: absolute; inset: 30% 10% auto; background: rgba(10, 20, 30, .92); border-radius: 14px; padding: 14px; text-align: center; font-size: 18px; display: flex; flex-direction: column; gap: 6px; }
+.xpmsg[hidden] { display: none; }
+.xpmsg small { color: #9fb3c8; font-size: 14px; }
+.xpcall { min-height: 26px; text-align: center; font-size: 17px; margin: 6px 0 2px; }
+.xpcall span { color: #b8c7d6; }
+.xpland { min-height: 20px; text-align: center; font-size: 14px; color: #cfe3f5; margin-bottom: 6px; }
+.xpov .me { color: #64b5f6; } .xpov .op { color: #ffab76; } .xpov .bad { color: #ff7961; }
+.xppanel h3 { font-size: 13px; letter-spacing: .05em; color: #9fb3c8; margin: 12px 0 6px; text-transform: uppercase; }
+.xpsit { background: #16222e; border-radius: 12px; padding: 6px 12px; }
+.xpsit p { margin: 4px 0; font-size: 15px; line-height: 1.4; }
+.xphint { color: #8ea3b8; font-size: 13px; margin: 6px 0 0; }
+.xpseg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.xpseg.three, .xpseg.five { grid-template-columns: repeat(3, 1fr); }
+.xpseg.one { grid-template-columns: 1fr; margin-top: 8px; }
+.xpseg button { background: #1e2b38; color: #e8eef4; border: 0; border-radius: 12px; padding: 10px 6px; min-height: 50px; font: 600 15px system-ui; text-transform: none; }
+.xpseg button.on { background: #ffd54f; color: #10243a; }
+.xpseg button:disabled { opacity: .4; }
+.xpcard { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.xpcard span { font-size: 13px; font-weight: 400; color: #cfe3f5; }
+.xphitbar { position: sticky; bottom: 0; background: #0f1720; padding: 8px 0 12px; margin-top: 10px; border-top: 1px solid #23313f; }
+.xppre { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.xppre b { font-size: 17px; } .xppre span { color: #cfe3f5; }
+.xppre em { font-style: normal; font-size: 14px; color: #9fb3c8; width: 100%; }
+.xppre u { text-decoration: none; font-weight: 700; margin-right: 6px; }
+.xppre u.g { color: #81c784; } .xppre u.y { color: #ffd54f; } .xppre u.r { color: #ff7961; }
+.xpbig { display: block; width: 100%; background: #2196f3; color: #fff; border: 0; border-radius: 14px; padding: 15px; font: 700 18px system-ui; margin-top: 8px; text-transform: none; }
+.xpend { background: #16222e; border-radius: 12px; padding: 10px 14px 14px; margin-bottom: 12px; }
+.xpend h2 { margin: 4px 0; } .xpend.good h2 { color: #81c784; } .xpend.bad h2 { color: #ff8a80; }
+.xptags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.xptags span { border-radius: 20px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
+.xptags .good { background: #1f4d2c; } .xptags .bad { background: #5a2323; }
+.xpend details summary { cursor: pointer; color: #9fb3c8; margin-top: 6px; }
+.xpend ol { padding-left: 22px; margin: 6px 0; } .xpend li { font-size: 14px; margin: 2px 0; }
+
+/* Extreme Playbook (cbxp.js) */
+.xpaud { background: #2a2414; border: 1px solid #6b5a1e; border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; }
+.xpaud b { color: #ffd54f; } .xpaud p { margin: 4px 0; font-size: 15px; }
+.xpaud .xpseg { margin-top: 6px; }
+.xpplayln { min-height: 18px; text-align: center; font-size: 14px; color: #ffd54f; margin-bottom: 4px; }
+.xpplays { display: grid; gap: 8px; margin-bottom: 8px; }
+.xpplay { display: flex; flex-direction: column; gap: 2px; text-align: left; background: #1e2b38; color: #e8eef4; border: 0; border-radius: 12px; padding: 10px 12px; font: 15px system-ui; text-transform: none; }
+.xpplay b { font-size: 16px; } .xpplay span { font-size: 13px; color: #cfe3f5; } .xpplay em { font-style: normal; font-size: 12px; color: #9fb3c8; }
+.xpplay u, .xpbrow u { text-decoration: none; } .xpplay u.r { color: #ff7961; font-weight: 700; }
+.xpbrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; }
+.xpbrow > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.xpbrow span { font-size: 13px; opacity: .85; } .xpbrow em { font-style: normal; font-size: 12px; opacity: .7; }
+.xpbed { text-align: left; } .xpbed h3 { font-size: 13px; letter-spacing: .05em; text-transform: uppercase; opacity: .75; margin: 12px 0 6px; }
+.xpbed .xpseg { margin-bottom: 6px; }
+.xpstep { border-top: 1px solid rgba(255,255,255,.1); margin-top: 10px; }
+.xpstep h3 { display: flex; justify-content: space-between; align-items: center; }
+.xplbl { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.xplbl input { font: 16px system-ui; padding: 10px; border-radius: 10px; border: 1px solid #3a4b5c; background: #16222e; color: #e8eef4; }
+
+/* Extreme match screen on a computer: the court fills the screen and everything floats over it, like a game. */
+@media (min-width: 1100px) {
+  .xpov { padding: 0; overflow: hidden; }
+  .xpstage { position: absolute; inset: 0; margin: 0; }
+  .xpcourt { width: 100%; height: 100vh; border-radius: 0; }
+  .xptop { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 2; background: transparent; padding: 0; pointer-events: none; }
+  .xptop > * { pointer-events: auto; }
+  .xptop .xbscore { flex: 0 0 auto; min-width: 300px; background: rgba(12, 20, 28, .85); border-radius: 12px; padding: 8px 14px; backdrop-filter: blur(6px); }
+  .xptopb { margin-left: auto; } .xptopb button { background: rgba(12, 20, 28, .85); backdrop-filter: blur(6px); }
+  .xpcall, .xpland, .xpplayln { position: absolute; left: 0; right: 444px; z-index: 2; margin: 0; text-shadow: 0 1px 3px #000; pointer-events: none; }
+  .xpcall { bottom: 46px; font-size: 20px; } .xpland { bottom: 22px; font-size: 15px; } .xpplayln { bottom: 78px; font-size: 15px; }
+  .xppanel { position: absolute; top: 80px; right: 16px; max-height: calc(100vh - 96px); width: 412px; z-index: 2; overflow-y: auto; margin: 0;
+    background: rgba(12, 20, 28, .86); backdrop-filter: blur(8px); border-radius: 16px; padding: 12px 14px 0; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  .xppanel:empty { display: none; }
+  .xppanel > :first-child { margin-top: 0; }
+  .xphitbar { background: rgba(12, 20, 28, .96); margin: 10px -14px 0; padding: 10px 14px 14px; }
+  .xpmsg { inset: 35% calc(444px + 10%) auto 10%; }
+  .xppanel .xpend { margin-bottom: 14px; }
+}
+
+/* Looks and the Pro Shop (cblook.js) */
+.xlprev { display: block; width: 100%; height: 230px; background: radial-gradient(ellipse at 50% 85%, #2c5a87 0%, #16222e 70%); border-radius: 12px; }
+.xlprev.small { height: 170px; width: 170px; flex: none; }
+.xlhomerow { display: flex; gap: 14px; align-items: center; }
+.xlhomerow > div { flex: 1; min-width: 0; }
+#xlCreate .xlprev { width: 180px; flex: none; height: 240px; }
+@media (max-width: 520px) { .xlhomerow { flex-direction: column; align-items: stretch; } .xlprev.small, #xlCreate .xlprev { width: 100%; } }
+.xlswatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.xlswatches button, .xlskins button { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; box-shadow: 0 0 0 1px rgba(255,255,255,.25); padding: 0; }
+.xlswatches button.on, .xlskins button.on { border-color: #ffd54f; }
+.xlskins { display: grid; grid-template-columns: repeat(4, 56px); gap: 12px; justify-content: center; margin: 10px 0; }
+.xlskins button { width: 56px; height: 56px; }
+.xlshop { display: grid; gap: 14px; text-align: left; }
+.xlside .itop { margin-bottom: 2px; }
+.xlmoney { font-weight: 800; font-size: 20px; color: #81c784; margin-bottom: 8px; }
+.xlsel { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.xlsel b { font-size: 18px; } .xlsel span { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+.xltabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; }
+.xltabs button { flex: none; background: #1e2b38; color: #e8eef4; border: 0; border-radius: 20px; padding: 10px 14px; font: 600 14px system-ui; text-transform: none; min-height: 44px; }
+.xltabs button.on { background: #ffd54f; color: #10243a; }
+.xlgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.xlitem { display: flex; flex-direction: column; align-items: center; gap: 3px; background: #1a2530; color: #e8eef4; border: 2px solid transparent; border-radius: 14px; padding: 10px 6px; text-transform: none; font: 13px system-ui; box-shadow: inset 0 -3px 0 var(--rc); }
+.xlitem i { width: 58px; height: 58px; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+.xlitem b { font-size: 14px; text-align: center; } .xlitem small { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.xlitem em { font-style: normal; font-size: 13px; color: #cfe3f5; }
+.xlitem.sel { border-color: #ffd54f; }
+.xlitem.r-legendary { background: linear-gradient(160deg, #2b2410, #1a2530 60%); }
+.xlitem.r-legendary i { box-shadow: 0 0 12px 2px rgba(255,201,64,.55); }
+.xlitem.r-epic { background: linear-gradient(160deg, #26193a, #1a2530 60%); }
+@media (min-width: 900px) { .xlshop { grid-template-columns: 300px 1fr; } .xlside .xlprev { height: 300px; } }
+.xlside, .xlmain { min-width: 0; } /* let the tab row scroll instead of widening the window */
+.xlmain .xltabs { padding-right: 44px; }
+.xbscore:has(.xbtag.inrow:not(:empty)) .xbtag.inrow { width: 96px; } /* both rows keep their numbers lined up while a tag shows */
+
+/* Your look beside your name on the Extreme Home header */
+#home > header:has(.xlhead) { display: grid; grid-template-columns: 1fr auto; column-gap: 16px; align-items: center; }
+#home > header:has(.xlhead) > :not(.xlhead) { grid-column: 1; }
+.xlhead { grid-column: 2; grid-row: 1 / span 3; justify-self: end; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.xlprev.mini { width: 150px; height: 130px; }
+
+/* Extreme Home: avatar on the left of the top card, OVR on the right */
+body.xmode #hOvr .ovrtop .ovrinfo { flex: 1; min-width: 0; order: 1; }
+body.xmode #hOvr .ovrtop .ovrnum { order: 2; }
+.xlavatar { order: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+.xlturn { padding: 0; border: 0; background: radial-gradient(ellipse at 50% 85%, #2c5a87 0%, #16222e 75%); border-radius: 22px; width: 92px; height: 112px; overflow: hidden; cursor: pointer; }
+.xlturn canvas { display: block; width: 100%; height: 100%; }
+.xlshopbtn { font-size: 13px; padding: 4px 6px; min-height: 0; }
+@media (max-width: 520px) {
+  body.xmode #hOvr .ovrtop { gap: 10px; }
+  .xlturn { width: 70px; height: 88px; border-radius: 18px; }
+  body.xmode #hOvr .ovrnum { width: 70px; height: 70px; border-radius: 18px; }
+  body.xmode #hOvr .ovrnum b { font-size: 24px; }
+}

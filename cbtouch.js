@@ -77,7 +77,7 @@
     // How hard the timing is: mostly the shot's own risk (its chance of going in, the same number behind the risk
     // word you saw), then pressure, tired legs and the score. A serve: how big a serve you went for.
     const pIn = type === 'serve' ? ({ flat: st.serve2 ? 0.7 : 0.6, slice: 0.8, kick: 0.92 }[ch.spin] || 0.8) : cbValue(st, 0, ch.aim, ch.type, ch.move === 'net').pIn;
-    const riskD = clamp((0.95 - pIn) / 0.6, 0, 1);
+    const riskD = clamp((0.97 - pIn) / 0.45, 0, 1);
     const d = clamp(0.75 * riskD + 0.3 * Math.min(1, st.pr[0]) + 0.25 * ((st.tired || [])[0] || 0) + 0.25 * ((st.clutch || [])[0] || 0), 0, 0.95);
     const [rw, rc] = window.xpRiskWord ? xpRiskWord(pIn) : ['', ''];
     const paint = XL.resolve(current.player && current.player.look).racket;
@@ -133,7 +133,7 @@
       // THE TOSS: press to toss, press again to hit as the ball passes the marker. Flat: right at the top. Kick: on the
       // way up, brushing up the back. Slice: just after the top. The racket swings in one arc around the shoulder:
       // resting, cocked behind as the ball goes up, then up through the ball and down across in the follow-through.
-      const spin = ch.spin || 'flat', ta = 0.85 * (1 - 0.3 * d), ideal = ta + ({ flat: 0, kick: -0.15, slice: 0.12 }[spin] || 0) * (1 - 0.3 * d), tol = 0.075 * (1 - 0.6 * d);
+      const spin = ch.spin || 'flat', ta = 0.85 * (1 - 0.3 * d), ideal = ta + ({ flat: 0, kick: -0.15, slice: 0.12 }[spin] || 0) * (1 - 0.3 * d), tol = 0.075 * (1 - 0.85 * d);
       const hx = W * 0.5, base = H - 40, topY = 24, tossH = u => (u <= ta ? 1 - (1 - u / ta) ** 2 : Math.max(0, 1 - ((u - ta) / ta) ** 2));
       const yOf = u => base - tossH(u) * (base - topY), zy = yOf(ideal);
       if (window.__xpTest) window.__xpTest.ideal = { hit: ideal };
@@ -225,7 +225,7 @@
       const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: 0.62, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
       const C = { x: sx * 0.8, y: cy, z: 0.7 }, xs = C.x * 0.55; // the view leans a little towards your hitting side
       const P3 = (x, y, z) => { const r = raw(y, z), dd = Math.max(0.3, r.dd), s = Fv / dd; return { X: W / 2 + (x - xs) * s, Y: Y0 - Fv * r.v / dd, s }; };
-      const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.75 * d), swingT = 0.05; // the swing lands almost the moment you press
+      const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.85 * d), swingT = 0.05; // the swing lands almost the moment you press
       // their ball: from where they are to a bounce, then up into your ring (a volley comes straight at you)
       const ox = st.pos && st.pos[1] ? clamp(-st.pos[1].x, -4, 4) : -1.6;
       const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * 0.62;
@@ -266,7 +266,7 @@
         let zone = Math.abs(dt) <= tol * 0.36 ? -1 : Math.abs(dt) <= tol * 0.96 ? 0 : qt > 0 ? 1 : 2; // -1: the white tick, perfect
         if (spinOff) zone = Math.min(2, zone + 1);
         // A big risk needs a near-perfect strike: just green can still miss, orange usually does.
-        const errP = zone === -1 ? 0 : zone === 0 ? 0.45 * riskD ** 2 : zone === 1 ? Math.min(0.92, 0.04 + 0.9 * riskD ** 1.3) : 0.35 + 0.6 * riskD;
+        const errP = zone === -1 ? 0.25 * riskD ** 2 : zone === 0 ? 0.7 * riskD ** 1.5 : zone === 1 ? Math.min(0.97, 0.06 + 0.95 * riskD) : 0.5 + 0.5 * riskD;
         const err = Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
         let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : 0);
         const long = dt < 0 || (spinOff && depth < 0.62);
@@ -409,7 +409,9 @@
   window.xpServeEffect = (R, spin) => {
     const q = R.q, m = 1 - q, sgn = R.early ? 1 : -1;
     // A well-timed serve rarely faults, and when it does it just misses long or wide, never into the net.
-    return { fault: q > 0 ? 0.3 + 1.3 * m * m : 2.0, sd: 0.45 + 1.05 * m, pace: spin === 'flat' ? 9 * q - 6 * m : 2 * q - 6 * m,
+    // A big serve stays a gamble even when timed well: flat keeps more of its fault chance than kick.
+    const floor = { flat: 0.6, slice: 0.5, kick: 0.38 }[spin] || 0.5;
+    return { fault: q > 0 ? floor + 2.0 * m * m + 0.6 * m : 2.2, sd: 0.45 + 1.05 * m, pace: spin === 'flat' ? 9 * q - 6 * m : 2 * q - 6 * m,
       dy: sgn * 0.55 * m, dx: R.early ? 0.25 * m : -0.25 * m, miss: q < 0.6 ? (R.early ? 'long' : 'net') : 'long' };
   };
   // What a result does to the shot (read once by cbHit in cbsim.js), scaling smoothly with how far off you were.

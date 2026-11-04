@@ -565,7 +565,10 @@ function cbTutorial(key, force = false) {
 // --- Home: the TourLife / TourLife Extreme switch and the practice card ---------------------------------------
 function cbSwitchHtml() {
   if (!cbLocal() || (typeof isCoachMode === 'function' && isCoachMode())) return '';
-  return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${isExtreme() ? 'on' : ''}">TourLife Extreme</button></div>`;
+  // X-Treme carries a NEW badge until you've tried it, glows like fire on hover and drops down a short explanation.
+  let seen = false; try { if (isExtreme()) localStorage.setItem('tourlife.xseen', '1'); seen = !!localStorage.getItem('tourlife.xseen'); } catch {}
+  return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${isExtreme() ? 'on' : ''}">TourLife X-Treme${seen ? '' : '<i class="xnew">New</i>'}` +
+    `<span class="xmtip"><b>🔥 TourLife X-Treme</b>Play every point yourself. Build each shot, call plays from your Playbook and time your swings with the spacebar. A separate career with its own save, so your TourLife career stays safe.</span></button></div>`;
 }
 function cbHome() {
   for (const id of ['home', 'creator']) {
@@ -596,7 +599,7 @@ function cbGodPanel() {
   if (!cbGod()) return;
   const p = current.player, c = current.career, g = cbData().god, inEvent = !!(current.entry && !current.entry.result);
   const keys = [['serve', 'Serve Power'], ['ground', 'Groundstrokes'], ['ret', 'Return Quality'], ['net', 'Net Proficiency'], ['stam', 'Stamina'], ['mental', 'Mental Resilience'], ['iq', 'Tennis IQ']];
-  openModal(`<button type="button" class="x" id="gdX" aria-label="Close">×</button><h2 class="itop">⚡ God Panel</h2><p class="hint center">Test tools for TourLife Extreme. Only you can see this.</p>` +
+  openModal(`<button type="button" class="x" id="gdX" aria-label="Close">×</button><h2 class="itop">⚡ God Panel</h2><p class="hint center">Test tools for TourLife X-Treme. Only you can see this.</p>` +
     (p ? `<details class="card fold" open><summary class="foldhead"><span class="foldt">📊 Your Stats</span><i class="foldchev"></i></summary><div class="foldbody">${keys.map(([k, l]) =>
       `<label class="gdrow">${l}<input type="range" min="20" max="99" value="${Math.round(attr(p, k))}" data-gk="${k}"><b>${Math.round(attr(p, k))}</b></label>`).join('')}
       <div class="btn-row"><button type="button" class="btn small ghost" data-gd="all99">All 99</button><button type="button" class="btn small ghost" data-gd="all50">All 50</button></div></div></details>` : '') +

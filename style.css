@@ -1969,7 +1969,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xpcourt { width: 100%; height: 100vh; border-radius: 0; }
   .xptop { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 2; background: transparent; padding: 0; pointer-events: none; }
   .xptop > * { pointer-events: auto; }
-  .xptop .xbscore { flex: 0 0 auto; min-width: 300px; background: rgba(12, 20, 28, .85); border-radius: 12px; padding: 8px 14px; backdrop-filter: blur(6px); }
+  .xptop .xpsb { flex: 0 0 auto; min-width: 300px; background: rgba(12, 20, 28, .85); border-radius: 12px; padding: 8px 14px; backdrop-filter: blur(6px); }
   .xptopb { margin-left: auto; } .xptopb button { background: rgba(12, 20, 28, .85); backdrop-filter: blur(6px); }
   .xpcall, .xpland, .xpplayln { position: absolute; left: 0; right: 444px; z-index: 2; margin: 0; text-shadow: 0 1px 3px #000; pointer-events: none; }
   .xpcall { bottom: 46px; font-size: 20px; } .xpland { bottom: 22px; font-size: 15px; } .xpplayln { bottom: 78px; font-size: 15px; }
@@ -2025,16 +2025,124 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xlprev.mini { width: 150px; height: 130px; }
 
 /* Extreme Home: avatar on the left of the top card, OVR on the right */
-body.xmode #hOvr .ovrtop .ovrinfo { flex: 1; min-width: 0; order: 1; }
-body.xmode #hOvr .ovrtop .ovrnum { order: 2; }
+#hOvr .ovrtop .ovrinfo { flex: 1; min-width: 0; order: 1; }
+#hOvr .ovrtop .ovrnum { order: 2; }
 .xlavatar { order: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
 .xlturn { padding: 0; border: 0; background: radial-gradient(ellipse at 50% 85%, #2c5a87 0%, #16222e 75%); border-radius: 22px; width: 92px; height: 112px; overflow: hidden; cursor: pointer; }
 .xlturn canvas { display: block; width: 100%; height: 100%; }
 .xlshopbtn { font-size: 13px; padding: 4px 6px; min-height: 0; }
 @media (max-width: 520px) {
-  body.xmode #hOvr .ovrtop { gap: 10px; }
+  #hOvr .ovrtop { gap: 10px; }
   .xlturn { width: 70px; height: 88px; border-radius: 18px; }
-  body.xmode #hOvr .ovrnum { width: 70px; height: 70px; border-radius: 18px; }
-  body.xmode #hOvr .ovrnum b { font-size: 24px; }
+  #hOvr .ovrnum { width: 70px; height: 70px; border-radius: 18px; }
+  #hOvr .ovrnum b { font-size: 24px; }
 }
 .bugrow .btn { margin: 6px 0 0; } .bugrow.fixed { opacity: .55; } .bugrow.fixed p { text-decoration: line-through; }
+/* Extreme: under the court, only the shot being played (no landing distances or play line). */
+.xpland, .xpplayln { display: none !important; }
+.xpend[data-next] { cursor: pointer; }
+.xpend p { margin: 6px 0 2px; font-size: 16px; line-height: 1.4; }
+/* Extreme: rally read + points drop-down, Back, Stand, quiet risk dots */
+.xpcall { display: none !important; }
+.xbscore { cursor: pointer; }
+.xpdrop { background: rgba(12, 20, 28, .94); border-radius: 12px; padding: 10px 14px; margin-top: 8px; max-height: 40vh; overflow-y: auto; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.xpdrop[hidden] { display: none; }
+.xpdrop h3 { font-size: 12px; letter-spacing: .05em; color: #9fb3c8; margin: 10px 0 4px; text-transform: uppercase; }
+.xpdread p { margin: 3px 0; }
+.xpdpts { padding-left: 0; list-style: none; margin: 0; }
+.xpdpts li { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); color: #cfe3f5; }
+.xpdpts li b { margin-right: 6px; } .xpdpts li.good b { color: #81c784; } .xpdpts li.bad b { color: #ff8a80; }
+.xpback { background: none; border: 0; color: #90caf9; font: 600 15px system-ui; padding: 6px 0 4px; cursor: pointer; text-transform: none; }
+.xpstart { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #16222e; border-radius: 12px; padding: 12px 14px; }
+.xpstart div { display: flex; flex-direction: column; } .xpstart span { color: #9fb3c8; font-size: 13px; }
+.xpseg.four { grid-template-columns: repeat(4, 1fr); }
+.xpseg button.hint { position: relative; }
+.xpseg button.hint::after { content: ''; position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: #ff8a65; opacity: .75; }
+@media (min-width: 1100px) {
+  .xpdrop { position: absolute; top: 84px; left: 16px; width: 380px; max-height: 60vh; z-index: 3; margin: 0; }
+}
+.xpdrop:has(.xpdpts:empty) .xpdph { display: none; }
+
+/* Extreme shot mini-games (cbtouch.js) */
+.xpmini { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 460px); z-index: 4; border-radius: 18px; overflow: hidden;
+  background: #0b141c; box-shadow: 0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; animation: xpminiIn .18s ease-out; }
+.xpmini[hidden] { display: none; }
+@keyframes xpminiIn { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.xpmhead { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 14px 6px; background: linear-gradient(180deg, #1a2a3a, #13202d); }
+.xpmhead b { font: 800 16px system-ui; letter-spacing: .02em; color: #e8eef4; }
+.xpmhead span { font-size: 13px; color: #9fb3c8; }
+.xpmini canvas { display: block; width: 100%; height: 220px; }
+.xpmkey { text-align: center; padding: 6px 0 10px; font-size: 12px; color: #9fb3c8; background: #0b141c; }
+.xpmkey kbd { display: inline-block; min-width: 120px; padding: 3px 10px; border-radius: 6px; border: 1px solid #3a4b5c; border-bottom-width: 3px; color: #e8eef4; font: 700 12px system-ui; letter-spacing: .08em; text-transform: uppercase; }
+.xptopb button.off { opacity: .55; }
+@media (min-width: 1100px) { .xpmini { left: calc((100% - 444px) / 2); } }
+@media (max-width: 520px) { .xplbl { display: none; } .xptopb { gap: 4px; } .xptopb button { min-width: 40px; padding: 0 6px; } }
+.xptopb button { white-space: nowrap; }
+@media (min-width: 521px) { .xptopb .xplbl { display: inline; } }
+
+/* Extreme: your edges this match (badges under the score, details in the drop-down) and the note when one kicks in */
+.xpsb { flex: 1; min-width: 0; }
+.xpedgebar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; cursor: pointer; }
+.xpedgebar:empty { display: none; }
+.xpedgebar i { font-style: normal; font-size: 14px; line-height: 1; padding: 3px 4px; border-radius: 6px; background: rgba(255,255,255,.07); }
+.xpedgebar i.idle { opacity: .35; filter: grayscale(1); }
+.xpnote { margin-top: 6px; font-size: 13px; font-weight: 600; color: #ffd54f; animation: xpminiIn .2s ease-out; }
+.xpnote[hidden] { display: none; }
+.xpdedges p { margin: 3px 0; } .xpdedges p.idle { opacity: .5; }
+.xpedge { margin: 0 0 6px; font-size: 14px; color: #ffd54f; }
+@media (min-width: 1100px) { .xptop { align-items: flex-start; } }
+
+/* risk steps beyond High Risk */
+.xppre u.rr { color: #ff5252; } .xppre u.x { color: #e040fb; text-shadow: 0 0 8px rgba(224,64,251,.45); }
+.xpmhead span u { text-decoration: none; font-weight: 800; }
+.xpmhead u.g { color: #81c784; } .xpmhead u.y { color: #ffd54f; } .xpmhead u.r { color: #ff7961; } .xpmhead u.rr { color: #ff5252; } .xpmhead u.x { color: #e040fb; }
+.xpplays[hidden] { display: none; } .xpplays { margin-top: 8px; }
+.xppanel .xpseg.three button { white-space: nowrap; font-size: 14px; padding-left: 4px; padding-right: 4px; }
+
+/* Extreme: score column (score box, then your edges as their own buttons) and hover labels */
+.xpleft { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.xpedgebar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; cursor: default; }
+.xpedgebar button { position: relative; width: 38px; height: 38px; border-radius: 10px; border: 0; background: rgba(12, 20, 28, .85); font-size: 17px; line-height: 1; cursor: help; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.xpedgebar button.idle { opacity: .4; filter: grayscale(1); }
+[data-tip] { position: relative; }
+@media (hover: hover) {
+  [data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); z-index: 20; width: max-content; max-width: 260px; white-space: normal;
+    background: #0b141c; color: #e8eef4; font: 500 13px/1.35 system-ui; text-transform: none; letter-spacing: 0; text-align: left; padding: 8px 10px; border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.1); pointer-events: none; }
+  .xpedgebar [data-tip]:hover::after, .xbscore[data-tip]:hover::after { left: 0; }
+  .xptopb [data-tip]:hover::after { right: 0; }
+}
+@media (min-width: 1100px) { .xptop .xpleft { flex: 0 0 auto; width: 300px; } .xptop .xpsb { min-width: 0; width: 100%; } }
+
+/* Mini-game card: the stage keeps its shape and scales; on a computer it's much bigger, centred over the court */
+.xpmini canvas { height: auto; aspect-ratio: 460 / 220; }
+@media (min-width: 1100px) {
+  .xpmini { width: clamp(640px, calc(100vw - 700px), 1000px); left: calc(330px + (100% - 774px) / 2); }
+  .xpmhead { padding: 16px 18px 10px; } .xpmhead b { font-size: 21px; } .xpmhead span { font-size: 15px; }
+  .xpmkey { padding: 10px 0 14px; font-size: 14px; } .xpmkey kbd { font-size: 14px; min-width: 160px; padding: 5px 12px; }
+}
+
+/* Extreme on a computer: bigger scoreboard, slimmer decision panel; serve cards centred with small notes so they read as buttons */
+.xpcard { align-items: center; justify-content: center; text-align: center; }
+.xppanel .xpseg.three .xpcard { white-space: normal; }
+.xpcard span { font-size: 11px; line-height: 1.25; color: #9fb3c8; }
+@media (min-width: 1100px) {
+  .xptop .xpleft { width: 330px; }
+  .xptop .xpsb { padding: 12px 18px; }
+  .xbrow { font-size: 21px; line-height: 1.45; } .xbrow b { min-width: 28px; } .xbrow b.p { min-width: 44px; } .xbrow .sv { width: 10px; height: 10px; }
+  .xppanel { width: 360px; padding: 12px; top: 76px; }
+  .xppanel h3 { font-size: 12px; margin: 10px 0 5px; }
+  .xpseg { gap: 6px; } .xpseg button { min-height: 42px; padding: 8px 4px; font-size: 14px; border-radius: 10px; }
+  .xppanel .xpseg.three button { font-size: 13px; }
+  .xpcall, .xpland, .xpplayln { left: 362px; right: 392px; }
+  .xpmsg { inset: 35% calc(392px + 6%) auto calc(362px + 6%); }
+  .xpmini { width: clamp(640px, calc(100vw - 700px), 1000px); left: calc(362px + (100% - 754px) / 2); }
+}
+
+/* Extreme Home: Resume Match sits across from your name while a match is under way */
+#home > header.xlhdr { position: relative; }
+#home > header.haslive h1 { padding-right: 230px; }
+.xlresume { position: absolute; right: 0; left: auto; width: auto; top: 0; margin: 0; white-space: nowrap; min-height: 50px; padding: 10px 20px; font-size: 17px; font-weight: 800;
+  color: #fff; border: 0; border-radius: 14px; background: linear-gradient(135deg, #34d399 0%, #16a34a 55%, #15803d 100%); box-shadow: 0 6px 20px rgba(22, 163, 74, .35); }
+.xlresume:hover { filter: brightness(1.08); }
+@media (max-width: 520px) { #home > header.haslive h1 { padding-right: 120px; } .xlresume { padding: 8px 12px; font-size: 15px; min-height: 44px; } .xlrm { display: none; } }

@@ -101,8 +101,10 @@ const XL = (() => {
       if (d >= UPPER + FORE - 0.005) return [x0 + dx * UPPER / (UPPER + FORE), z0 + dz * UPPER / (UPPER + FORE)];
       const a = Math.acos(Math.max(-1, Math.min(1, (UPPER * UPPER + d * d - FORE * FORE) / (2 * UPPER * d)))), base = Math.atan2(dz, dx);
       const c1 = [x0 + UPPER * Math.cos(base + a), z0 + UPPER * Math.sin(base + a)], c2 = [x0 + UPPER * Math.cos(base - a), z0 + UPPER * Math.sin(base - a)];
-      if (z1 > z0 - 0.1) return c1[1] < c2[1] ? c1 : c2; // hand up high (a serve, a finish): the elbow sits below it
-      const out = Math.sign(x0) || 1; return c1[0] * out > c2[0] * out ? c1 : c2; // otherwise elbows bend out, away from the body
+      // Elbows hang below the line from shoulder to hand (racket up and elbow down on the take-back, tucked at
+      // contact, folded under the hand on the finish); when that's a toss-up, they bend out, away from the body.
+      if (Math.abs(c1[1] - c2[1]) > 0.04) return c1[1] < c2[1] ? c1 : c2;
+      const out = Math.sign(x0) || 1; return c1[0] * out > c2[0] * out ? c1 : c2;
     };
     const arm = (x0, z0, x1, z1) => {
       const [ex, ez] = elbowOf(x0, z0, x1, z1);
@@ -117,7 +119,8 @@ const XL = (() => {
         g.beginPath(); g.moveTo(ax - nx, ay - ny); g.lineTo(ax + nx, ay + ny); g.stroke(); g.restore(); }
     };
     const shw = o.turn ? 0.15 : 0.26; // side-on in a swing, so the shoulders look narrower
-    const off = o.twoHands ? [hx, hz] : o.turn ? [-hd * 0.3, 1.02] : [-hd * 0.31, 0.9];
+    // The free arm: by the side at rest; in a swing it reaches forward across the chest for balance (hidden by the body from behind).
+    const off = o.twoHands ? [hx, hz] : o.turn ? [hd * 0.05, 1.28] : [-hd * 0.31, 0.9];
     const drawRacket = () => {
       g.strokeStyle = '#333'; g.lineWidth = Math.max(1.5, 0.05 * s);
       g.beginPath(); g.moveTo(...P(hx, hz)); g.lineTo(...P(hx + (rx - hx) * 0.45, hz + (rz - hz) * 0.45)); g.stroke();
@@ -128,9 +131,10 @@ const XL = (() => {
     };
     // Seen from behind, a racket arm that has come across the body (a follow-through, a backhand) is in front of the
     // chest, so the body hides it: draw it first and let the shirt cover it, leaving the racket peeking past the shoulder.
-    const across = o.side === 0 && (hx * hd < 0.12 || o.twoHands); // a two-handed backhand is always played in front of the chest
-    if (across) { arm(hd * shw, 1.45, hx, hz); if (o.twoHands) arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); drawShirt(); if (!o.twoHands) arm(-hd * shw, 1.45, off[0], off[1]); }
-    else { drawShirt(); arm(hd * shw, 1.45, hx, hz); arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); }
+    const across = o.side === 0 && (hx * hd < 0.25 || o.twoHands); // a two-handed backhand is always played in front of the chest
+    const offBehind = o.side === 0 && o.turn; // seen from behind, the reaching free arm is in front of the body
+    if (across) { arm(hd * shw, 1.45, hx, hz); if (o.twoHands || offBehind) arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); drawShirt(); if (!o.twoHands && !offBehind) arm(-hd * shw, 1.45, off[0], off[1]); }
+    else { if (offBehind) arm(-hd * shw, 1.45, off[0], off[1]); drawShirt(); arm(hd * shw, 1.45, hx, hz); if (!offBehind) arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); }
     // Neck, head, hair, then a hat or a headband.
     g.fillStyle = L.skin; g.fillRect(P(-0.05, 1.58)[0], P(0, 1.58)[1], 0.1 * s, 0.1 * s);
     g.beginPath(); g.arc(...P(0, 1.7), 0.12 * s, 0, 7); g.fill();
@@ -167,8 +171,9 @@ const XL = (() => {
   // unit turn with the racket taken back on the backhand side, then finish over the racket shoulder.
   const SWINGS = {
     fh: {
-      topspin: [[0, 0.26, 0.4, 0.7, 1], [[0.55, 1.2, 0.95, 1.35], [0.5, 0.85, 0.85, 0.62], [0.38, 1.0, 0.78, 1.08], [0.05, 1.5, 0.25, 1.85], [-0.15, 1.75, -0.02, 2.25]]],
-      flat:    [[0, 0.26, 0.4, 0.7, 1], [[0.55, 1.15, 0.95, 1.2], [0.5, 0.92, 0.88, 0.8], [0.38, 1.02, 0.8, 1.05], [0.05, 1.25, -0.3, 1.35], [-0.25, 1.35, -0.55, 1.55]]],
+      // take-back (racket up, elbow down) → lag (head drops behind the hand) → low → contact out in front → up and across → finish
+      topspin: [[0, 0.18, 0.3, 0.4, 0.55, 0.75, 1], [[0.42, 1.38, 0.5, 1.95], [0.5, 1.12, 0.72, 0.62], [0.45, 0.98, 0.85, 0.82], [0.35, 1.02, 0.8, 1.1], [0.12, 1.3, 0.32, 1.75], [-0.12, 1.5, -0.02, 2.0], [-0.22, 1.62, -0.12, 2.15]]],
+      flat:    [[0, 0.18, 0.3, 0.4, 0.55, 0.75, 1], [[0.42, 1.38, 0.5, 1.95], [0.5, 1.1, 0.75, 0.7], [0.45, 1.0, 0.86, 0.9], [0.35, 1.03, 0.82, 1.06], [0.1, 1.15, -0.15, 1.3], [-0.2, 1.28, -0.5, 1.42], [-0.3, 1.3, -0.62, 1.45]]],
       slice:   [[0, 0.4, 1], [[0.5, 1.55, 0.8, 1.9], [0.4, 1.05, 0.8, 1.0], [-0.05, 0.95, -0.4, 1.0]]],
       lob:     [[0, 0.4, 1], [[0.5, 0.8, 0.85, 0.5], [0.42, 0.95, 0.82, 1.1], [0.1, 1.9, 0.2, 2.45]]],
       volley:  [[0, 0.4, 1], [[0.4, 1.3, 0.55, 1.75], [0.42, 1.18, 0.78, 1.45], [0.35, 1.1, 0.68, 1.35]]],
@@ -190,7 +195,8 @@ const XL = (() => {
     const bh = p.wing === 'bh' && p.pose !== 'serve', set = (bh && SWINGS.bh[p.pose]) || SWINGS.fh[p.pose] || SWINGS.fh.topspin;
     const w = p.pose === 'serve' ? hd : bh ? -hd : hd, [T, K] = set, u = Math.max(0, Math.min(1, p.pu || 0));
     let i = 0; while (i < T.length - 2 && u > T[i + 1]) i++;
-    const t = (u - T[i]) / ((T[i + 1] - T[i]) || 1), a = K[i], b = K[i + 1], m = j => a[j] + (b[j] - a[j]) * t;
+    const t0 = Math.max(0, Math.min(1, (u - T[i]) / ((T[i + 1] - T[i]) || 1))), t = t0 * t0 * (3 - 2 * t0); // eased, so the swing flows
+    const a = K[i], b = K[i + 1], m = j => a[j] + (b[j] - a[j]) * t;
     return [m(0) * w, m(1), m(2) * w, m(3)];
   }
   // Both hands on the racket: two-handed backhand drives and lobs (slices and volleys are one-handed).
@@ -199,9 +205,8 @@ const XL = (() => {
   return { REST, SWINGS, handDir, racketAt, twoHanded, SKINS, RARITY, CATS, ITEMS, ALL, DEFAULT, look, resolve, randomFor, fill, css, drawBody, preview, owned };
 })();
 
-// --- The Pro Shop and the creator's look picker (Extreme for now) -------------------------------------------------
+// --- The Pro Shop and the creator's look picker (both modes) -------------------------------------------------------
 (() => {
-  if (typeof isExtreme !== 'function' || !isExtreme()) return;
   const R_ORDER = { common: 0, rare: 1, epic: 2, legendary: 3 };
   // The shop: try anything on, buy with prize money, equip what you own. Skin tone is free to change.
   function proShop(cat0 = 'shirt') {
@@ -258,8 +263,25 @@ const XL = (() => {
       av.querySelector('.xlshopbtn').onclick = () => proShop();
     }
     setTimeout(() => XL.preview(av.querySelector('canvas'), current.player.look, facing), 0);
+    // A match under way: one tap straight back onto court, across from your name (no going through the draw).
+    const e = current.entry, live = e && e.live && !e.live.done && !e.result && typeof isExtreme === 'function' && isExtreme();
+    const head = document.querySelector('#home > header'), old = document.getElementById('xlResume');
+    if (old && !live) old.remove();
+    if (live && head && !old) {
+      head.classList.add('xlhdr');
+      head.insertAdjacentHTML('beforeend', '<button type="button" class="btn xlresume" id="xlResume" aria-label="Resume Match">▶ Resume<span class="xlrm"> Match</span></button>');
+      document.getElementById('xlResume').onclick = () => openMatch();
+    }
+    if (head) head.classList.toggle('haslive', !!live);
+    alignResume();
+  }
+  // Level with the middle of your name, whatever size the name is drawn at.
+  function alignResume() {
+    const b = document.getElementById('xlResume'), h = document.getElementById('cName'); if (!b || !h || !h.offsetHeight) return;
+    b.style.top = `${h.offsetTop + (h.offsetHeight - b.offsetHeight) / 2 + 12}px`; // a touch below the name's middle
   }
   // The top card is redrawn by the main game whenever Home refreshes, so put the avatar back each time.
+  window.addEventListener('load', () => { const n = document.getElementById('cName'); if (n && window.ResizeObserver) new ResizeObserver(() => alignResume()).observe(n); }); // also when Home first shows
   window.addEventListener('load', () => { const h = document.getElementById('hOvr'); if (h) new MutationObserver(() => { if (!h.querySelector('.xlavatar')) homeCard(); }).observe(h, { childList: true }); });
   if (typeof cbHome === 'function') { const _h = cbHome; cbHome = function (...a) { const r = _h.apply(this, a); try { homeCard(); } catch (e) { console.error(e); } return r; }; }
 

@@ -331,12 +331,54 @@ function cbScoreHtml(names, sets, games, pts, serving, tag, tagRow = null) {
     `<span class="xbtag inrow">${tag && tagRow === i ? tag : ''}</span></div>`;
   return row(0, 'me') + row(1, 'op') + (tag && tagRow === null ? `<div class="xbtag">${tag}</div>` : '');
 }
+// What you've paid for (this week's preparation, your team, a racket deal), turned into real Court Breaker effects,
+// plus the list shown in the match so you can see each one at work. fx: react (seconds, minus is quicker), spd
+// (foot speed ×), sig (shot scatter ×), calm (big-point nerves ×), fit (tiring ×), attrs (stat multipliers).
+function cbEdges(entry, opp) {
+  const c = current.career, pr = entry.prep || {}, it = id => (pr.items || []).includes(id), list = [];
+  const fx = { react: 0, spd: 1, sig: 1, calm: 1, fit: 1, attrs: {}, scouted: false, notes: [] };
+  const add = (icon, name, what, idle = false) => list.push({ icon, name, what, idle });
+  const ev = eventOf(entry), P = typeof PARTNERS === 'object' ? PARTNERS : {};
+  if (it('scout') || it('pcintel')) { fx.scouted = true; add(it('pcintel') ? '🛰️' : '🔎', it('pcintel') ? 'Opponent Intelligence' : 'Detailed Scouting', 'Their favourite serve on each side shows when you return.'); }
+  if (it('partner') && P[pr.partner]) {
+    if (P[pr.partner].match(opp)) { fx.react -= 0.02; fx.notes.push('🎾 Used to this style: you pick up their ball a touch sooner.'); add('🎾', 'Hitting Partner', `A week against ${P[pr.partner].name}: you read this player's ball a touch sooner.`); }
+    else add('🎾', 'Hitting Partner', `Practised against ${P[pr.partner].name}: no help against this player.`, true);
+  }
+  if (it('pcspar') && P[pr.spar]) {
+    if (P[pr.spar].match(opp)) { fx.react -= 0.04; fx.spd *= 1.02; fx.notes.push('🥊 Your sparring paid off: you read them early.'); add('🥊', 'Specialist Sparring', `Sparred with ${P[pr.spar].name}: you read this style early and get there quicker.`); }
+    else add('🥊', 'Specialist Sparring', `Sparred with ${P[pr.spar].name}: no help against this player.`, true);
+  }
+  if (it('camp')) { fx.spd *= 1.03; add('🏟️', 'Surface Camp', `You move a step better on ${surfaceLabel(ev.surface).toLowerCase()}.`); }
+  if (it('pressure')) { fx.calm *= 0.6; add('🧠', 'Sports Psychologist', 'Steadier nerves on break points, set points and tiebreaks.'); }
+  if (it('video')) { const h = opp.id && c.h2h && c.h2h[opp.id]; if (h && h.l > 0) { fx.react -= 0.015; fx.notes.push('📼 You studied your losses to them.'); add('📼', 'Video Analysis', 'You studied your losses to them: you read their patterns sooner.'); } else add('📼', 'Video Analysis', 'They’ve never beaten you, so there was nothing to study.', true); }
+  if (it('recovery')) add('🛁', 'Extra Recovery', 'You started the week 15 fatigue fresher.');
+  if (it('pcfit')) { fx.fit = 0.5; add('🫁', 'Elite Fitness', 'You tire half as fast as the match goes on.'); }
+  if (it('pcbreak') && pr.breakStat) { fx.attrs[pr.breakStat] = 1.04; fx.attrs[pr.breakStat === 'stam' ? 'ret' : 'stam'] = 0.985; add('🔬', 'Technical Breakthrough', `${attrLabel(pr.breakStat)} +4% this week.`); }
+  const rb = typeof racketBoost === 'function' ? racketBoost(c) : null;
+  if (rb) { fx.attrs[rb.stat] = (fx.attrs[rb.stat] || 1) * (1 + rb.pct); add('🏷️', 'Racket Deal', `${attrLabel(rb.stat)} +${Math.round(rb.pct * 100)}% with your sponsor's frame.`); }
+  if (hasTeam(c, 'hitting')) { fx.sig *= 0.97; add('🤝', 'Travelling Hitting Partner', 'Sharper every week: your shots land a little tighter.'); }
+  if (hasTeam(c, 'stringer')) { fx.sig *= 0.98; add('🧵', 'Stringer', 'Rackets strung just right: a little tighter, a few fewer errors.'); }
+  if (hasTeam(c, 'mental')) { fx.calm *= 0.8; add('🧘', 'Mental Coach', 'Calmer on the big points.'); }
+  if (hasTeam(c, 'coach')) add('🧑‍🏫', 'Coach', `${titleCaseName(teamOf(c, 'coach').name)}: a better read on the rally (tap the scoreboard).`);
+  return { fx, list };
+}
+const titleCaseName = t => String(t).replace(/(^|\s)\S/g, x => x.toUpperCase());
+// Everyone has a favourite serve on each side (the same every match); only scouting tells you what it is.
+function cbFavServe(name) {
+  let h = 2166136261; for (const ch of String(name || '') + 'srv') { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const z = ['wide', 't', 'body']; return { d: z[h % 3], a: z[(h >> 3) % 3] }; // matches the scouting report's wording
+}
 async function cbSet(entry, U) {
   const L = entry.live, ev = eventOf(entry);
   if (L.inSet && L.snap) L.m = JSON.parse(L.snap);
   else { L.inSet = true; L.seed = (Math.random() * 4294967296) >>> 0; L.cbRes = []; L.snap = JSON.stringify(L.m); writeJSON(ENTRY_KEY, entry); }
   const m = L.m, rng = seeded(L.seed), ps = matchPlayers(entry, m), me = m.a === 0 ? 0 : 1, op = 1 - me;
-  const side = [me, op], ab = [cbAbilities(ps[me]), cbAbilities(ps[op])], wx = typeof wxOf === 'function' ? wxOf(ev) : {};
+  const E = cbEdges(entry, ps[op]), boosted = { ...ps[me], attrs: { ...ps[me].attrs } };
+  for (const [k, mul] of Object.entries(E.fx.attrs)) boosted.attrs[k] = Math.min(99, boosted.attrs[k] * mul);
+  const side = [me, op], ab = [cbAbilities(boosted), cbAbilities(ps[op])], wx = typeof wxOf === 'function' ? wxOf(ev) : {};
+  Object.assign(ab[0], { react: ab[0].react + E.fx.react, spd: ab[0].spd * E.fx.spd, sigK: E.fx.sig, scouted: E.fx.scouted, edgeNotes: E.fx.notes });
+  ab[1].favServe = cbFavServe(ps[op].name);
+  if (U.setEdges) U.setEdges(E.list);
   L.cbMem = L.cbMem || cbMemory(); L.cbRes = L.cbRes || [];
   const names = ['You', shortName(ps[op])];
   let step = 0;
@@ -347,8 +389,13 @@ async function cbSet(entry, U) {
     const tag = info.press ? `${info.press.match ? 'Match' : 'Set'} Point` : info.bp !== null ? 'Break Point' : info.tb ? 'Tiebreak' : '';
     U.score(cbScoreHtml(names, m.sets.map(s => [s.games[me], s.games[op]]), [m.games[me], m.games[op]], cbPtsText(pts, info.tb, me), info.s === me ? 0 : 1, tag,
       info.press ? (info.press.who === me ? 0 : 1) : info.bp !== null ? (info.bp === me ? 0 : 1) : null));
-    const level = i => (big ? 1 : !info.tb && pts[0] >= 2 && pts[1] >= 2 ? 0.45 : 0.12) * (1 - attr(ps[i], 'mental') / 110);
-    const tired = i => cbClamp((m.totalGames + m.games[0] + m.games[1]) / 34 * (1.25 - attr(ps[i], 'stam') / 100) * (wx.heat || 1) + (i === me ? (current.player.fatigue || 0) / 200 : 0), 0, 1);
+    const level = i => (big ? 1 : !info.tb && pts[0] >= 2 && pts[1] >= 2 ? 0.45 : 0.12) * (1 - attr(ps[i], 'mental') / 110) * (i === me ? E.fx.calm : 1);
+    const tired = i => cbClamp((m.totalGames + m.games[0] + m.games[1]) / 34 * (1.25 - attr(ps[i], 'stam') / 100) * (wx.heat || 1) * (i === me ? E.fx.fit : 1) + (i === me ? (current.player.fatigue || 0) / 200 : 0), 0, 1);
+    // Show an edge at the moment it's doing its job.
+    if (U.edgeNote) {
+      if (big && E.fx.calm < 1) U.edgeNote(E.list.some(x => x.icon === '🧠') ? '🧠 Your psychologist’s work: steadier on this one' : '🧘 Your mental coach keeps you calm');
+      else if (E.fx.fit < 1 && m.totalGames + m.games[0] + m.games[1] >= 10 && (m.games[0] + m.games[1]) % 4 === 0 && pts[0] + pts[1] === 0) U.edgeNote('🫁 Elite fitness: your legs are still fresh');
+    }
     let res;
     if (U.godAuto) res = cbGodResult(U.godAuto === 'win', side);
     else {

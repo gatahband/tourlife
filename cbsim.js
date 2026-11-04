@@ -25,6 +25,16 @@ const CB_FAV = { 'Heavy-Topspin Baseliner': 'topspin', 'Heavy-Topspin Attacker':
 const CB_RISK = { 'Serve-Dominant': 0.4, 'Serve +1 Attacker': 0.6, 'First-Strike Attacker': 0.8, 'Aggressive Baseliner': 0.6, 'Flat Attacker': 0.9, 'Solid Baseliner': 0,
   'Counterpuncher': -0.5, 'Defensive Grinder': -0.8, 'Heavy-Topspin Baseliner': -0.2, 'Heavy-Topspin Attacker': 0.4, 'All-Court': 0.1, 'Net Attacker': 0.3, 'Serve-and-Volley': 0.4, 'Variety / Slice-Heavy': -0.1, 'Creative Shotmaker': 0.5 };
 const CB_NETTY = { 'Net Attacker': 0.6, 'Serve-and-Volley': 0.8, 'All-Court': 0.3, 'Variety / Slice-Heavy': 0.25, 'Creative Shotmaker': 0.2, 'First-Strike Attacker': 0.15 };
+// Return positions: metres behind the usual spot (inside the baseline is negative), and what each does to the return:
+// meet (how much further the serve travels before you meet it), time (seconds gained or lost), weak (pressure added to
+// your return), rush (how much faster your return gets back to the server).
+const CB_RETPOS = { inside: -0.8, normal: 0, deep: 1.4, vdeep: 3.2 };
+const CB_RETPOS_FX = {
+  inside: { meet: -0.7, time: -0.04, weak: -0.08, rush: 1.2 },
+  normal: { meet: 0, time: 0, weak: 0, rush: 1 },
+  deep:   { meet: 1.2, time: 0.07, weak: 0.1, rush: 0.95 },
+  vdeep:  { meet: 2.6, time: 0.15, weak: 0.24, rush: 0.88 },
+};
 const CB_SURF = { hard: { post: 0.62, bounce: 1, low: 0, high: 0 }, clay: { post: 0.52, bounce: 0.95, low: -0.04, high: 0.07 }, grass: { post: 0.72, bounce: 1.12, low: 0.09, high: -0.04 } };
 
 const cbClamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -77,7 +87,7 @@ function cbSigma(st, by, type, wing, volley, ret) {
   if (ret) skill = 0.55 * A.ret + 0.45 * skill;
   if (type === 'drop' || type === 'lob') skill = 0.6 * skill + 0.4 * A.iq; // touch
   const long = Math.max(0, st.shots.length - 6) * 0.012 * (1.35 - A.stam / 100);
-  return 0.5 * T.sig * cbSkf(skill) * (1 + 0.95 * st.pr[by]) * (1 + 0.22 * st.clutch[by] + 0.14 * st.tired[by] + long) * (type === 'flat' || type === 'lob' ? st.wind : 1 + (st.wind - 1) * 0.5) * (volley ? 0.8 : 1);
+  return 0.5 * T.sig * (A.sigK || 1) * cbSkf(skill) * (1 + 0.95 * st.pr[by]) * (1 + 0.22 * st.clutch[by] + 0.14 * st.tired[by] + long) * (type === 'flat' || type === 'lob' ? st.wind : 1 + (st.wind - 1) * 0.5) * (volley ? 0.8 : 1);
 }
 
 // Where and when the receiver meets a ball that lands at `land`, and how hard it is for them. Deterministic, so
@@ -87,6 +97,8 @@ function cbMeet(st, by, from, land, type, rcvPos, read = 0) {
   let v = T.v * st.pace * (type === 'flat' || type === 'topspin' ? 1 + 0.004 * (st.ab[by].ground - 50) : 1) * (1 - 0.22 * Math.min(1, st.pr[by])) * (st.smash ? 1.35 : 1);
   const dx = land.x - from.x, dy = land.y - from.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
   if (type !== 'lob' && type !== 'drop' && !st.smash) v *= cbClamp(Math.pow(L / 23, 0.6), 0.72, 1.05); // a short ball has to be hit slower to dip in
+  if (st.shots.length === 2 && st.retRush) v *= st.retRush; // the return: taken early it rushes the server, from far back it floats
+  if (st.touchPace) v *= st.touchPace; // a flat ball timed through the window comes off quicker
   const atNet = Math.abs(rcvPos.y) < 6.2;
   let contact, time, volley = false;
   if (atNet && type !== 'lob' && type !== 'drop' && Math.abs(land.y) > Math.abs(rcvPos.y) - 0.4) {
@@ -111,7 +123,7 @@ function cbMeet(st, by, from, land, type, rcvPos, read = 0) {
   if (wing === 'bh' && B.bh < B.fh) pr += cbClamp((B.fh - B.bh) / 45, 0, 0.22); else if (wing === 'fh' && B.fh < B.bh) pr += cbClamp((B.bh - B.fh) / 45, 0, 0.22);
   if (type === 'topspin' && wing === 'bh' && B.oneBh) pr += 0.08 * deep;
   if (type === 'slice') pr += sf.low + (wing === 'bh' ? 0.03 : 0);
-  if (Math.abs(contact.y) > 13.6 && !volley) pr += 0.08;
+  if (Math.abs(contact.y) > 13.2 && !volley) pr += Math.min(0.35, 0.04 + 0.07 * (Math.abs(contact.y) - 13.2)); // hitting from far back: harder to hurt them, easier to be attacked
   { const edge = Math.min(CB.HW - Math.abs(land.x), CB.HL - Math.abs(land.y)); if (edge < 0.6 && edge >= 0 && !volley) pr += 0.15 * (1 - edge / 0.6); } // a ball on the line is harder to handle
   if (volley && type === 'topspin' && Math.abs(land.y) < 7) pr += 0.3;
   if (volley && Math.abs(contact.y) > 4.5) pr += 0.12; // a first volley from around the service line // a dipping pass at the feet
@@ -124,6 +136,15 @@ function cbRecoverSpot(side, oppContact, approach) {
   const f = cbFwd(side);
   return approach ? { x: oppContact.x * 0.45, y: -f * 2.4 } : { x: oppContact.x * 0.38, y: -f * 12.5 };
 }
+// Where you head after hitting: the recovery spot, shaded a step towards the side you chose to cover (st.cover, side 0 only).
+function cbCoverSpot(st, by, oppContact) {
+  const p = cbRecoverSpot(by, oppContact, st.atNet[by]);
+  if (by !== 0 || !st.cover) return p;
+  const sg = Math.sign(oppContact.x) || 1; // their crosscourt goes away from where they hit; their line stays on that side
+  return { x: p.x + (st.cover === 'cross' ? -sg : sg) * 0.7, y: p.y };
+}
+// How far a hitter gets towards that spot before the reply is struck (a stretched player is slower to get back).
+const cbRecoverReach = (st, by, meet) => Math.max(0, meet.time - 0.22 - 0.3 * Math.min(1, st.pr[by])) * st.ab[by].spd * (st.atNet[by] ? 1 : 0.92);
 function cbMoveToward(pos, to, dist) {
   const d = cbDist(pos, to);
   if (d <= dist || d < 1e-6) return { ...to };
@@ -159,25 +180,31 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   const r = 1 - by, from = { ...st.pos[by] }, f = cbFwd(by), volley = !!(st.inc && st.inc.volley);
   if (type === 'slice' && Math.abs(aim.y) < 4.8 && !volley) type = 'drop'; // a short slice is a drop shot
   const ret = st.shots.length === 1, wing = st.inc ? st.inc.wing : 'fh';
-  const sg = cbSigma(st, by, type, wing, volley, ret);
+  // Touch (cbtouch.js): how well you timed the shot's mini-game. sig scales the scatter, dy moves the depth (metres
+  // further on), net scales the chance of the net, pace the speed of the ball. Used once, then cleared.
+  const T = (by === 0 && st.touch) || {}; st.touch = null;
+  const sg = cbSigma(st, by, type, wing, volley, ret) * (T.sig || 1);
   const short = type === 'lob' || type === 'drop' ? 0 : Math.min(1.2, st.pr[by]) * 0.8 * f; // under pressure the ball lands shorter
-  const land = { x: aim.x + cbGauss(rng) * sg, y: aim.y - short + cbGauss(rng) * sg * 1.1 };
+  // dx pushes the ball wider (+) or back towards the middle (−): a mistimed shot misses in the way it was mistimed.
+  const land = { x: aim.x + (T.dx || 0) * (Math.sign(aim.x) || 1) + cbGauss(rng) * sg, y: aim.y - short + (T.dy || 0) * f + cbGauss(rng) * sg * 1.1 };
   if (Math.abs(aim.x) >= 1.2 && Math.sign(land.x) !== Math.sign(aim.x)) land.x = aim.x * 0.35; // the side you chose is the side it goes: a miss is long, wide or short, never the other way
   const shot = { by, from, aim: { ...aim }, land, type, approach: !!approach, pr: st.pr[by], wing, lane: cbLane(from, aim), volley };
   st.shots.push(shot);
   if (by === 0) st.mem.lanes[wing][shot.lane]++;
-  const pNet = CB_SHOT[type].net * (1 + 1.8 * st.pr[by]) * cbSkf(volley ? st.ab[by].net : st.ab[by].ground) ** 2 * (Math.abs(aim.y) < 7 && type !== 'lob' ? 1.5 : 1);
+  const pNet = CB_SHOT[type].net * (1 + 1.8 * st.pr[by]) * cbSkf(volley ? st.ab[by].net : st.ab[by].ground) ** 2 * (Math.abs(aim.y) < 7 && type !== 'lob' ? 1.5 : 1) * (T.net || 1);
   if (rng() < pNet || land.y * f < 0.3) { shot.err = 'net'; shot.land = { x: aim.x * 0.4 + from.x * 0.6, y: 0 }; return cbEnd(st, r, 'err', shot); }
   if (Math.abs(land.x) > CB.HW || Math.abs(land.y) > CB.HL) { shot.err = 'out'; return cbEnd(st, r, 'err', shot); }
   // The receiver as the ball is struck: where they got to, leaning on a read of you.
   const read = cbReadOf(st, by, from, aim, wing);
   shot.rcvFrom = { ...st.pos[r] };
+  st.touchPace = T.pace || 0;
   const meet = cbMeet(st, by, from, land, type, st.pos[r], read);
+  st.touchPace = 0;
   Object.assign(shot, { met: meet.volley, read, slack: meet.slack, pr2: meet.pr, contact: meet.contact, time: meet.time, kmh: Math.round(meet.v * 3.6 / 0.78) });
   // The hitter recovers while the ball travels (a fast ball gives you less time to get back too).
   st.atNet[by] = st.atNet[by] || approach;
-  const spot = cbRecoverSpot(by, meet.contact, st.atNet[by]);
-  st.pos[by] = cbMoveToward(from, spot, Math.max(0, meet.time - 0.22 - 0.3 * Math.min(1, st.pr[by])) * st.ab[by].spd * (st.atNet[by] ? 1 : 0.92)); // stretched: slower to get back
+  const spot = cbCoverSpot(st, by, meet.contact);
+  st.pos[by] = cbMoveToward(from, spot, cbRecoverReach(st, by, meet)); // stretched: slower to get back
   shot.after = { ...st.pos[by] };
   if (meet.slack < -0.5 || (meet.slack < 0 && rng() > 0.9 + meet.slack * 1.6)) return cbEnd(st, by, 'winner', shot);
   st.pos[r] = meet.contact; st.pr[r] = meet.pr; st.atNet[r] = Math.abs(meet.contact.y) < 6.2;
@@ -205,7 +232,7 @@ function cbServeTarget(st, zone) {
 }
 function cbReturnSpot(st) {
   const r = 1 - st.server, f = cbFwd(st.server), sx = Math.sign(cbServeSpot(st).x);
-  const back = { deep: 1.4, inside: -0.8 }[st.ab[r].retPos] || 0;
+  const back = CB_RETPOS[st.ab[r].retPos] || 0;
   return { x: -sx * 1.9, y: f * (12.1 + back) };
 }
 // The computer returner's guess from your serving pattern on this side (and a little playstyle sense).
@@ -222,20 +249,23 @@ const cbGuessHit = (zone, guess) => !guess ? 0 : guess === zone ? 1 : (zone === 
 // One serve: zone and spin, second serve or not, and the returner's guess (null = no guess).
 function cbServe(st, zone, spin, guess, approach, rng = Math.random) {
   const s = st.server, r = 1 - s, A = st.ab[s], f = cbFwd(s), second = st.serve2;
-  const pf = { flat: 0.45, slice: 0.35, kick: 0.22 }[spin] * cbClamp(1.36 - 0.013 * (A.serve - 30), 0.6, 1.5)
-    * (second ? 0.42 : 1) + (zone === 'body' ? -0.05 : 0.04) + 0.06 * st.clutch[s] + 0.03 * (st.wind - 1) * 10 * (spin === 'flat' ? 1 : 0.4);
+  // The Toss (cbtouch.js): how well you timed your serve. fault scales the fault chance, pace adds km/h, sd scales
+  // the scatter, miss says which way a fault goes ('long' or 'net'). Used once, then cleared.
+  const T = (s === 0 && st.serveTouch) || {}; st.serveTouch = null;
+  const pf = ({ flat: 0.45, slice: 0.35, kick: 0.22 }[spin] * cbClamp(1.36 - 0.013 * (A.serve - 30), 0.6, 1.5)
+    * (second ? 0.42 : 1) + (zone === 'body' ? -0.05 : 0.04) + 0.06 * st.clutch[s] + 0.03 * (st.wind - 1) * 10 * (spin === 'flat' ? 1 : 0.4)) * (T.fault || 1);
   const from = cbServeSpot(st), tgt = cbServeTarget(st, zone);
   if (s === 0) st.mem.serve[st.deuce ? 'd' : 'a'][zone]++;
-  const kmh = Math.round((158 + 0.62 * A.serve) - ({ flat: 0, slice: 18, kick: 32 })[spin] - (second ? 10 : 0) + cbGauss(rng) * 4);
+  const kmh = Math.round((158 + 0.62 * A.serve) - ({ flat: 0, slice: 18, kick: 32 })[spin] - (second ? 10 : 0) + (T.pace || 0) + cbGauss(rng) * 4);
   const shot = { by: s, from, serve: true, zone, spin, kmh, guess, second, approach: !!approach };
   if (rng() < cbClamp(pf, 0.03, 0.75)) {
-    shot.err = rng() < 0.55 ? 'net' : 'out';
+    shot.err = T.miss === 'long' ? 'out' : T.miss === 'net' ? (rng() < 0.8 ? 'net' : 'out') : rng() < 0.55 ? 'net' : 'out';
     shot.land = shot.err === 'net' ? { x: (from.x + tgt.x) / 2, y: 0 } : { x: tgt.x * 1.05, y: f * (CB.SL + 0.5) };
     st.shots.push(shot);
     if (!second) { st.serve2 = true; st.shots = []; return { shot, fault: true }; }
     return { shot, over: cbEnd(st, r, 'df', shot).over };
   }
-  const land = { x: cbClamp(tgt.x + cbGauss(rng) * 0.35, -CB.HW + 0.05, CB.HW - 0.05), y: f * cbClamp(Math.abs(tgt.y) + cbGauss(rng) * 0.3, 3.5, CB.SL - 0.05) };
+  const sd = T.sd || 1, land = { x: cbClamp(tgt.x + (T.dx || 0) * (Math.sign(tgt.x) || 1) + cbGauss(rng) * 0.35 * sd, -CB.HW + 0.05, CB.HW - 0.05), y: f * cbClamp(Math.abs(tgt.y) + (T.dy || 0) + cbGauss(rng) * 0.3 * sd, 3.5, CB.SL - 0.05) };
   shot.land = land; st.shots.push(shot);
   // The returner: in their spot, shifted by their guess.
   const g = cbGuessHit(zone, guess), B = st.ab[r];
@@ -244,10 +274,14 @@ function cbServe(st, zone, spin, guess, approach, rng = Math.random) {
   const v = kmh / 3.6 * 0.76 * st.pace * ({ grass: 1.05, clay: 0.95 }[st.surface] || 1), dx = land.x - from.x, dy = land.y - from.y, L = Math.hypot(dx, dy);
   const curl = spin === 'slice' ? 0.9 * Math.sign(land.x || 1) * (zone === 'wide' ? 1 : 0.4) : 0; // slice swings away
   const bl = ({ flat: 3.1, slice: 2.7, kick: 3.6 })[spin] * st.surf.bounce;
-  const contact = { x: land.x + dx / L * bl + curl, y: land.y + dy / L * bl };
-  const time = L / v + bl / (st.surf.post * v * (spin === 'kick' ? 0.85 : 1));
+  // Return position (CB_RETPOS_FX): standing back buys time against pace but gives a weaker return from further back;
+  // standing in takes it early (less time) and rushes the server.
+  const P = CB_RETPOS_FX[B.retPos] || CB_RETPOS_FX.normal, blr = bl + P.meet, pv = st.surf.post * v * (spin === 'kick' ? 0.85 : 1);
+  const contact = { x: land.x + dx / L * blr + curl, y: land.y + dy / L * blr };
+  const time = L / v + bl / pv + P.time;
   const react = B.react - 0.07 + (g > 0 ? -0.1 : g < 0 ? 0.12 : 0);
   const slack = time - react - Math.max(0, cbDist(rp, contact) - 1.4) / (B.spd + 0.45);
+  st.retRush = P.rush;
   Object.assign(shot, { slack, contact, read: g, rcvFrom: { ...rp }, time });
   if (slack < -0.22) return { shot, over: cbEnd(st, s, 'ace', shot).over };
   let pr = slack >= 0 ? cbClamp(0.9 - slack * 1.4, 0.1, 0.9) : 0.9 + Math.min(0.5, -slack * 1.6);
@@ -256,6 +290,7 @@ function cbServe(st, zone, spin, guess, approach, rng = Math.random) {
   if (spin === 'kick' && wing === 'bh') pr += (B.oneBh ? 0.14 : 0.07) + st.surf.high;
   if (wing === 'bh' && B.bh < B.fh) pr += cbClamp((B.fh - B.bh) / 50, 0, 0.18);
   if (spin === 'slice') pr += st.surf.low;
+  pr += P.weak; // returning from far back: safe, but a weak reply
   if (slack < 0.05 && rng() > 0.86 + (slack - 0.05) * 2) return { shot, over: cbEnd(st, s, 'unret', shot).over };
   shot.pr2 = cbClamp(pr, 0, 1.5); shot.wing = wing;
   // The server recovers from the follow-through (or comes in behind it).
@@ -323,6 +358,7 @@ function cbChooseServe(st, rng = Math.random) {
   const spin = st.serve2 ? (rng() < 0.75 ? 'kick' : 'slice') : big ? (rng() < 0.65 ? 'flat' : 'slice') : (rng() < 0.4 ? 'flat' : rng() < 0.6 ? 'slice' : 'kick');
   const r = 1 - st.server, B = st.ab[r], bhWeak = B.bh < B.fh - 3;
   const w = { wide: 1, body: st.serve2 ? 1.2 : 0.7, t: 1 };
+  const fav = A.favServe && A.favServe[st.deuce ? 'd' : 'a']; if (fav) w[fav] += 0.7; // everyone has a favourite serve on each side (scouting tells you)
   if (bhWeak) { const toBh = cbServeTarget(st, 'wide').x * (B.lefty ? -1 : 1) * cbFwd(r) < 0 ? 'wide' : 't'; w[toBh] += 0.8 * cbClamp((A.iq - 30) / 50, 0.2, 1); }
   let sum = w.wide + w.body + w.t, x = rng() * sum;
   const zone = (x -= w.wide) < 0 ? 'wide' : (x -= w.body) < 0 ? 'body' : 't';

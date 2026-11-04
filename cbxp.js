@@ -6,7 +6,10 @@
   if (typeof isExtreme !== 'function' || !isExtreme()) return;
   const q = (el, s) => el.querySelector(s);
   const pause = ms => new Promise(r => setTimeout(r, ms));
-  const speed = () => +(cbData().speed || 1.6); // how slowly the ball travels (1 = real time)
+  // How slowly the ball travels (1 = real time). The saved setting keeps its old values; they now mean quicker speeds.
+  const SPEED_OF = { 2.4: 1.5, 1.6: 1.1, 1.1: 0.8 };
+  const speed = () => { const v = +(cbData().speed || 1.6); return SPEED_OF[v] || v; };
+  const speedKey = () => +(cbData().speed || 1.6);
 
   // --- Words ---------------------------------------------------------------------------------------------------
   const TYPE_N = { topspin: 'Topspin', flat: 'Flat', slice: 'Slice', lob: 'Lob', drop: 'Drop Shot' };
@@ -42,11 +45,13 @@
     if (!r.width) return;
     V.c.width = Math.round(r.width * dpr); V.c.height = Math.round(r.height * dpr); V.g.setTransform(dpr, 0, 0, dpr, 0, 0);
     V.W = r.width; V.H = r.height;
-    const side = window.innerWidth >= 1100 ? 444 : 0; // the decisions float over the right of the court on a computer
-    const W = V.W - side; V.cx = W / 2;
-    const dn = -13.6 - CAM.y, df = 13.4 - CAM.y, top0 = 4.2; // far player's head (drawn a little larger)
-    V.f = Math.min((V.H - (side ? 150 : 16)) / (CAM.h / dn - (CAM.h - top0) / df), 0.47 * W * (-11.885 - CAM.y) / 5.485);
-    const top0px = side ? 96 : 8, bot = side ? 56 : 8; // room for the scoreboard and the shot caption on a computer
+    // On a computer the score column sits on the left and the decisions on the right: the court is centred in between.
+    const desk = window.innerWidth >= 1100, side = desk ? 392 : 0, left = desk ? 362 : 0;
+    const W = V.W - side - left; V.cx = left + W / 2;
+    // Framed from your feet standing Very Deep (about 15.5 m back) to the far player's head (drawn a little larger).
+    const dn = -17.3 - CAM.y, df = 13.4 - CAM.y, top0 = 5.6;
+    V.f = Math.min((V.H - (side ? 36 : 16)) / (CAM.h / dn - (CAM.h - top0) / df), 0.47 * W * (-11.885 - CAM.y) / 5.485);
+    const top0px = side ? 18 : 8, bot = side ? 14 : 8; // on a computer the score and panel sit beside the court, so it can fill the height
     V.hy = V.H - bot - CAM.h * V.f / dn;
     const top = V.hy + (CAM.h - top0) * V.f / df;
     if (top > top0px) V.hy -= (top - top0px) / 2;
@@ -59,7 +64,7 @@
   function drawCourt(g) {
     const C = SURF[S.surface] || SURF.hard;
     g.fillStyle = C.bg; g.fillRect(0, 0, V.W, V.H);
-    poly(g, [proj(-9, -16), proj(9, -16), proj(9, 16), proj(-9, 16)], C.out);
+    poly(g, [proj(-9, -16.8), proj(9, -16.8), proj(9, 16), proj(-9, 16)], C.out); // ends just behind Very Deep, like the far end
     poly(g, [proj(-5.485, -11.885), proj(5.485, -11.885), proj(5.485, 11.885), proj(-5.485, 11.885)], C.court);
     g.strokeStyle = '#fff'; g.lineCap = 'round';
     const L = (x1, y1, x2, y2) => { g.lineWidth = Math.max(1, 0.06 * proj(0, (y1 + y2) / 2).s); seg(g, proj(x1, y1), proj(x2, y2)); };
@@ -79,8 +84,9 @@
   }
   // The swings themselves live with the body drawing (cblook.js), so both courts can share them.
   const handDir = XL.handDir, racketAt = XL.racketAt;
+  const PSCALE = 1.4; // players drawn a little larger than life so you can read their swings
   function drawPlayer(g, p) {
-    const G = proj(p.x, p.y), d = p.y - CAM.y, s = G.s * (1 + 0.6 * Math.max(0, (d - 21) / 25));
+    const G = proj(p.x, p.y), d = p.y - CAM.y, s = G.s * PSCALE * (1 + 0.6 * Math.max(0, (d - 21) / 25));
     const P = (dx, z) => [G.X + dx * s, G.Y - z * s];
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(G.X, G.Y, 0.45 * s, 0.13 * s, 0, 0, 7); g.fill();
     const [hx, hz, rx, rz] = racketAt(p), hd = handDir(p);
@@ -118,9 +124,6 @@
         g.setLineDash([3, 3]); if (l) { g.strokeStyle = 'rgba(255,213,79,0.55)'; g.lineWidth = 1; seg(g, p, proj(l.x, l.y)); } g.setLineDash([]);
         g.strokeStyle = 'rgba(255,213,79,0.85)'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(p.X, p.Y, rr, rr * 0.45, 0, 0, 7); g.stroke();
         g.fillStyle = 'rgba(255,213,79,0.85)'; g.font = '700 10px system-ui'; g.textAlign = 'center'; g.fillText('AIM', p.X, p.Y - rr * 0.45 - 3);
-      } else {
-        g.strokeStyle = '#ff5252'; seg(g, { X: p.X - r, Y: p.Y - r * 0.5 }, { X: p.X + r, Y: p.Y + r * 0.5 }); seg(g, { X: p.X - r, Y: p.Y + r * 0.5 }, { X: p.X + r, Y: p.Y - r * 0.5 });
-        g.fillStyle = '#ff5252'; g.font = '700 13px system-ui'; g.textAlign = 'center'; g.fillText(m.kind === 'net' ? 'NET' : 'OUT', p.X, p.Y - r - 4);
       }
     }
     for (const t of S.targets) {
@@ -145,16 +148,57 @@
     g.beginPath(); g.moveTo(b.X, b.Y); g.lineTo(b.X - Math.cos(ang - 0.45) * hl, b.Y - Math.sin(ang - 0.45) * hl); g.lineTo(b.X - Math.cos(ang + 0.45) * hl, b.Y - Math.sin(ang + 0.45) * hl); g.closePath(); g.fill();
     g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillText('THEN', b.X, b.Y + 16);
   }
+  // NET / OUT: drawn last so the net never hides the label.
+  function drawErrs(g) {
+    for (const m of S.marks) {
+      if (m.kind !== 'net' && m.kind !== 'out') continue;
+      const p = proj(m.x, m.y), r = Math.max(5, 0.25 * p.s), ly = m.kind === 'net' ? proj(m.x, m.y, 1.3).Y : p.Y - r - 4;
+      g.strokeStyle = '#ff5252'; g.lineWidth = 2; seg(g, { X: p.X - r, Y: p.Y - r * 0.5 }, { X: p.X + r, Y: p.Y + r * 0.5 }); seg(g, { X: p.X - r, Y: p.Y + r * 0.5 }, { X: p.X + r, Y: p.Y - r * 0.5 });
+      g.font = '800 13px system-ui'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(m.kind === 'net' ? 'NET' : 'OUT', p.X, ly);
+      g.fillStyle = '#ff5252'; g.fillText(m.kind === 'net' ? 'NET' : 'OUT', p.X, ly);
+    }
+  }
+  // ACE! / DOUBLE FAULT! / WINNER! / DROPPER!: big in the middle of the court with a shake, as on the main court.
+  function drawPop(g) {
+    const P0 = S.pop; if (!P0) return;
+    const age = performance.now() - P0.t0, life = P0.life || 1400;
+    if (age > life) { S.pop = null; return; }
+    const a = Math.min(1, (life - age) / 350), pop = 1 + Math.max(0, 1 - age / 180) * 0.35;
+    g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const X = V.cx ?? V.W / 2, Y = V.H * 0.42;
+    g.font = `italic 900 ${Math.round(Math.min(92, V.W / 9) * pop)}px system-ui`;
+    g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.55)'; g.strokeText(P0.text, X, Y);
+    g.fillStyle = P0.bad ? '#ff6b6b' : '#ffd60a'; g.fillText(P0.text, X, Y);
+    if (P0.sub) { g.font = `800 ${Math.round(Math.min(34, V.W / 24))}px system-ui`; g.lineWidth = 4; g.strokeText(P0.sub, X, Y + Math.min(70, V.W / 12)); g.fillStyle = '#fff'; g.fillText(P0.sub, X, Y + Math.min(70, V.W / 12)); }
+    g.globalAlpha = 1; g.textBaseline = 'alphabetic';
+  }
   function draw() {
     if (!V.g || !V.W) return;
-    const g = V.g; drawCourt(g); drawMarks(g); drawPath(g); drawArrow(g);
+    const g = V.g;
+    g.save();
+    if (S.shake) { const k = Math.max(0, 1 - (performance.now() - S.shake) / 450); if (k === 0) S.shake = 0; else g.translate((Math.random() - 0.5) * 14 * k, (Math.random() - 0.5) * 14 * k); }
+    drawCourt(g); drawMarks(g); drawPath(g); drawArrow(g);
     const ballFar = S.ball && S.ball.y >= 0;
     S.players.filter(p => p.y >= 0).forEach(p => drawPlayer(g, p)); if (ballFar) drawBall(g);
     drawNet(g);
     S.players.filter(p => p.y < 0).forEach(p => drawPlayer(g, p)); if (!ballFar) drawBall(g);
+    drawErrs(g); drawPop(g);
+    g.restore();
   }
+  const popFor = (over, sh) => {
+    const t = over.how === 'ace' ? 'ACE!' : over.how === 'df' ? 'DOUBLE FAULT!' : over.how === 'winner' ? (sh.type === 'drop' ? 'DROPPER!' : 'WINNER!') : null;
+    if (t) { S.bubbles = [null, null]; S.pop = { text: t, t0: performance.now(), bad: over.w !== 0, life: over.how === 'ace' ? 2300 : 1600, sub: over.how === 'ace' && sh.kmh ? `${sh.kmh} km/h` : '' }; if (over.how === 'ace' || over.how === 'df') S.shake = performance.now(); }
+  };
   const loop = () => { if (!V.on) return; draw(); requestAnimationFrame(loop); };
   const tween = (ms, fn) => new Promise(res => { const t0 = performance.now(); const step = now => { const u = Math.min(1, (now - t0) / Math.max(1, ms)); fn(u); if (u < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+
+  // A player walks to a spot (legs moving, easing in and out) instead of snapping there. A newer walk takes over.
+  let walkId = 0;
+  function walkTo(p, to, mps = 3.2) {
+    const id = ++walkId, from = { x: p.x, y: p.y }, dist = Math.hypot(to.x - from.x, to.y - from.y);
+    if (dist < 0.02) return Promise.resolve();
+    return tween(Math.max(250, dist / mps * 1000), u => { if (id !== walkId) return; const e = u * u * (3 - 2 * u); moveP(p, from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e); });
+  }
 
   // --- Animating a shot ------------------------------------------------------------------------------------------
   const lerp = (a, b, u) => a + (b - a) * u;
@@ -180,8 +224,8 @@
     if (sh.serve) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 1.2 }; S.trail = []; await tween(420 * Math.min(1.6, slow / 1.6), u => { S.ball.z = lerp(1.2, 2.9, Math.sin(u * Math.PI / 2)); H.pu = u * 0.4; }); }
     else await tween(300 * Math.min(1.6, slow / 1.6), u => { H.pu = u * 0.4; });
     S.bubbles[1 - sh.by] = null;
-    S.bubbles[sh.by] = { t1: shotName(sh), t2: `${shotWhere(sh)}${sh.kmh ? ` · ${sh.kmh} km/h` : ''}`, until: performance.now() + 2600 * slow / 1.6 };
-    U.call(`<b class="${sh.by === 0 ? 'me' : 'op'}">${sh.by === 0 ? 'You' : esc(S.players[1].name)}</b> ${shotName(sh)} <span>${shotWhere(sh)}</span>`);
+    S.bubbles[sh.by] = { t1: shotName(sh), t2: '', until: performance.now() + 2600 * slow / 1.6 }; // just the shot; the rest is noise mid-rally
+    U.call(`<b class="${sh.by === 0 ? 'me' : 'op'}">${sh.by === 0 ? 'You' : esc(S.players[1].name)}</b> ${shotName(sh)}`);
     const land = sh.land, shotN = ++S.n;
     S.marks = []; S.path = null; // only the shot being played is marked
     if (sh.by === 0) { S.marks = S.marks.filter(m => m.kind !== 'aim'); const a = sh.serve ? cbServeTarget(cur.st, sh.zone) : sh.aim; if (a) S.marks.push({ kind: 'aim', by: 0, n: shotN, x: a.x, y: a.y }); }
@@ -197,7 +241,9 @@
     const hump = { topspin: 1.3, flat: 0.8, slice: 0.45, lob: 2.6, drop: 0.5 }[sh.type] || (sh.spin === 'kick' ? 1.5 : 0.9);
     if (sh.met) tB = 0; // a volley: met before the bounce
     const tA = (sh.met ? Math.hypot(sh.contact.x - p0.x, sh.contact.y - p0.y) : dA) / v;
-    const T = (tA + tB) * 1000 * slow, gA = tA / (tA + tB);
+    // Pace you can feel: a big ball flies visibly quicker than a rally ball, so the firepower grows with the level.
+    const punch = sh.type === 'lob' || sh.type === 'drop' ? 1 : cbClamp(Math.pow((sh.kmh || 110) / 110, 1.1), 0.85, 1.7);
+    const T = (tA + tB) * 1000 * Math.max(0.85, slow / punch), gA = tA / (tA + tB);
     const h0 = { x: H.x, y: H.y }, hTo = sh.after || h0, r0 = { x: R.x, y: R.y };
     let rTo = r0;
     if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, 0.7), y: lerp(r0.y, s2.y, 0.7) } : s2; }
@@ -220,7 +266,7 @@
       const hu = Math.min(1, gl * 1.1); moveP(H, lerp(h0.x, hTo.x, hu), lerp(h0.y, hTo.y, hu));
       const ru = Math.max(0, Math.min(1, (gl - 0.12) / 0.88)); moveP(R, lerp(r0.x, rTo.x, ru), lerp(r0.y, rTo.y, ru));
       const b = ballAt(gl);
-      S.ball = b; S.trail.push({ ...b }); if (S.trail.length > 9) S.trail.shift();
+      S.ball = b; S.trail.push({ ...b }); if (S.trail.length > (punch > 1.25 ? 14 : 9)) S.trail.shift(); // a longer streak behind a heavy ball
       if (!landed && !sh.met && sh.err !== 'net' && gl >= gA) { // the bounce: mark it and say where it landed
         landed = true; S.marks = S.marks.filter(m => m.kind === 'aim');
         S.marks.push({ x: land.x, y: land.y, kind: sh.err ? 'out' : 'land', by: sh.by, n: shotN });
@@ -230,6 +276,7 @@
     const run = (g0, g1) => tween((g1 - g0) * T, u => at(lerp(g0, g1, u)));
     const fin = async g0 => {
       await run(g0, 1);
+      if (res && res.over) popFor(res.over, sh);
       if (sh.err === 'net') { S.marks.push({ x: land.x, y: land.y, kind: 'net', by: sh.by }); U.land(`${sh.by === 0 ? '<b class="me">Your ball</b>' : `<b class="op">${esc(S.players[1].name)}'s ball</b>`} hit the <b class="bad">net</b>.`); }
       H.pose = null; R.pose = null;
     };
@@ -240,28 +287,54 @@
 
   // --- Reading the situation ------------------------------------------------------------------------------------
   const sideWords = x => (x > 0 ? 'right' : 'left'); // as you look at the screen
+  // What you're told about the rally grows with your coach. With none, only what anyone could see from the court.
+  const coachLv = () => (typeof teamLevel === 'function' && current.career ? teamLevel(current.career, 'coach') : 0);
+  const STYLE_TIP = {
+    'Counterpuncher': 'They chase everything down: build with depth before you go for it.',
+    'Defensive Grinder': 'Long rallies suit them: take the ball early and come forward.',
+    'Net Attacker': 'They want the net: keep it low at their feet, or lob them.',
+    'Serve-and-Volley': 'Return low at their feet and make them volley up.',
+    'Flat Attacker': 'They hit through you: use height and spin to throw off their timing.',
+    'Heavy-Topspin Baseliner': 'High balls are their home: slice it low, especially to the backhand.',
+    'Heavy-Topspin Attacker': 'High balls are their home: slice it low and take time away.',
+    'Serve-Dominant': 'Their rally game is weaker than their serve: get the return deep and make them play.',
+    'Solid Baseliner': 'Few holes: change direction and pace, then attack the short ball.',
+    'Aggressive Baseliner': 'They go for winners early: make them hit one more ball.',
+    'First-Strike Attacker': 'They want it over in three shots: return deep through the middle.',
+    'Serve +1 Attacker': 'They want it over in three shots: return deep through the middle.',
+    'All-Court': 'They can do a bit of everything: keep testing their weaker wing.',
+    'Variety / Slice-Heavy': 'They break up the rhythm: stay patient and step in on the low ball.',
+    'Creative Shotmaker': 'Expect the unexpected: stay central and don’t give them angles.',
+  };
   function situation(st) {
-    const opp = esc(S.players[1].name), inc = st.shots[st.shots.length - 1], me = st.inc, L = [];
-    if (inc && !inc.feed) L.push(`<b class="op">${opp}</b>: ${shotName(inc)}, ${shotWhere(inc).toLowerCase()}${inc.kmh ? `, ${inc.kmh} km/h` : ''}.`);
-    const pr = st.pr[0], feel = pr < 0.35 ? 'balanced, with time' : pr < 0.65 ? 'a little rushed' : pr < 0.95 ? 'stretched' : 'on the run, in real trouble';
-    const p = st.pos[0], where = me.volley ? 'at the net' : p.y < -13.1 ? 'deep behind the baseline' : Math.abs(p.x) > 3.6 ? `out wide on the ${sideWords(p.x)}` : p.y > -9.5 ? 'inside the court' : 'on the baseline';
-    L.push(`<b class="me">You</b>: ${wingN(me.wing).toLowerCase()}${me.volley ? ' volley' : ''}, ${where}, ${feel}.`);
+    const opp = esc(S.players[1].name), inc = st.shots[st.shots.length - 1], me = st.inc, L = [], lv = coachLv();
+    if (inc && !inc.feed) L.push(`<b class="op">${opp}</b>: ${shotName(inc)}.`);
     const o = st.pos[1];
-    L.push(st.atNet[1] ? `<b class="op">${opp}</b> ${Math.abs(o.y) > 6.2 ? 'is coming in to the net' : 'is at the net'}: pass them or lob them.` : Math.abs(o.x) < 1 ? `<b class="op">${opp}</b> is back in the middle.`
-      : `<b class="op">${opp}</b> is over to your ${sideWords(o.x)}: the ${sideWords(-o.x)} side is open.`);
-    const lanes = st.mem.oppLanes && inc && inc.wing && !inc.serve ? st.mem.oppLanes[inc.wing] : null, n = lanes ? lanes.cross + lanes.line + lanes.middle : 0;
-    if (n >= 3) { const best = Object.keys(lanes).sort((a, b) => lanes[b] - lanes[a])[0]; L.push(`From the ${wingN(inc.wing).toLowerCase()} they've gone ${LANE_N[best].toLowerCase()} ${lanes[best]} of ${n} times.`); }
-    const ex = cbExpect(st);
-    if (ex) L.push(`⚠️ They're starting to expect your ${wingN(me.wing).toLowerCase()} ${LANE_N[ex].toLowerCase()}.`);
-    const B = st.ab[1]; if (B.bh < B.fh - 3) L.push('Their backhand is the weaker side.');
+    L.push(st.atNet[1] ? `<b class="op">${opp}</b> ${Math.abs(o.y) > 6.2 ? 'is coming in to the net' : 'is at the net'}.` : Math.abs(o.x) < 1 ? `<b class="op">${opp}</b> is back in the middle.`
+      : `<b class="op">${opp}</b> is over to your ${sideWords(o.x)}.`);
+    if (lv >= 1) {
+      const pr = st.pr[0]; L.push(`🧑‍🏫 You're ${pr < 0.35 ? 'balanced, with time' : pr < 0.65 ? 'a little rushed' : pr < 0.95 ? 'stretched' : 'on the run'}.`);
+      const B = st.ab[1]; if (B.bh < B.fh - 3) L.push('🧑‍🏫 Their backhand is the weaker side.'); else if (B.fh < B.bh - 3) L.push('🧑‍🏫 Their forehand is the weaker side.');
+    }
+    if (lv >= 2) {
+      const lanes = st.mem.oppLanes && inc && inc.wing && !inc.serve ? st.mem.oppLanes[inc.wing] : null, n = lanes ? lanes.cross + lanes.line + lanes.middle : 0;
+      if (n >= 3) { const best = Object.keys(lanes).sort((a, b) => lanes[b] - lanes[a])[0]; L.push(`🧑‍🏫 From the ${wingN(inc.wing).toLowerCase()} they've gone ${LANE_N[best].toLowerCase()} ${lanes[best]} of ${n} times.`); }
+      const ex = cbExpect(st); if (ex) L.push(`🧑‍🏫 They're starting to read your ${wingN(me.wing).toLowerCase()} ${LANE_N[ex].toLowerCase()}.`);
+    }
+    if (lv >= 3 && STYLE_TIP[st.ab[1].style]) L.push(`🧑‍🏫 ${STYLE_TIP[st.ab[1].style]}`);
+    if (lv >= 4) { const w = Object.entries(st.mem.works || {}).filter(([, v]) => v[1] >= 3).sort((a, b) => b[1][0] / b[1][1] - a[1][0] / a[1][1])[0]; if (w) L.push(`🧑‍🏫 Working best today: ${w[0]} (won ${w[1][0]} of ${w[1][1]}).`); }
+    for (const n of st.ab[0].edgeNotes || []) L.push(n);
+    if (lv === 0) L.push('<span class="xphint">Hire a coach for a better read on the rally.</span>');
     return L.map(t => `<p>${t}</p>`).join('');
   }
-  const riskWord = p => (p >= 0.93 ? ['Safe', 'g'] : p >= 0.82 ? ['Low Risk', 'g'] : p >= 0.68 ? ['Risky', 'y'] : ['High Risk', 'r']);
+  // Six steps of risk, from the shot's chance of landing in: the same number sets how tight its mini-game is.
+  const riskWord = p => (p >= 0.93 ? ['Safe', 'g'] : p >= 0.82 ? ['Low Risk', 'g'] : p >= 0.68 ? ['Risky', 'y'] : p >= 0.52 ? ['High Risk', 'r'] : p >= 0.38 ? ['Very High Risk', 'rr'] : ['Extreme', 'x']);
+  window.xpRiskWord = riskWord;
   const hurtWord = v => (v >= 0.8 ? 'Winner Chance' : v >= 0.6 ? 'Puts Them In Trouble' : v >= 0.46 ? 'Builds Pressure' : 'Keeps You In It');
 
   // --- Decisions (no clock: nothing happens until you press the button) --------------------------------------------
   const SHOTS = [['topspin', 'Topspin'], ['flat', 'Flat'], ['slice', 'Slice'], ['drop', 'Drop Shot'], ['lob', 'Lob']];
-  const DIRS = [['cross', 'Crosscourt'], ['middle', 'Middle'], ['line', 'Down The Line'], ['open', 'Open Court'], ['behind', 'Behind Them'], ['bh', 'Their Backhand']];
+  const DIRS = [['cross', 'Crosscourt'], ['middle', 'Middle'], ['line', 'Down The Line'], ['open', 'Open Court'], ['behind', 'Behind Them'], ['bh', 'Their Backhand'], ['fh', 'Their Forehand']];
   const ANGLE = ['angle', 'Extreme Angle'];
   const CROSSNET = ['crossnet', 'Cross-Net Angle'];
   const DIR_N = Object.fromEntries([...DIRS, ANGLE, CROSSNET]);
@@ -269,6 +342,23 @@
   // A volley played along the net from one side of the court to the other: a net player's speciality.
   const NET_STYLES = ['All-Court', 'Net Attacker', 'Serve-and-Volley', 'Creative Shotmaker', 'Variety / Slice-Heavy'];
   const canCrossNet = st => st.atNet[0] && Math.abs(st.pos[0].y) < 4.5 && (NET_STYLES.includes(st.ab[0].style) || st.ab[0].net >= 65);
+  // Which directions make sense from here. Down the line needs a line near you; behind them needs court behind them
+  // (they've come inside the baseline); open court needs them pulled off to one side.
+  function dirOK(st, k) {
+    if (k === 'line') return Math.abs(st.pos[0].x) >= 1.2;
+    if (k === 'behind') return Math.abs(st.pos[1].y) < 11.0;
+    if (k === 'open') return Math.abs(st.pos[1].x) >= 1.0;
+    if (k === 'angle') return canAngle(st);
+    if (k === 'crossnet') return canCrossNet(st);
+    return true;
+  }
+  // The nearest sensible direction when the one asked for (by your last shot or a play) isn't on here.
+  function dirFallback(st, k) {
+    if (dirOK(st, k)) return k;
+    if (k === 'behind') return dirOK(st, 'open') ? 'open' : 'cross';
+    if (k === 'line') return 'middle';
+    return 'cross';
+  }
   const DEPTHS = [['deep', 'Deep'], ['mid', 'Mid-Court'], ['short', 'Short Angle']];
   const DEPTH_N = Object.fromEntries(DEPTHS);
   const MOVES_N = { recover: 'Recover', cross: 'Cover Cross', line: 'Cover Line', net: 'Come In' };
@@ -280,6 +370,7 @@
     if (dir === 'open') return Math.abs(ox) < 0.8 ? -sg : -Math.sign(ox);
     if (dir === 'behind') return Math.abs(ox) < 0.8 ? sg : Math.sign(ox);
     if (dir === 'bh') return st.ab[1].lefty ? -1 : 1; // the far player's backhand side
+    if (dir === 'fh') return st.ab[1].lefty ? 1 : -1; // and their forehand side: from the middle, the other corner
     return 0;
   }
   // The flight of the shot you're building, from your racket to where you're aiming and on after the bounce:
@@ -316,24 +407,28 @@
     return { x: ax > 0.6 ? sx * Math.min(3.85, ax + (3.85 - ax) * 0.7) : aim.x, y: ay >= 8 ? Math.min(11.4, ay + (11.4 - ay) * 0.7) : ay < 3 ? Math.max(1.3, ay - 0.6) : ay };
   }
   // Where "Then" takes you after the shot: back to the middle of their angles, a step towards the side you're covering, or in to the net.
+  // Exactly what the engine will do (cbsim.js): head for that spot and get as far as the time allows before they hit.
   function thenSpot(st, meet, move) {
-    const c = meet.contact; let p = cbRecoverSpot(0, c, move === 'net' || st.atNet[0]);
-    if (move === 'cross' || move === 'line') { const sg = Math.sign(c.x) || 1; p = { x: p.x + (move === 'cross' ? -sg : sg) * 0.7, y: p.y }; }
-    return p;
+    const t = { ...st, atNet: [st.atNet[0] || move === 'net', st.atNet[1]], cover: move === 'cross' || move === 'line' ? move : null };
+    return cbMoveToward(st.pos[0], cbCoverSpot(t, 0, meet.contact), cbRecoverReach(t, 0, meet));
   }
-  const segBtns = (key, items, cur0, cls = '') => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint && hint.has(k) ? ' hint' : ''}">${l}</button>`).join('')}</div>`;
   let lastShot = { type: 'topspin', dir: 'cross', depth: 'deep', margin: 'normal' };
   // God Panel: "win/lose this point" while a decision is open.
   const godHook = (U, res, clean) => { U.godReq = g => { clean(); res({ god: g }); }; };
   // o.step: a play's planned shot (pre-filled); o.why: why the play stopped; o.play: the play; o.done: the play has finished.
   window.xpAskShot = (U, st, o = {}) => new Promise(res => {
     let { type, dir, depth, margin = 'normal' } = o.step || lastShot, move = (o.step && o.step.move) || 'recover', spot = null, dropped = false;
-    const dirs = [...DIRS, ...(canAngle(st) ? [ANGLE] : []), ...(canCrossNet(st) ? [CROSSNET] : [])];
-    if ((dir === 'angle' && !canAngle(st)) || (dir === 'crossnet' && !canCrossNet(st))) dir = 'cross';
+    const dirs = [...DIRS, ANGLE, CROSSNET].filter(([k]) => dirOK(st, k));
+    dir = dirFallback(st, dir);
     if (move === 'net' && st.atNet[0]) move = 'recover';
     const moves = [['recover', st.atNet[0] ? 'Hold The Net' : 'Recover To Middle'], ['cross', 'Cover Their Crosscourt'], ['line', 'Cover Their Line'], ...(st.atNet[0] ? [] : [['net', 'Come To The Net']])];
-    const sit = `<div class="xpsit">${situation(st)}</div>`;
+    U.setRead(situation(st)); // the rally read lives in the drop-down under the scoreboard, not with the controls
     const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; S.arrow = null; U.panel(''); U.godReq = null; };
+    // A faint dot on the choices that this ball makes risky right now (a hint, not a number).
+    // Only the choices clearly riskier than the safest one in their row are marked, so the dot means "not this one, here".
+    const pInOf = (k, kind) => cbValue(st, 0, kind === 't' ? (spot || applyMargin(aimFor(st, dir, depth, k), margin)) : applyMargin(aimFor(st, k, depth, type), margin), kind === 't' ? k : type, move === 'net').pIn;
+    const riskySet = (keys, kind) => { const p = keys.map(k => pInOf(k, kind)), top = Math.max(...p); return new Set(keys.filter((k, i) => p[i] < top - 0.12 && p[i] < 0.82)); };
     const head = () => o.step && !dropped ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Audible?</b><p>${o.why}</p><p class="xphint">Planned: ${stepText(o.step)}. Change it below and press Hit It, or:</p>` +
         '<div class="xpseg"><button type="button" data-run>Run The Play</button><button type="button" data-dropplay>Drop The Play</button></div></div>'
       : o.done ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Play Complete</b><p>You're on your own from here.</p></div>` : '';
@@ -342,13 +437,12 @@
       const sh = { wing: st.inc.wing, volley: st.inc.volley, type: e.t, aim, from: st.pos[0] };
       S.targets = [{ ...aim }]; S.path = previewPath(st, aim, type); // the flight of the shot you're building
       S.arrow = { from: { ...st.pos[0] }, to: thenSpot(st, e.meet, move) }; // and where you'll go after it
-      U.panel(head() + sit + '<h3>Shot</h3>' + segBtns('t', SHOTS, type, 'five') +
-        '<h3>Direction</h3>' + segBtns('d', dirs, spot ? null : dir, 'three') +
+      const hintT = riskySet(SHOTS.map(([k]) => k), 't'), hintD = spot ? new Set() : riskySet(dirs.map(([k]) => k), 'd');
+      U.panel(head() + '<h3>Shot</h3>' + segBtns('t', SHOTS, type, 'five', hintT) +
+        '<h3>Direction</h3>' + segBtns('d', dirs, spot ? null : dir, 'three', hintD) +
         (type === 'drop' || type === 'lob' || dir === 'angle' || dir === 'crossnet' ? '' : '<h3>Depth</h3>' + segBtns('p', DEPTHS, spot ? null : depth, 'three')) +
-        (spot ? '' : '<h3>Margin</h3>' + segBtns('mg', MARGINS, margin, 'three')) +
-        `<p class="xphint">${spot ? 'Aiming at the spot you tapped. Pick a direction to go back.' : 'Or tap any spot on their side of the court to aim there exactly.'}</p>` +
+        (spot ? '<p class="xphint">Aiming at the spot you tapped.</p>' : '<h3>Margin</h3>' + segBtns('mg', MARGINS, margin, 'three')) +
         '<h3>Then</h3>' + segBtns('m', moves, move) +
-        `<p class="xphint">Covering a side gets you there early if you guess right, and wrong-footed if you don't.</p>` +
         `<div class="xphitbar"><div class="xppre"><b>${shotName(sh)}</b><span>${shotWhere(sh)}</span><em><u class="${rc}">${rw}</u> ${hurtWord(e.v)}</em></div>` +
         '<button type="button" class="xpbig" data-hit>Hit It</button></div>');
       const P = U.pan;
@@ -369,37 +463,65 @@
     godHook(U, res, clean);
     render();
   });
-  window.xpAskServe = (U, st) => new Promise(res => {
-    const B = st.ab[1], c = st.mem.serve[st.deuce ? 'd' : 'a'], rs = cbReturnSpot(st);
+  const backBtn = '<button type="button" class="xpback" data-back>‹ Back To Plays</button>';
+  window.xpAskServe = (U, st, o = {}) => new Promise(res => {
+    const B = st.ab[1], c = st.mem.serve[st.deuce ? 'd' : 'a'], rs = cbReturnSpot(st), lv = coachLv();
     const bhZone = ['wide', 't'].find(z => cbWing(B, 1, rs, cbServeTarget(st, z)) === 'bh');
     let zone = null, sv = false;
     const clean = () => { S.targets = []; U.panel(''); U.godReq = null; };
+    U.setRead(`<p><b class="me">Your ${st.serve2 ? 'second' : 'first'} serve</b> · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>` +
+      (lv >= 1 && B.bh < B.fh - 3 && bhZone ? `<p>🧑‍🏫 Their backhand return is weaker: on this side that's ${ZONE_N[bhZone].toLowerCase()}.</p>` : '') +
+      (lv >= 2 && c.wide + c.body + c.t ? `<p>🧑‍🏫 They've seen you serve here: wide ${c.wide} · body ${c.body} · T ${c.t}.</p>` : '') +
+      (lv >= 3 && STYLE_TIP[B.style] ? `<p>🧑‍🏫 ${STYLE_TIP[B.style]}</p>` : '') + (lv === 0 ? '<p class="xphint">Hire a coach for a better read.</p>' : ''));
     const render = () => {
       S.targets = zone ? [{ ...cbServeTarget(st, zone) }] : [];
-      U.panel(`<div class="xpsit"><p><b class="me">Your ${st.serve2 ? 'Second' : 'First'} Serve</b> · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>` +
-        (B.bh < B.fh - 3 && bhZone ? `<p>Their backhand return is weaker: on this side that's ${ZONE_N[bhZone]}.</p>` : '') +
-        (c.wide + c.body + c.t ? `<p>They've seen you serve here: Wide ${c.wide} · Body ${c.body} · T ${c.t}. They learn your habits.</p>` : '') + '</div>' +
-        '<h3>Where</h3>' + segBtns('z', ['wide', 'body', 't'].map(z => [z, ZONE_N[z]]), zone, 'three') +
-        `<h3>Which Serve</h3><div class="xpseg three">${[['flat', 'Most pace, more faults'], ['slice', 'Swings away from them'], ['kick', 'High bounce, safest']].map(([k, d]) =>
+      U.panel((o.back ? backBtn : '') + `<h3>${st.serve2 ? 'Second Serve' : 'First Serve'} · Where</h3>` + segBtns('z', ['wide', 'body', 't'].map(z => [z, ZONE_N[z]]), zone, 'three') +
+        `<h3>Which Serve</h3><div class="xpseg three">${[['flat', 'Fastest'], ['slice', 'Curves Away'], ['kick', 'Safest']].map(([k, d]) =>
           `<button type="button" class="xpcard" data-s="${k}" ${zone ? '' : 'disabled'}><b>${SPIN_N[k]}</b><span>${d}</span></button>`).join('')}</div>` +
         (st.serve2 ? '' : `<div class="xpseg one"><button type="button" data-sv class="${sv ? 'on' : ''}">Serve And Volley: ${sv ? 'On' : 'Off'}</button></div>`));
       const P = U.pan;
       P.querySelectorAll('[data-z]').forEach(b => { b.onclick = () => { zone = b.dataset.z; render(); }; });
       const svb = q(P, '[data-sv]'); if (svb) svb.onclick = () => { sv = !sv; render(); };
       P.querySelectorAll('[data-s]').forEach(b => { b.onclick = () => { clean(); res({ zone, spin: b.dataset.s, approach: sv }); }; });
+      const bk = q(P, '[data-back]'); if (bk) bk.onclick = () => { clean(); res({ back: true }); };
     };
     godHook(U, res, clean);
     render();
   });
-  window.xpAskRead = (U, st) => new Promise(res => {
-    const c = (st.mem.oppServe || {})[st.deuce ? 'd' : 'a'] || { wide: 0, body: 0, t: 0 }, n = c.wide + c.body + c.t;
+  // Where you stand to return: in to take it early, back to buy time against pace (remembered between points).
+  const RETPOS = [['inside', 'Inside'], ['normal', 'Normal'], ['deep', 'Deep'], ['vdeep', 'Very Deep']];
+  const retPos = () => cbData().retPos || 'normal';
+  const standRow = () => '<h3>Stand</h3>' + segBtns('rp', RETPOS, retPos(), 'four');
+  // Tapping a spot walks you there straight away (no waiting for the point, no snapping).
+  const bindStand = (P, again, st) => P.querySelectorAll('[data-rp]').forEach(b => { b.onclick = () => {
+    const d = cbData(); d.retPos = b.dataset.rp; cbSave(d);
+    // Between points you walk there now; once the ball is in play it waits for the next point.
+    if (st && st.server === 1 && cur.dead) { st.ab[0].retPos = d.retPos; walkTo(S.players[0], cbReturnSpot(st)); }
+    again();
+  }; });
+  // Returning needs no input: a moment to change where you stand, then their serve comes.
+  window.xpAskReturn = (U, st) => new Promise(res => {
+    U.setRead(`<p><b class="op">${esc(S.players[1].name)}</b> to serve · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>`);
+    const render = () => { U.panel(`<h3>Their Serve · Stand</h3>` + segBtns('rp', RETPOS, retPos(), 'four')); bindStand(U.pan, render, st); };
+    godHook(U, res, () => { U.panel(''); U.godReq = null; });
+    render(); setTimeout(() => res(null), 1100);
+  });
+  window.xpAskRead = (U, st, o = {}) => new Promise(res => {
+    const c = (st.mem.oppServe || {})[st.deuce ? 'd' : 'a'] || { wide: 0, body: 0, t: 0 }, n = c.wide + c.body + c.t, lv = coachLv();
     const clean = () => { U.panel(''); U.godReq = null; };
-    U.panel(`<div class="xpsit"><p><b class="op">${esc(S.players[1].name)}</b> to serve · ${st.serve2 ? 'second serve' : 'first serve'} · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>` +
-      `<p>${n ? `Their serves on this side so far: Wide ${c.wide} · Body ${c.body} · T ${c.t}.` : 'No pattern yet on this side.'}</p>` +
-      `<p class="xphint">Guess right and you get a jump on the return. Guess wrong and you're leaning the wrong way.</p></div>` +
-      `<h3>Where Will They Serve?</h3>${segBtns('g', [...['wide', 'body', 't'].map(z => [z, ZONE_N[z]]), ['', 'Just React']])}`);
-    U.pan.querySelectorAll('[data-g]').forEach(b => { b.onclick = () => { clean(); res(b.dataset.g || null); }; });
+    U.setRead(`<p><b class="op">${esc(S.players[1].name)}</b> to serve · ${st.serve2 ? 'second serve' : 'first serve'} · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>` +
+      (lv >= 1 && n ? `<p>🧑‍🏫 Their serves on this side: wide ${c.wide} · body ${c.body} · T ${c.t}.</p>` : '') +
+      (st.ab[0].scouted && st.ab[1].favServe ? `<p>🔎 Scouted: they favour ${ZONE_N[st.ab[1].favServe[st.deuce ? 'd' : 'a']].toLowerCase()} on this side.</p>` : '') +
+      (lv >= 3 && STYLE_TIP[st.ab[1].style] ? `<p>🧑‍🏫 ${STYLE_TIP[st.ab[1].style]}</p>` : '') + (lv === 0 ? '<p class="xphint">Hire a coach for a better read.</p>' : ''));
+    const render = () => {
+      const fav = st.ab[0].scouted && st.ab[1].favServe ? st.ab[1].favServe[st.deuce ? 'd' : 'a'] : null;
+      U.panel((o.back ? backBtn : '') + (fav ? `<p class="xpedge">🔎 Scouted: they favour <b>${ZONE_N[fav]}</b> on this side.</p>` : '') + `<h3>${st.serve2 ? 'Second Serve' : 'Their Serve'} · Your Guess</h3>${segBtns('g', [...['wide', 'body', 't'].map(z => [z, ZONE_N[z]]), ['', 'Just React']])}` + standRow());
+      U.pan.querySelectorAll('[data-g]').forEach(b => { b.onclick = () => { clean(); res(b.dataset.g || null); }; });
+      bindStand(U.pan, render, st);
+      const bk = q(U.pan, '[data-back]'); if (bk) bk.onclick = () => { clean(); res({ back: true }); };
+    };
     godHook(U, res, clean);
+    render();
   });
 
   // --- The Playbook ---------------------------------------------------------------------------------------------
@@ -416,7 +538,7 @@
   ];
   function plays() { const d = cbData(); if (!Array.isArray(d.plays)) { d.plays = STARTER_PLAYS.map(p => ({ ...p, n: 0, won: 0 })); cbSave(d); } return d.plays; }
   const stepText = p => `${TYPE_N[p.type]} ${DIR_N[p.dir]}${p.type === 'drop' || p.type === 'lob' ? '' : ` ${DEPTH_N[p.depth]}`}${p.margin === 'lines' ? ' On The Lines' : p.margin === 'safe' ? ' (Safe)' : ''} (${MOVES_N[p.move] || 'Recover'})`;
-  const stepShot = (st, p) => ({ aim: applyMargin(aimFor(st, p.dir, p.depth, p.type), p.margin), type: p.type, move: st.atNet[0] && p.move === 'net' ? 'recover' : p.move });
+  const stepShot = (st, p) => ({ aim: applyMargin(aimFor(st, dirFallback(st, p.dir), p.depth, p.type), p.margin), type: p.type, move: st.atNet[0] && p.move === 'net' ? 'recover' : p.move });
   const playLine = p => [p.kind === 'serve' ? `${SPIN_N[p.serve.spin]} ${ZONE_N[p.serve.zone]}${p.serve.approach ? ' + Volley' : ''}` : p.read ? `Guess ${ZONE_N[p.read]}` : 'Return',
     ...p.steps.map(x => `${TYPE_N[x.type]} ${DIR_N[x.dir]}`)].join(' → ');
   // Why a play can't simply carry on here (null = it can).
@@ -430,16 +552,25 @@
   window.xpAskPlay = (U, st) => new Promise(res => {
     const kind = st.server === 0 ? 'serve' : 'return', seen = (st.mem.plays || {});
     const clean = () => { U.panel(''); U.godReq = null; };
+    U.setRead(`<p>${kind === 'serve' ? '<b class="me">Your serve</b>' : `<b class="op">${esc(S.players[1].name)}</b> to serve`} · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>`);
+    let open = false; // the play list folds away behind the Plays button
     const render = () => {
       const list = plays().filter(p => p.kind === kind);
-      U.panel(`<div class="xpsit"><p>${kind === 'serve' ? '<b class="me">Your serve</b>' : `<b class="op">${esc(S.players[1].name)}</b> to serve`} · ${st.deuce ? 'Deuce' : 'Ad'} side.</p>` +
-        '<p class="xphint">Call a play and it runs at full speed. It only stops if the point breaks it.</p></div>' +
-        `<h3>Call A Play</h3><div class="xpplays">${list.map(p => `<button type="button" class="xpplay" data-play="${p.id}"><b>${esc(p.name)}</b><span>${playLine(p)}</span>` +
+      U.panel(`<div class="xpseg three"><button type="button" data-live>🎾 Play It Live</button><button type="button" data-book>📖 Edit Playbook</button><button type="button" data-plays class="${open ? 'on' : ''}">📋 Plays ${open ? '▴' : '▾'}</button></div>` +
+        `<div class="xpplays"${open ? '' : ' hidden'}>${list.map(p => `<button type="button" class="xpplay" data-play="${p.id}"><b>${esc(p.name)}</b><span>${playLine(p)}</span>` +
           `<em>${p.n ? `Won ${p.won} Of ${p.n}` : 'Not Used Yet'}${seen[p.id] >= 2 ? ` · <u class="r">They've Seen It ${seen[p.id]}×</u>` : seen[p.id] ? ' · Seen Once' : ''}</em></button>`).join('')}</div>` +
-        '<div class="xpseg"><button type="button" data-live>🎾 Play It Live</button><button type="button" data-book>📖 Edit Playbook</button></div>');
-      U.pan.querySelectorAll('[data-play]').forEach(b => { b.onclick = () => { clean(); res(plays().find(p => p.id === b.dataset.play)); }; });
+        (kind === 'return' ? standRow() : ''));
+      // A play starts on its own after a moment, with a Back button in case you change your mind.
+      U.pan.querySelectorAll('[data-play]').forEach(b => { b.onclick = () => {
+        const p = plays().find(x => x.id === b.dataset.play);
+        U.panel(`<div class="xpstart"><div><b>📖 ${esc(p.name)}</b><span>Starting…</span></div>${backBtn}</div>`);
+        const t = setTimeout(() => { clean(); res(p); }, 1300);
+        q(U.pan, '[data-back]').onclick = () => { clearTimeout(t); render(); };
+      }; });
       q(U.pan, '[data-live]').onclick = () => { clean(); res(null); };
       q(U.pan, '[data-book]').onclick = () => playbookEditor(render);
+      q(U.pan, '[data-plays]').onclick = () => { open = !open; render(); };
+      bindStand(U.pan, render, st);
     };
     godHook(U, res, clean);
     render();
@@ -519,43 +650,56 @@
     const godEnd = g => { st.over = { w: g === 'win' ? 0 : 1, how: 'winner', shot: null, god: true }; return st.over; };
     setPlayers(st); S.marks = []; S.bubbles = [null, null]; S.ball = null; U.call(''); U.land(''); U.play('');
     let next = null, r = null, play = null, queue = [], stepNo = 0;
-    if (!o.incoming) {
-      placeForServe(st);
-      const pk = await window.xpAskPlay(U, st);
-      if (pk && pk.god) return godEnd(pk.god);
-      if (pk) { play = pk; queue = pk.steps.map(x => ({ ...x })); st.play = { id: pk.id, name: pk.name }; }
-    }
     // They've only "seen" a play once it actually runs: your serve goes in, or you hit one of its shots. A double fault doesn't count.
     let ran = false;
     const markRan = () => { if (play && !ran) { ran = true; st.mem.plays[play.id] = (st.mem.plays[play.id] || 0) + 1; } };
     // A play they've seen this match: the more often, the likelier they read where its shots are going.
     const seenEdge = () => play ? Math.min(0.5, 0.1 * (st.mem.plays[play.id] - 1) * cbClamp((st.ab[1].iq - 30) / 50, 0.3, 1.2)) : 0;
     const playNote = () => play && U.play(queue.length ? `📖 <b>${esc(play.name)}</b> · Shot ${stepNo + 1} Of ${play.steps.length}` : `📖 <b>${esc(play.name)}</b> · Done`);
-    playNote();
     if (o.incoming) {
       const inc = o.incoming;
       S.players[1].x = inc.from.x; S.players[1].y = inc.from.y;
       const rf = inc.rcvFrom || st.pos[0]; S.players[0].x = rf.x; S.players[0].y = rf.y;
       await playShot(inc, { over: null }, true); next = 0;
     } else {
+      start: for (;;) { // the play list; Back from the first serve or return choice comes back here
+      play = null; queue = []; st.play = null;
+      st.ab[0].retPos = retPos(); placeForServe(st);
+      cur.dead = true;
+      const pk = st.server === 0 ? await window.xpAskPlay(U, st) : await window.xpAskReturn(U, st);
+      if (pk && pk.god) return godEnd(pk.god);
+      if (pk) { play = pk; queue = pk.steps.map(x => ({ ...x })); st.play = { id: pk.id, name: pk.name }; }
+      st.ab[0].retPos = retPos(); playNote();
       for (let g = 0; g < 2; g++) {
         placeForServe(st);
         let ch, guess;
         if (st.server === 0) {
-          ch = play ? (g === 0 ? { ...play.serve } : { zone: play.serve.zone, spin: 'kick', approach: false }) : await window.xpAskServe(U, st);
+          ch = play ? (g === 0 ? { ...play.serve } : { zone: play.serve.zone, spin: 'kick', approach: false }) : await window.xpAskServe(U, st, { back: g === 0 });
+          if (ch.back) continue start;
           if (ch.god) return godEnd(ch.god);
+          // The Toss: your serve's timing (every serve, in a play too: it comes before the rally).
+          if (window.xpAskTouch && window.xpTouchOn && xpTouchOn()) {
+            const R = await window.xpAskTouch(U, st, { type: 'serve', spin: ch.spin, aim: cbServeTarget(st, ch.zone) });
+            if (R.god) return godEnd(R.god);
+            st.serveTouch = xpServeEffect(R, ch.spin);
+          }
           guess = cbGuessServe(st);
         } else {
-          guess = play ? play.read || null : await window.xpAskRead(U, st); if (guess && guess.god) return godEnd(guess.god);
+          guess = play ? play.read || null : null;
+          if (guess && guess.back) continue start;
+          if (guess && guess.god) return godEnd(guess.god);
+          st.ab[0].retPos = retPos(); await walkTo(S.players[0], cbReturnSpot(st)); // finish walking to where you chose to stand
           ch = cbChooseServe(st);
-          if (guess) { const rc = S.players[0], gt = cbServeTarget(st, guess); rc.x += (gt.x - rc.x) * 0.25; }
+          if (guess) { const rc = S.players[0], gt = cbServeTarget(st, guess); await walkTo(rc, { x: rc.x + (gt.x - rc.x) * 0.25, y: rc.y }, 4); } // lean towards your guess
         }
-        r = cbServe(st, ch.zone, ch.spin, guess, ch.approach);
+        cur.dead = false; r = cbServe(st, ch.zone, ch.spin, guess, ch.approach);
         if (st.server === 1) st.mem.oppServe[st.deuce ? 'd' : 'a'][ch.zone]++;
         else if (!r.fault && !(r.over && r.over.how === 'df')) markRan();
         await playShot(r.shot, r, st.server === 1 && !r.over && !r.fault);
         if (r.fault) { S.bubbles[st.server] = { t1: r.over ? 'Double Fault' : 'Fault', t2: '', until: performance.now() + 1400 }; await pause(900); if (r.over) break; continue; }
         break;
+      }
+      break;
       }
       next = r.over ? null : r.next;
     }
@@ -573,9 +717,15 @@
         } else ch = await window.xpAskShot(U, st, play ? { play, done: true } : {});
         if (ch.god) { await resume(); return godEnd(ch.god); }
         await resume();
+        // Touch: a shot you built yourself gets its mini-game as the ball arrives (a called play runs straight through).
+        if (!scripted && window.xpAskTouch && window.xpTouchOn && xpTouchOn()) {
+          const R = await window.xpAskTouch(U, st, ch);
+          if (R.god) return godEnd(R.god);
+          st.touch = xpTouchEffect(R.type, R);
+        }
         if (scripted && Math.random() < seenEdge()) st.forceRead = 1; // they saw it coming
+        st.cover = ch.move === 'cross' || ch.move === 'line' ? ch.move : null; // before the hit: you move that way as the ball goes
         const h = cbHit(st, 0, ch.aim, ch.type, ch.move === 'net');
-        st.cover = ch.move === 'cross' || ch.move === 'line' ? ch.move : null;
         playNote();
         await playShot(h.shot, h, false);
         next = h.over ? null : h.next;
@@ -591,56 +741,81 @@
     await resume();
     if (st.play) st.play.ran = ran;
     if (play && ran && st.over && !st.over.god) { const d = cbData(), p = (d.plays || []).find(x => x.id === play.id); if (p) { p.n = (p.n || 0) + 1; if (st.over.w === 0) p.won = (p.won || 0) + 1; cbSave(d); } }
+    // What's working this match (a Master coach tells you): your last shot of each point and whether the point was won.
+    const last = [...st.shots].reverse().find(s => s.by === 0 && !s.serve && !s.feed && s.aim);
+    if (last && st.over && !st.over.god) { const k = `${shotName(last).toLowerCase()} ${LANE_N[cbLane(last.from, last.aim)].toLowerCase()}`, w = (st.mem.works = st.mem.works || {})[k] || [0, 0]; st.mem.works[k] = [w[0] + (st.over.w === 0 ? 1 : 0), w[1] + 1]; }
     return st.over;
   }
+  // Why the point ended, in one plain line: what happened, then the real causes behind it (the same things the
+  // engine used: how stretched the hitter was, how close to the line they aimed, a flat or touch shot, tired legs).
   function why(st) {
-    const o = st.over, s = o.shot, opp = esc(S.players[1].name), nm = i => (i === 0 ? 'Your' : `${opp}'s`);
+    const o = st.over, s = o.shot;
     if (!s) return o.god ? 'Point set by the God Panel.' : '';
-    if (o.how === 'ace') return `Ace: ${s.kmh} km/h ${ZONE_N[s.zone].toLowerCase()}${s.guess ? s.guess === s.zone ? ', even with the right guess' : `, the guess was ${ZONE_N[s.guess].toLowerCase()}` : ''}.`;
-    if (o.how === 'df') return `${s.by === 0 ? 'You' : opp} double faulted.`;
-    if (o.how === 'unreturned') return `The ${shotName(s).toLowerCase()} ${ZONE_N[s.zone].toLowerCase()} was too good to return.`;
+    const mine = s.by === 0, who = mine ? 'Your' : 'Their', shot = shotName(s).toLowerCase();
+    if (o.how === 'ace') return mine ? `Ace${s.guess && s.guess !== s.zone ? ': they guessed the wrong way' : ''}.` : `Aced${s.guess && s.guess !== s.zone ? `: you guessed ${ZONE_N[s.guess].toLowerCase()}, it went ${ZONE_N[s.zone].toLowerCase()}` : ''}.`;
+    if (o.how === 'df') return mine ? 'You double faulted.' : 'They double faulted.';
+    if (o.how === 'unreturned') return mine ? 'Your serve was too good to return.' : `Their ${shot} ${ZONE_N[s.zone].toLowerCase()} was too good to return.`;
     if (o.how === 'winner') {
-      const cov = s.by === 1 && s.read < 0 ? ' You were covering the other side.' : s.by === 1 && s.read > 0 ? " You read it but couldn't get there." : s.by === 0 && s.read < 0 ? ' You wrong-footed them.' : '';
-      return `${nm(s.by)} ${shotName(s).toLowerCase()} ${LANE_N[cbLane(s.from, s.aim)].toLowerCase()} was a winner.${cov}`;
+      const cause = mine ? (s.read < 0 ? 'you wrong-footed them' : 'they couldn’t get there') : (s.read < 0 ? 'you were covering the other side' : st.pr[0] >= 0.8 || s.pr2 >= 0.8 ? 'you were out of position from the shot before' : 'it was out of your reach');
+      return `${who} ${shot} was a winner: ${cause}.`;
     }
-    const miss = s.err === 'net' ? 'into the net' : Math.abs(s.land.x) > CB.HW ? 'wide' : 'long';
-    return `${nm(s.by)} ${shotName(s).toLowerCase()} went ${miss}${s.pr >= 0.75 ? ', forced by the pressure before it' : s.pr < 0.35 ? ' from a comfortable position' : ''}.`;
+    const miss = s.err === 'net' ? 'into the net' : Math.abs(s.land.x) > CB.HW ? 'wide' : 'long', c = [];
+    if (s.pr >= 0.85) c.push(mine ? 'you were on the run' : 'your shot had them on the run');
+    else if (s.pr >= 0.55) c.push(mine ? 'you were stretched' : 'your shot stretched them');
+    if (s.aim && Math.abs(s.aim.y) > 4 && Math.min(CB.HW - Math.abs(s.aim.x), CB.HL - Math.abs(s.aim.y)) < 0.8) c.push(mine ? 'you aimed close to the line' : 'they went for the line');
+    if (mine && s.type === 'flat') c.push('flat is the riskiest shot');
+    if (mine && s.type === 'drop') c.push('a drop shot has tiny margins');
+    if ((st.tired || [])[s.by] > 0.5) c.push(mine ? 'your legs are tired' : 'they’re tiring');
+    if (!c.length) c.push(mine ? 'a plain miss from a comfortable spot' : 'an unforced miss');
+    return `${who} ${shot} went ${miss}: ${c.slice(0, 2).join(', ')}.`;
   }
-  // After the point: why it was won or lost, a few tags, and the whole point shot by shot. You move on when ready.
-  const HOW_N = { ace: 'Ace', df: 'Double Fault', winner: 'Winner', fe: 'Forced Error', ue: 'Unforced Error', unreturned: 'Unreturned Serve' };
+  // After the point: who won it and why, in one line, then straight on to the next point (tap to go now).
   function xpShowPoint(U, st, title, won) {
-    const tags = cbData().feedback && st.over && !st.over.god ? cbTags(st, 0) : [];
-    const o = st.over, by = o && o.shot ? o.shot.by : null; // whose ace, winner or error it was
-    const shown = tags.length ? tags : o && HOW_N[o.how] ? [{ t: `${by === 0 ? 'Your' : by === 1 ? 'Their' : ''} ${HOW_N[o.how]}`.trim(), good: won }] : [];
-    const list = st.shots.filter(s => !s.feed && (!s.err || s === (st.over && st.over.shot)));
-    const rec = st.play ? (cbData().plays || []).find(x => x.id === st.play.id) : null, seen = st.play ? (st.mem.plays || {})[st.play.id] : 0;
-    U.panel(`<div class="xpend ${won ? 'good' : 'bad'}"><h2>${title}</h2>` +
-      (shown.length ? `<div class="xptags">${shown.map(t => `<span class="${t.good ? 'good' : 'bad'}">${t.t}</span>`).join('')}</div>` : '') +
-      `<details><summary>Point Breakdown${list.length ? ` (${list.length} Shot${list.length === 1 ? '' : 's'})` : ''}</summary><p>${why(st)}</p>` +
-      (st.play && st.play.ran ? `<p class="xphint">📖 ${esc(st.play.name)}${rec ? `: won ${rec.won} of ${rec.n}` : ''}${seen >= 2 ? ` · they've seen it ${seen}× this match` : ''}.</p>` : '') +
-      (list.length ? `<ol>${list.map(s => `<li><b class="${s.by === 0 ? 'me' : 'op'}">${s.by === 0 ? 'You' : esc(S.players[1].name)}</b> ${shotName(s)}, ${shotWhere(s).toLowerCase()}${s.err ? ` (${s.err === 'net' ? 'net' : 'out'})` : ''}</li>`).join('')}</ol>` : '') + '</details>' +
-      `<button type="button" class="xpbig" data-next>Next Point</button></div>`);
-    return new Promise(res => { q(U.pan, '[data-next]').onclick = () => { U.panel(''); res(); }; });
+    const line = why(st);
+    if (U.addPoint) U.addPoint(won, line);
+    U.panel(`<div class="xpend ${won ? 'good' : 'bad'}" data-next><h2>${title}</h2><p>${line}</p></div>`);
+    return new Promise(res => {
+      let done = false; const go = () => { if (done) return; done = true; U.panel(''); res(); };
+      q(U.pan, '[data-next]').onclick = go; setTimeout(go, 1600 + 400 * speed());
+    });
   }
 
   // --- The screen ---------------------------------------------------------------------------------------------
   function xpOverlay({ surface = 'hard', exit = null } = {}) {
     const el = document.createElement('div');
     el.className = 'xpov';
-    el.innerHTML = `<div class="xptop"><div class="xbscore"></div><div class="xptopb"><button type="button" data-x="speed"></button>` +
-      `${cbGod() ? '<button type="button" data-x="god" aria-label="God Panel">⚡</button>' : ''}${exit ? '<button type="button" data-x="exit" aria-label="Leave">✕</button>' : ''}</div></div>` +
+    el.innerHTML = `<div class="xptop"><div class="xpleft"><div class="xpsb"><div class="xbscore" data-tip="Tap for the rally read and every point so far"></div><div class="xpnote" hidden></div></div><div class="xpedgebar"></div></div>` +
+      `<div class="xptopb"><button type="button" data-x="read" aria-label="Rally read" data-tip="Rally read and every point so far (what your coach can tell you)">🔍</button>` +
+      `<button type="button" data-x="touch" aria-label="Shot mini-games on or off"></button><button type="button" data-x="speed"></button>` +
+      `${cbGod() ? '<button type="button" data-x="god" aria-label="God Panel" data-tip="God Panel: win or lose points while testing">⚡</button>' : ''}${exit ? '<button type="button" data-x="exit" aria-label="Leave" data-tip="Leave for the draw (finished points are saved)">✕</button>' : ''}</div></div>` +
+      `<div class="xpdrop" hidden><div class="xpdread"></div><div class="xpdedges"></div><h3 class="xpdph">Points</h3><ol class="xpdpts"></ol></div>` +
       `<div class="xpstage"><canvas class="xpcourt"></canvas><div class="xpmsg" hidden></div></div><div class="xpcall"></div><div class="xpland"></div><div class="xpplayln"></div><div class="xppanel"></div>`;
     document.body.appendChild(el); document.body.classList.add('xbopen');
     V.c = q(el, '.xpcourt'); V.g = V.c.getContext('2d'); S.surface = surface;
     const msg = q(el, '.xpmsg'), sp = q(el, '[data-x="speed"]');
-    const spLabel = () => { sp.textContent = { 2.4: '🐢 Slow', 1.6: '▶ Medium', 1.1: '⏩ Fast' }[speed()] || '▶ Medium'; };
+    const spLabel = () => { const [i, l] = { 2.4: ['🐢', 'Slow'], 1.6: ['▶', 'Medium'], 1.1: ['⏩', 'Fast'] }[speedKey()] || ['▶', 'Medium']; sp.innerHTML = `${i}<span class="xplbl"> ${l}</span>`; sp.dataset.tip = `Ball speed: ${l} (tap to change)`; };
     spLabel();
+    const tb = q(el, '[data-x="touch"]'), tLabel = () => { const on = cbData().touch !== false; tb.textContent = on ? '🎯' : '🎯 Off'; tb.classList.toggle('off', !on); tb.dataset.tip = `Shot mini-games: ${on ? 'on' : 'off'} (tap to turn ${on ? 'off' : 'on'})`; }; tLabel();
     const U = { el, surface, paused: false, godReq: null, pan: q(el, '.xppanel'), V: { pos: null, trails: [], draw() {} } };
     U.panel = html => { U.pan.innerHTML = html; };
     U.call = html => { q(el, '.xpcall').innerHTML = html; };
     U.land = html => { q(el, '.xpland').innerHTML = html; };
     U.play = html => { q(el, '.xpplayln').innerHTML = html || ''; };
     U.score = html => { q(el, '.xbscore').innerHTML = html; };
+    // The drop-down under the scoreboard: the rally read (what your coach can tell you) and every point so far, newest first.
+    const drop = q(el, '.xpdrop'); U.hist = [];
+    U.setRead = html => { q(drop, '.xpdread').innerHTML = html || ''; };
+    U.addPoint = (won, line) => { U.hist.unshift({ won, line }); q(drop, '.xpdpts').innerHTML = U.hist.slice(0, 40).map((h, i) => `<li class="${h.won ? 'good' : 'bad'}"><b>${h.won ? 'Won' : 'Lost'}</b> ${h.line}</li>`).join(''); };
+    const toggleDrop = () => { drop.hidden = !drop.hidden; if (window.innerWidth >= 1100) drop.style.top = `${q(el, '.xpleft').getBoundingClientRect().bottom + 8}px`; else drop.style.top = ''; }; // sits just under the score box
+    q(el, '.xbscore').onclick = toggleDrop;
+    // Your edges this match (preparation, team, racket deal): small badges under the score, the details in the drop-down.
+    U.setEdges = list => {
+      q(el, '.xpedgebar').innerHTML = list.map(e => `<button type="button" class="${e.idle ? 'idle' : ''}" aria-label="${esc(e.name)}" data-tip="${esc(e.name)}: ${esc(e.what.replace(/<[^>]+>/g, ''))}">${e.icon}</button>`).join('');
+      q(drop, '.xpdedges').innerHTML = list.length ? `<h3>Your Edges</h3>${list.map(e => `<p class="${e.idle ? 'idle' : ''}">${e.icon} <b>${esc(e.name)}</b> · ${e.what}</p>`).join('')}` : '';
+    };
+    // A short note when one of them is doing its job.
+    let noteT = null;
+    U.edgeNote = text => { const n = q(el, '.xpnote'); n.textContent = text; n.hidden = false; clearTimeout(noteT); noteT = setTimeout(() => { n.hidden = true; }, 2600); };
     U.flash = html => { msg.innerHTML = html; msg.hidden = false; };
     U.hideFlash = () => { msg.hidden = true; };
     U.tapOn = ms => new Promise(r => { let done = false; const fin = () => { if (done) return; done = true; msg.onclick = null; r(); }; msg.onclick = fin; setTimeout(fin, ms); });
@@ -648,7 +823,9 @@
     U.setPause = () => {};
     U.close = () => { V.on = false; window.removeEventListener('resize', fit); el.remove(); document.body.classList.remove('xbopen'); V.c = null; };
     q(el, '.xptopb').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return;
-      if (b.dataset.x === 'speed') { const d = cbData(), order = [2.4, 1.6, 1.1]; d.speed = order[(order.indexOf(speed()) + 1) % 3]; cbSave(d); spLabel(); }
+      if (b.dataset.x === 'speed') { const d = cbData(), order = [2.4, 1.6, 1.1]; d.speed = order[(order.indexOf(speedKey()) + 1) % 3]; cbSave(d); spLabel(); }
+      if (b.dataset.x === 'read') toggleDrop();
+      if (b.dataset.x === 'touch') { const d = cbData(); d.touch = d.touch === false; cbSave(d); tLabel(); }
       if (b.dataset.x === 'exit' && exit) exit();
       if (b.dataset.x === 'god') cbGodMatchMenu(U); };
     window.addEventListener('resize', fit);
@@ -658,5 +835,5 @@
 
   // Extreme matches and practice use this screen in place of the first version.
   cbOverlay = xpOverlay; cbRunPoint = xpRunPoint; cbShowPoint = xpShowPoint;
-  if (/[?&]raf=timer/.test(location.search)) window.requestAnimationFrame = f => setTimeout(() => f(performance.now()), 16); // headless tests
+  if (/[?&]raf=timer/.test(location.search)) { window.requestAnimationFrame = f => setTimeout(() => f(performance.now()), 16); window.__xpS = S; } // headless tests
 })();

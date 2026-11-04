@@ -424,6 +424,7 @@
     if (move === 'net' && st.atNet[0]) move = 'recover';
     const moves = [['recover', st.atNet[0] ? 'Hold The Net' : 'Recover To Middle'], ['cross', 'Cover Their Crosscourt'], ['line', 'Cover Their Line'], ...(st.atNet[0] ? [] : [['net', 'Come To The Net']])];
     U.setRead(situation(st)); // the rally read lives in the drop-down under the scoreboard, not with the controls
+    let moveSet = false; // the Then arrow stays hidden until you tap a Then
     const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; S.arrow = null; U.panel(''); U.godReq = null; };
     // A faint dot on the choices that this ball makes risky right now (a hint, not a number).
     // Only the choices clearly riskier than the safest one in their row are marked, so the dot means "not this one, here".
@@ -436,7 +437,7 @@
       const aim = spot || applyMargin(aimFor(st, dir, depth, type), margin), e = cbValue(st, 0, aim, type, move === 'net'), [rw, rc] = riskWord(e.pIn);
       const sh = { wing: st.inc.wing, volley: st.inc.volley, type: e.t, aim, from: st.pos[0] };
       S.targets = [{ ...aim }]; S.path = previewPath(st, aim, type); // the flight of the shot you're building
-      S.arrow = { from: { ...st.pos[0] }, to: thenSpot(st, e.meet, move) }; // and where you'll go after it
+      S.arrow = moveSet ? { from: { ...st.pos[0] }, to: thenSpot(st, e.meet, move) } : null; // where you'll go after it, once you've picked a Then
       const hintT = riskySet(SHOTS.map(([k]) => k), 't'), hintD = spot ? new Set() : riskySet(dirs.map(([k]) => k), 'd');
       U.panel(head() + '<h3>Shot</h3>' + segBtns('t', SHOTS, type, 'five', hintT) +
         '<h3>Direction</h3>' + segBtns('d', dirs, spot ? null : dir, 'three', hintD) +
@@ -449,7 +450,7 @@
       P.querySelectorAll('[data-t]').forEach(b => { b.onclick = () => { type = b.dataset.t; render(); }; });
       P.querySelectorAll('[data-d]').forEach(b => { b.onclick = () => { dir = b.dataset.d; spot = null; render(); }; });
       P.querySelectorAll('[data-p]').forEach(b => { b.onclick = () => { depth = b.dataset.p; spot = null; render(); }; });
-      P.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => { move = b.dataset.m; render(); }; });
+      P.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => { move = b.dataset.m; moveSet = true; render(); }; });
       P.querySelectorAll('[data-mg]').forEach(b => { b.onclick = () => { margin = b.dataset.mg; render(); }; });
       const rb = q(P, '[data-run]'); if (rb) rb.onclick = () => { clean(); res({ ...stepShot(st, o.step), run: true }); };
       const db = q(P, '[data-dropplay]'); if (db) db.onclick = () => { dropped = true; render(); };

@@ -827,6 +827,14 @@ function createCourt() {
       ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
       top = fy - r; below = fy + r + 12;
+    } else if (typeof XL === 'object' && XL.drawBody) {
+      // The full-body players from the look system: your own kit, a set look for each opponent, racket in their playing hand.
+      const sc = Math.max(4, fy - P(p.x, p.y, 1)[1]), hd = (side === 0 ? 1 : -1) * (prof[side] && prof[side].hand === 'left' ? -1 : 1);
+      const look = side === 0 && current.player ? XL.resolve(current.player.look) : XL.randomFor(names[side] || 'Opponent');
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(fx, fy, 0.4 * sc, 0.12 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      if (gold) { ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(fx, fy, 0.45 * sc, 0.14 * sc, 0, 0, Math.PI * 2); ctx.stroke(); }
+      XL.drawBody(ctx, (dx, z) => [fx + dx * sc, fy - z * sc], sc, { side: side === 0 ? 0 : 1, sw: 0, hand: XL.REST(hd), hd, twoHands: false, look });
+      top = fy - 1.9 * sc; below = P(p.x, p.y, 0.8)[1];
     } else {
       const [, hy] = P(p.x, p.y, 1.45);
       const [, headY] = P(p.x, p.y, 1.72);

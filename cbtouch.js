@@ -111,7 +111,7 @@
     // The timing meter along the bottom of every timing game. It fades in a moment before its marker sets off, so
     // there's time to get ready; then the marker slides at a steady speed and crosses the green window at the exact
     // moment to act (the white tick is perfect). A riskier shot: a narrower window and a quicker marker.
-    const span0 = 0.95 * (1 - 0.55 * d);
+    const span0 = 0.95 * (1 - 0.65 * d);
     const meter = (t, ideal, tol, pressT, word, holding = false, span = span0, lead = 0.55) => {
       const x0 = 40, x1 = W - 40, y = H - 13, t0m = ideal - span, t1m = ideal + 0.3, X = tt => x0 + (x1 - x0) * clamp((tt - t0m) / (t1m - t0m), 0, 1);
       const a = clamp((t - (t0m - lead)) / 0.25, 0, 1); if (a <= 0) return;
@@ -225,7 +225,7 @@
       const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: 0.62, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
       const C = { x: sx * 0.8, y: cy, z: 0.7 }, xs = C.x * 0.55; // the view leans a little towards your hitting side
       const P3 = (x, y, z) => { const r = raw(y, z), dd = Math.max(0.3, r.dd), s = Fv / dd; return { X: W / 2 + (x - xs) * s, Y: Y0 - Fv * r.v / dd, s }; };
-      const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.6 * d), swingT = 0.05; // the swing lands almost the moment you press
+      const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.75 * d), swingT = 0.05; // the swing lands almost the moment you press
       // their ball: from where they are to a bounce, then up into your ring (a volley comes straight at you)
       const ox = st.pos && st.pos[1] ? clamp(-st.pos[1].x, -4, 4) : -1.6;
       const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * 0.62;
@@ -263,9 +263,10 @@
       const strike = t => {
         const dt = t - tc, qt = clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1), sp = type === 'topspin' ? depth : sp0;
         const spinOff = type === 'topspin' && spinQ(depth) < 0.3;
-        let zone = Math.abs(dt) <= tol * 0.96 ? 0 : qt > 0 ? 1 : 2;
+        let zone = Math.abs(dt) <= tol * 0.36 ? -1 : Math.abs(dt) <= tol * 0.96 ? 0 : qt > 0 ? 1 : 2; // -1: the white tick, perfect
         if (spinOff) zone = Math.min(2, zone + 1);
-        const errP = zone === 0 ? 0 : zone === 1 ? 0.04 + 0.76 * riskD ** 1.5 : 0.3 + 0.6 * riskD;
+        // A big risk needs a near-perfect strike: just green can still miss, orange usually does.
+        const errP = zone === -1 ? 0 : zone === 0 ? 0.45 * riskD ** 2 : zone === 1 ? Math.min(0.92, 0.04 + 0.9 * riskD ** 1.3) : 0.35 + 0.6 * riskD;
         const err = Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
         let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : 0);
         const long = dt < 0 || (spinOff && depth < 0.62);

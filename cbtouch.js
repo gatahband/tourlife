@@ -7,11 +7,11 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const GAMES = {
     drop:    { name: 'The Scoop', how: 'Tap as the ball kisses the strings' },
-    flat:    { name: 'The Contact', how: 'Tap to swing: meet it in the green ring' },
-    topspin: { name: 'The Contact', how: 'Hold to drop under it · let go to brush up through the ring' },
-    slice:   { name: 'The Contact', how: 'Hold to take it high · let go to cut down through the ring' },
+    flat:    { name: 'The Contact', how: 'Tap as the marker hits the green' },
+    topspin: { name: 'The Contact', how: 'Hold to load the spin · let go in the green' },
+    slice:   { name: 'The Contact', how: 'Hold to take it high · let go in the green' },
     lob:     { name: 'The Lift', how: 'Hold to lift · let go in the green band' },
-    serve:   { name: 'The Toss', how: 'Press to toss · press again to hit in the zone' },
+    serve:   { name: 'The Toss', how: 'Hold to toss · let go as the marker hits the green' },
   };
   const touchOn = () => cbData().touch !== false;
   window.xpTouchOn = touchOn;
@@ -108,27 +108,32 @@
       g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1;
       for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo(0, H * i / 6); g.lineTo(W, H * i / 6); g.stroke(); }
     };
-    // The timing meter along the bottom of every timing game: a marker slides along at a steady speed and crosses
-    // the green (perfect) inside the yellow (good) at the exact moment to press. Where you pressed stays marked.
-    const meter = (t, ideal, tol, pressT, word, holding = false, span = 0.85) => {
-      const x0 = 40, x1 = W - 40, y = H - 13, t0m = ideal - span, t1m = ideal + 0.35, X = tt => x0 + (x1 - x0) * clamp((tt - t0m) / (t1m - t0m), 0, 1);
-      g.fillStyle = 'rgba(5,10,15,0.72)'; roundRect(g, x0 - 12, y - 11, x1 - x0 + 24, 22, 11); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.12)'; roundRect(g, x0, y - 4, x1 - x0, 8, 4); g.fill();
-      const good = tol * 0.96, perf = tol * 0.36;
-      g.fillStyle = 'rgba(255,213,79,0.75)'; roundRect(g, X(ideal - good), y - 5, X(ideal + good) - X(ideal - good), 10, 3); g.fill();
-      g.fillStyle = '#7CFFB2'; roundRect(g, X(ideal - perf), y - 6, Math.max(4, X(ideal + perf) - X(ideal - perf)), 12, 3); g.fill();
+    // The timing meter along the bottom of every timing game. It fades in a moment before its marker sets off, so
+    // there's time to get ready; then the marker slides at a steady speed and crosses the green window at the exact
+    // moment to act (the white tick is perfect). A riskier shot: a narrower window and a quicker marker.
+    const span0 = 0.95 * (1 - 0.55 * d);
+    const meter = (t, ideal, tol, pressT, word, holding = false, span = span0, lead = 0.55) => {
+      const x0 = 40, x1 = W - 40, y = H - 13, t0m = ideal - span, t1m = ideal + 0.3, X = tt => x0 + (x1 - x0) * clamp((tt - t0m) / (t1m - t0m), 0, 1);
+      const a = clamp((t - (t0m - lead)) / 0.25, 0, 1); if (a <= 0) return;
+      g.save(); g.globalAlpha = a;
+      g.fillStyle = 'rgba(5,10,15,0.78)'; roundRect(g, x0 - 12, y - 11, x1 - x0 + 24, 22, 11); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.10)'; roundRect(g, x0, y - 3, x1 - x0, 6, 3); g.fill();
+      const good = tol * 0.96, gx0 = X(ideal - good), gx1 = X(ideal + good);
+      g.fillStyle = 'rgba(255,152,0,0.8)'; roundRect(g, X(ideal - tol * 2.4), y - 4, X(ideal + tol * 2.4) - X(ideal - tol * 2.4), 8, 3); g.fill(); // just off: orange
+      g.fillStyle = '#3ddc84'; roundRect(g, gx0, y - 6, Math.max(6, gx1 - gx0), 12, 4); g.fill();
+      g.fillStyle = '#fff'; g.fillRect(X(ideal) - 1, y - 6, 2, 12);
       g.fillStyle = 'rgba(124,255,178,0.95)'; g.font = '800 9px system-ui'; g.textAlign = 'center'; g.fillText(word, X(ideal), y - 9);
-      const mt = pressT != null ? pressT : t, mx = X(mt), on = Math.abs(mt - ideal) <= good;
-      g.fillStyle = pressT != null ? (Math.abs(pressT - ideal) <= perf ? '#7CFFB2' : on ? '#ffd54f' : '#ff6b6b') : holding ? '#ffd54f' : '#fff';
-      g.beginPath(); g.moveTo(mx, y + 7); g.lineTo(mx - 5, y + 12); g.lineTo(mx + 5, y + 12); g.closePath(); g.fill();
-      roundRect(g, mx - 2, y - 8, 4, 16, 2); g.fill();
+      const mt = pressT != null ? pressT : t, mx = X(mt);
+      const col = pressT != null ? (Math.abs(pressT - ideal) <= good ? '#7CFFB2' : Math.abs(pressT - ideal) <= tol * 2.4 ? '#ffb74d' : '#ff6b6b') : holding ? '#ffd54f' : '#fff';
+      g.shadowColor = col; g.shadowBlur = 8; g.fillStyle = col; roundRect(g, mx - 2, y - 10, 4, 20, 2); g.fill();
+      g.restore();
     };
     let game;
     if (type === 'serve') {
       // THE TOSS: press to toss, press again to hit as the ball passes the marker. Flat: right at the top. Kick: on the
       // way up, brushing up the back. Slice: just after the top. The racket swings in one arc around the shoulder:
       // resting, cocked behind as the ball goes up, then up through the ball and down across in the follow-through.
-      const spin = ch.spin || 'flat', ta = 0.85, ideal = ta + ({ flat: 0, kick: -0.15, slice: 0.12 }[spin] || 0), tol = 0.075 * (1 - 0.5 * d);
+      const spin = ch.spin || 'flat', ta = 0.85 * (1 - 0.3 * d), ideal = ta + ({ flat: 0, kick: -0.15, slice: 0.12 }[spin] || 0) * (1 - 0.3 * d), tol = 0.075 * (1 - 0.6 * d);
       const hx = W * 0.5, base = H - 40, topY = 24, tossH = u => (u <= ta ? 1 - (1 - u / ta) ** 2 : Math.max(0, 1 - ((u - ta) / ta) ** 2));
       const yOf = u => base - tossH(u) * (base - topY), zy = yOf(ideal);
       if (window.__xpTest) window.__xpTest.ideal = { hit: ideal };
@@ -138,11 +143,12 @@
       const drawRacket = a => { const h = head(a); racketPro(g, h.x, h.y, Math.atan2(piv.y - h.y, piv.x - h.x) - Math.PI / 2, 17, paint, 0.6); };
       const ease = x => x * x * (3 - 2 * x), key = el.querySelector('.xpmkey');
       let toss = null, hitAt = null, hitU = 0;
-      const setKey = () => { key.innerHTML = phone ? (toss == null ? '1 · Tap to toss' : '2 · Tap when the marker hits the green') : `<kbd>Space</kbd> ${toss == null ? '1 · Toss' : '2 · Hit when the marker hits the green'}`; };
+      const setKey = () => { key.innerHTML = phone ? (toss == null ? 'Hold the card to toss' : 'Let go in the green') : toss == null ? 'Hold <kbd>Space</kbd> to toss' : 'Let go in the green'; };
       setKey();
       game = {
-        press: t => {
-          if (toss == null) { toss = t; setKey(); return; } // the first press tosses the ball
+        press: t => { if (toss == null) { toss = t; setKey(); } }, // press and hold: the toss goes up
+        release: t => { // let go: the swing
+          if (toss == null || hitAt != null) return;
           hitAt = t; hitU = t - toss; const dt = hitU - ideal; finish(clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1), dt < 0, ['EARLY', 'LATE']);
         },
         draw: t => {
@@ -175,9 +181,8 @@
           // the meter: before the toss it waits; after it, hit as the marker crosses the green
           if (toss == null) {
             const pulse = 0.65 + 0.35 * Math.sin(t * 5);
-            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText(phone ? 'TAP TO TOSS' : 'PRESS SPACE TO TOSS', W / 2 + 90, H / 2); g.globalAlpha = 1;
-            meter(t, 1e6, tol, null, 'HIT');
-          } else meter(t, toss + ideal, tol, hitAt, 'HIT', false, ideal);
+            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText(phone ? 'HOLD TO TOSS' : 'HOLD SPACE TO TOSS', W / 2 + 90, H / 2); g.globalAlpha = 1;
+          } else meter(t, toss + ideal, tol, hitAt, 'LET GO', true, ideal, 0);
         },
       };
     } else if (type === 'drop') {
@@ -220,7 +225,7 @@
       const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: 0.62, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
       const C = { x: sx * 0.8, y: cy, z: 0.7 }, xs = C.x * 0.55; // the view leans a little towards your hitting side
       const P3 = (x, y, z) => { const r = raw(y, z), dd = Math.max(0.3, r.dd), s = Fv / dd; return { X: W / 2 + (x - xs) * s, Y: Y0 - Fv * r.v / dd, s }; };
-      const tc = 2.0 - 0.3 * d, tol = 0.08 * (1 - 0.5 * d), swingT = 0.12;
+      const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.6 * d), swingT = 0.05; // the swing lands almost the moment you press
       // their ball: from where they are to a bounce, then up into your ring (a volley comes straight at you)
       const ox = st.pos && st.pos[1] ? clamp(-st.pos[1].x, -4, 4) : -1.6;
       const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * 0.62;
@@ -252,14 +257,25 @@
       const READY = at(0.45, 0.05, -0.7), SHOULDER = { x: sx * 0.15, y: 1.35, z: -0.6 };
       let mode = 'idle', loadAt = null, depth = 0, swingAt = null, flight = null, from = READY;
       const spinQ = sp => clamp(1 - Math.abs(sp - 0.62) / (0.12 * (1 - 0.4 * d) * 2.4), 0, 1);
+      // Where the marker stopped decides the shot. Green: it goes in. Orange (just off): a normal shot still goes in,
+      // only less cleanly; a risky one usually goes out, now and then it squeaks in. Off the meter: a real chance of an
+      // error, bigger the riskier the shot. The flight you see is the result: in, into the net (late) or long (early).
       const strike = t => {
         const dt = t - tc, qt = clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1), sp = type === 'topspin' ? depth : sp0;
+        const spinOff = type === 'topspin' && spinQ(depth) < 0.3;
+        let zone = Math.abs(dt) <= tol * 0.96 ? 0 : qt > 0 ? 1 : 2;
+        if (spinOff) zone = Math.min(2, zone + 1);
+        const errP = zone === 0 ? 0 : zone === 1 ? 0.04 + 0.76 * riskD ** 1.5 : 0.3 + 0.6 * riskD;
+        const err = Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
+        let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : 0);
+        const long = dt < 0 || (spinOff && depth < 0.62);
+        th = err ? (long ? Math.max(th, thB + 1.5) : Math.min(th, thA - 1.5)) : clamp(th, safe[0], safe[1]);
+        const f = fly(th, sp), res = f.net ? 'net' : f.zl > 24.1 ? 'long' : 'in';
+        const wide = tgt.x * (dt < 0 ? 1 + 1.2 * -dt : 1 - 1.2 * dt);
         let q = type === 'topspin' ? 0.8 * qt + 0.2 * spinQ(depth) : qt;
-        const th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : 0), f = fly(th, sp);
-        const wide = tgt.x * (dt < 0 ? 1 + 2.5 * -dt : 1 - 2.5 * dt), res = f.net ? 'net' : f.zl > 24.1 ? 'long' : 'in';
-        if (res !== 'in') q = Math.min(q, 0.25);
+        if (res !== 'in') q = Math.min(q, 0.25); else q = Math.max(q, zone === 2 ? 0.15 : 0.3);
         flight = { at: t, f, res, wide, sp, rpm: type === 'topspin' ? Math.round((900 + 3300 * depth) / 10) * 10 : 0 };
-        const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : type === 'topspin' && spinQ(depth) < 0.4 && qt > 0.6 ? [depth < 0.62 ? 'NO SPIN' : 'TOO MUCH SPIN', 'TOO MUCH SPIN'] : ['EARLY', 'LATE'];
+        const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : spinOff ? [depth < 0.62 ? 'NO SPIN' : 'TOO MUCH SPIN', 'TOO MUCH SPIN'] : ['EARLY', 'LATE'];
         finish(q, dt < 0, words); done.spin = sp; done.flight = res;
       };
       const ideal = tc - swingT; // when to press (flat) or let go (topspin, slice)
@@ -392,7 +408,7 @@
   window.xpServeEffect = (R, spin) => {
     const q = R.q, m = 1 - q, sgn = R.early ? 1 : -1;
     // A well-timed serve rarely faults, and when it does it just misses long or wide, never into the net.
-    return { fault: 0.3 + 2.2 * m * m + 0.9 * m, sd: 0.45 + 1.05 * m, pace: spin === 'flat' ? 9 * q - 6 * m : 2 * q - 6 * m,
+    return { fault: q > 0 ? 0.3 + 1.3 * m * m : 2.0, sd: 0.45 + 1.05 * m, pace: spin === 'flat' ? 9 * q - 6 * m : 2 * q - 6 * m,
       dy: sgn * 0.55 * m, dx: R.early ? 0.25 * m : -0.25 * m, miss: q < 0.6 ? (R.early ? 'long' : 'net') : 'long' };
   };
   // What a result does to the shot (read once by cbHit in cbsim.js), scaling smoothly with how far off you were.
@@ -408,6 +424,7 @@
     if (R.spin != null) e.dy += (0.5 - R.spin) * 1.6 * (R.early ? 1 : 0.6); // topspin: too little spin flies long, too much dips short
     if (R.flight === 'net') e.net = Math.max(e.net, 8); // what you saw is what happens: into the net
     if (R.flight === 'long') e.dy = Math.max(e.dy, 2.2);
+    if (R.flight === 'in') e.keepIn = true; // it went in on the timing game, so it goes in on court
     return e;
   };
 })();

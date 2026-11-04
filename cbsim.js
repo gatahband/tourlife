@@ -188,11 +188,13 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   // dx pushes the ball wider (+) or back towards the middle (−): a mistimed shot misses in the way it was mistimed.
   const land = { x: aim.x + (T.dx || 0) * (Math.sign(aim.x) || 1) + cbGauss(rng) * sg, y: aim.y - short + (T.dy || 0) * f + cbGauss(rng) * sg * 1.1 };
   if (Math.abs(aim.x) >= 1.2 && Math.sign(land.x) !== Math.sign(aim.x)) land.x = aim.x * 0.35; // the side you chose is the side it goes: a miss is long, wide or short, never the other way
+  // keepIn (cbtouch.js): the timing game said this one goes in. A ball that would have missed clips the line instead.
+  if (T.keepIn) { const ix = CB.HW - 0.05 - 0.25 * rng(), iy = CB.HL - 0.05 - 0.25 * rng(); if (Math.abs(land.x) > ix) land.x = Math.sign(land.x) * ix; if (Math.abs(land.y) > iy) land.y = Math.sign(land.y) * iy; if (land.y * f < 0.6) land.y = f * 0.6; }
   const shot = { by, from, aim: { ...aim }, land, type, approach: !!approach, pr: st.pr[by], wing, lane: cbLane(from, aim), volley };
   st.shots.push(shot);
   if (by === 0) st.mem.lanes[wing][shot.lane]++;
   const pNet = CB_SHOT[type].net * (1 + 1.8 * st.pr[by]) * cbSkf(volley ? st.ab[by].net : st.ab[by].ground) ** 2 * (Math.abs(aim.y) < 7 && type !== 'lob' ? 1.5 : 1) * (T.net || 1);
-  if (rng() < pNet || land.y * f < 0.3) { shot.err = 'net'; shot.land = { x: aim.x * 0.4 + from.x * 0.6, y: 0 }; return cbEnd(st, r, 'err', shot); }
+  if ((!T.keepIn && rng() < pNet) || land.y * f < 0.3) { shot.err = 'net'; shot.land = { x: aim.x * 0.4 + from.x * 0.6, y: 0 }; return cbEnd(st, r, 'err', shot); }
   if (Math.abs(land.x) > CB.HW || Math.abs(land.y) > CB.HL) { shot.err = 'out'; return cbEnd(st, r, 'err', shot); }
   // The receiver as the ball is struck: where they got to, leaning on a read of you.
   const read = cbReadOf(st, by, from, aim, wing);

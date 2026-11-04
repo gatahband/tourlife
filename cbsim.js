@@ -81,13 +81,26 @@ function cbNewPoint(ab, o) {
 const cbMemory = () => ({ lanes: { fh: { cross: 0, line: 0, middle: 0 }, bh: { cross: 0, line: 0, middle: 0 } }, serve: { d: { wide: 0, body: 0, t: 0 }, a: { wide: 0, body: 0, t: 0 } } });
 
 // Scatter (metres, across) for a shot.
+// Playstyles: a specialist's own shots scatter less (lower risk), their weak ones more. All-Court is a touch worse
+// at everything: it can't be best at anything. Multiplies the aim scatter, so risk words and mini-games follow.
+function cbStyleK(style, type, volley) {
+  const s = String(style || ''), k = (re, m) => re.test(s) ? m : null;
+  if (/All-Court/.test(s)) return 1.05;
+  if (/Net|Volley/.test(s)) return volley ? 0.75 : type === 'drop' ? 0.8 : type === 'topspin' ? 1.08 : 1;
+  if (/Slice|Variety|Creative/.test(s)) return type === 'slice' || type === 'drop' ? 0.8 : type === 'lob' ? 0.88 : volley ? 0.95 : 1.04;
+  const base = volley ? 1.25 : type === 'drop' ? 1.2 : type === 'topspin' ? 0.82 : type === 'lob' ? 0.9 : 1; // baseliners: topspin strong, net and touch weak
+  if (/Topspin/.test(s)) return base;
+  if (/Aggress|Attack|Serve/.test(s)) return type === 'flat' ? 0.82 : type === 'slice' || type === 'drop' ? 1.12 : volley ? 1.05 : 1;
+  if (/Grinder|Baseliner|Counter|Defen/.test(s)) return base;
+  return 1;
+}
 function cbSigma(st, by, type, wing, volley, ret) {
   const A = st.ab[by], T = CB_SHOT[type];
   let skill = volley ? A.net : wing === 'bh' ? A.bh : A.fh;
   if (ret) skill = 0.55 * A.ret + 0.45 * skill;
   if (type === 'drop' || type === 'lob') skill = 0.6 * skill + 0.4 * A.iq; // touch
   const long = Math.max(0, st.shots.length - 6) * 0.012 * (1.35 - A.stam / 100);
-  return 0.5 * T.sig * (A.sigK || 1) * cbSkf(skill) * (1 + 0.95 * st.pr[by]) * (1 + 0.22 * st.clutch[by] + 0.14 * st.tired[by] + long) * (type === 'flat' || type === 'lob' ? st.wind : 1 + (st.wind - 1) * 0.5) * (volley ? 0.8 : 1);
+  return 0.5 * T.sig * (A.sigK || 1) * cbStyleK(A.style, type, volley) * cbSkf(skill) * (1 + 0.95 * st.pr[by]) * (1 + 0.22 * st.clutch[by] + 0.14 * st.tired[by] + long) * (type === 'flat' || type === 'lob' ? st.wind : 1 + (st.wind - 1) * 0.5) * (volley ? 0.8 : 1);
 }
 
 // Where and when the receiver meets a ball that lands at `land`, and how hard it is for them. Deterministic, so

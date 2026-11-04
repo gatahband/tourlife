@@ -61,8 +61,9 @@ function openAdmin() {
 function renderAdmin() {
   const n = adminPlayers().length;
   $('admin').innerHTML = `<header><h1>Admin</h1><p class="sub">Your real players and tournaments.</p></header>` +
-    `<div class="seg two tltabs"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
-    `<button type="button" data-t="players" class="${adminTab === 'players' ? 'on' : ''}">Players (${n})</button></div>` +
+    `<div class="seg tltabs" style="grid-template-columns:repeat(3,1fr)"><button type="button" data-t="events" class="${adminTab === 'events' ? 'on' : ''}">Tournaments</button>` +
+    `<button type="button" data-t="players" class="${adminTab === 'players' ? 'on' : ''}">Players (${n})</button>` +
+    `<button type="button" data-t="bugs" class="${adminTab === 'bugs' ? 'on' : ''}">🐞 Report Log</button></div>` +
     `<div id="adBody"></div><button type="button" class="btn ghost" id="adStudy">🔬 Research Lab (Quick Sim)</button>` +
     `<button type="button" class="link" id="adExit">Back to the game</button>`;
   $('admin').querySelector('.tltabs').onclick = e => {
@@ -71,7 +72,46 @@ function renderAdmin() {
   };
   $('adStudy').onclick = () => openStudy();
   $('adExit').onclick = () => { history.replaceState(null, '', location.pathname); location.reload(); };
-  if (adminTab === 'players') renderAdPlayers(); else renderAdEvents();
+  if (adminTab === 'players') renderAdPlayers(); else if (adminTab === 'bugs') renderAdBugs(); else renderAdEvents();
+}
+
+// --- Report Log: every bug report players sent, to mark off and copy out for fixing ------------------------------
+// Status (new / fixed) is kept on this device only, keyed by when the report arrived.
+const BUG_STATUS_KEY = 'tourlife.admin.bugStatus';
+let bugCache = null, bugFilter = 'new';
+function renderAdBugs() {
+  if (!nfConf().token) { $('adBody').innerHTML = connectHtml() + `<p class="hint center">Connect to Netlify above to see the reports players send.</p>`; bindConnect(renderAdmin); return; }
+  const status = readJSON(BUG_STATUS_KEY) || {}, st = b => status[b.at] || 'new';
+  const list = (bugCache || []).filter(b => bugFilter === 'all' || st(b) === bugFilter);
+  const nNew = (bugCache || []).filter(b => st(b) === 'new').length;
+  $('adBody').innerHTML = `<section class="card"><h2>🐞 Report Log</h2>` +
+    `<p class="hint">Everything players sent with 🐞 Report A Bug, newest first. Mark each one Fixed once it's sorted. Copy the open ones and paste them to Claude to fix.</p>` +
+    `<div class="pbtns"><button type="button" class="btn" id="bgLoad">🔄 ${bugCache ? 'Refresh' : 'Load Reports'}</button>` +
+    (nNew ? `<button type="button" class="btn ghost" id="bgCopy">📋 Copy ${nNew} Open Report${nNew === 1 ? '' : 's'}</button>` : '') + `</div>` +
+    `<div class="seg" style="grid-template-columns:repeat(3,1fr);margin:10px 0">${[['new', `Open (${nNew})`], ['fixed', 'Fixed'], ['all', 'All']].map(([k, l]) =>
+      `<button type="button" data-bf="${k}" class="${bugFilter === k ? 'on' : ''}">${l}</button>`).join('')}</div>` +
+    `<p class="hint" id="bgMsg"></p>` +
+    (bugCache === null ? '' : list.length ? list.map(b => `<div class="bugrow ${st(b)}"><small>${esc(new Date(b.at).toLocaleString())} · ${esc(b.from || 'no player')}${b.who ? ` · ${esc(b.who)}` : ''}</small>` +
+      `<p>${esc(b.what).replace(/\n/g, '<br>')}</p><small class="bugctx">${esc(b.ctx)}</small>` +
+      `<button type="button" class="btn small ghost" data-bs="${esc(b.at)}">${st(b) === 'fixed' ? '↩️ Mark Open' : '✅ Mark Fixed'}</button></div>`).join('')
+      : `<p class="hint center">${bugFilter === 'new' ? 'No open reports. 🎉' : 'Nothing here.'}</p>`) + `</section>`;
+  const load = async () => {
+    $('bgLoad').disabled = true; $('bgMsg').textContent = 'Loading reports…';
+    try { bugCache = await fetchBugReports(); renderAdBugs(); }
+    catch (e) { $('bgLoad').disabled = false; $('bgMsg').textContent = `❌ ${e.message}`; }
+  };
+  $('bgLoad').onclick = load;
+  if (bugCache === null) load();
+  $('adBody').querySelectorAll('[data-bf]').forEach(b => { b.onclick = () => { bugFilter = b.dataset.bf; renderAdBugs(); }; });
+  $('adBody').querySelectorAll('[data-bs]').forEach(b => { b.onclick = () => {
+    const s2 = readJSON(BUG_STATUS_KEY) || {}; s2[b.dataset.bs] = (s2[b.dataset.bs] || 'new') === 'fixed' ? 'new' : 'fixed'; writeJSON(BUG_STATUS_KEY, s2); renderAdBugs(); }; });
+  if ($('bgCopy')) $('bgCopy').onclick = async () => {
+    const open = bugCache.filter(b => st(b) === 'new');
+    const text = `TourLife bug reports (${open.length} open):\n\n` + open.map((b, i) =>
+      `${i + 1}. ${new Date(b.at).toLocaleString()} · ${b.from || 'no player'}${b.who ? ` · ${b.who}` : ''}\n${b.what}\nDetails: ${b.ctx}`).join('\n\n');
+    try { await navigator.clipboard.writeText(text); $('bgMsg').textContent = '📋 Copied. Paste it to Claude.'; }
+    catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); $('bgMsg').textContent = '📋 Copied. Paste it to Claude.'; }
+  };
 }
 
 // --- Players -------------------------------------------------------------------------

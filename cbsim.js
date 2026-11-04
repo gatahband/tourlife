@@ -112,6 +112,7 @@ function cbMeet(st, by, from, land, type, rcvPos, read = 0) {
   if (type === 'topspin' && wing === 'bh' && B.oneBh) pr += 0.08 * deep;
   if (type === 'slice') pr += sf.low + (wing === 'bh' ? 0.03 : 0);
   if (Math.abs(contact.y) > 13.6 && !volley) pr += 0.08;
+  { const edge = Math.min(CB.HW - Math.abs(land.x), CB.HL - Math.abs(land.y)); if (edge < 0.6 && edge >= 0 && !volley) pr += 0.15 * (1 - edge / 0.6); } // a ball on the line is harder to handle
   if (volley && type === 'topspin' && Math.abs(land.y) < 7) pr += 0.3;
   if (volley && Math.abs(contact.y) > 4.5) pr += 0.12; // a first volley from around the service line // a dipping pass at the feet
   if (atNet && type === 'lob') pr += 0.25; // turned around, running back

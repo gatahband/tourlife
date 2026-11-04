@@ -77,31 +77,14 @@
     g.strokeStyle = '#ccc'; g.lineWidth = 3;
     for (const x of [-6.4, 6.4]) seg(g, proj(x, 0), proj(x, 0, 1.07));
   }
-  // Racket-hand keyframes (dx towards the swing side, height): backswing, contact, finish; then the racket head.
-  const POSES = {
-    topspin: [[0.55, 1.15, 0.95, 1.4], [0.45, 1.0, 0.92, 0.98], [-0.3, 1.55, -0.12, 2.0]],
-    flat:    [[0.6, 1.2, 1.0, 1.35], [0.45, 1.05, 0.95, 1.05], [-0.35, 1.35, -0.8, 1.5]],
-    slice:   [[0.5, 1.55, 0.8, 1.9], [0.45, 1.05, 0.95, 1.0], [-0.05, 0.95, -0.4, 1.05]],
-    lob:     [[0.5, 0.8, 0.85, 0.5], [0.45, 0.95, 0.88, 1.1], [0.1, 1.9, 0.2, 2.45]],
-    volley:  [[0.4, 1.3, 0.55, 1.75], [0.45, 1.18, 0.82, 1.45], [0.35, 1.1, 0.7, 1.35]],
-    serve:   [[0.35, 1.2, 0.45, 0.7], [0.2, 1.98, 0.14, 2.6], [-0.3, 1.0, -0.55, 0.6]],
-  };
-  const handDir = p => (p.side === 0 ? 1 : -1) * (p.lefty ? -1 : 1); // court-x direction of the racket hand
-  function racketAt(p) {
-    const hd = handDir(p);
-    if (!p.pose) return XL.REST(hd); // arms by the sides, racket pointing at the ground
-    const K = POSES[p.pose], w = p.pose === 'serve' ? hd : (p.wing === 'bh' ? -hd : hd), u = p.pu;
-    const [a, b, t] = u < 0.4 ? [K[0], K[1], u / 0.4] : [K[1], K[2], (u - 0.4) / 0.6];
-    const m = i => a[i] + (b[i] - a[i]) * t;
-    const k = p.wing === 'bh' && p.pose !== 'serve' ? 0.65 : 1; // a backhand is hit across a body turned side-on
-    return [m(0) * w * k, m(1), m(2) * w * k, m(3)];
-  }
+  // The swings themselves live with the body drawing (cblook.js), so both courts can share them.
+  const handDir = XL.handDir, racketAt = XL.racketAt;
   function drawPlayer(g, p) {
     const G = proj(p.x, p.y), d = p.y - CAM.y, s = G.s * (1 + 0.6 * Math.max(0, (d - 21) / 25));
     const P = (dx, z) => [G.X + dx * s, G.Y - z * s];
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(G.X, G.Y, 0.45 * s, 0.13 * s, 0, 0, 7); g.fill();
     const [hx, hz, rx, rz] = racketAt(p), hd = handDir(p);
-    const twoHands = p.pose && p.pose !== 'serve' && p.pose !== 'volley' && p.wing === 'bh' && !p.oneBh;
+    const twoHands = XL.twoHanded(p);
     g.strokeStyle = p.side === 0 ? 'rgba(66,165,245,0.8)' : 'rgba(255,138,80,0.8)'; g.lineWidth = 2; // a ring in your colour or theirs under each player
     g.beginPath(); g.ellipse(G.X, G.Y, 0.45 * s, 0.13 * s, 0, 0, 7); g.stroke();
     XL.drawBody(g, P, s, { side: p.side, sw: Math.sin(p.run) * 0.2, hand: [hx, hz, rx, rz], hd, twoHands, turn: !!p.pose, look: p.look });
@@ -146,16 +129,25 @@
       g.fillStyle = '#ffd54f'; g.beginPath(); g.arc(p.X, p.Y, 2.5, 0, 7); g.fill();
     }
   }
-  // The incoming ball's whole flight as a dotted line while you decide: floated, flat, dipping or dying short.
+  // The flight of the shot you're building as a dotted line while you decide: floated, flat, dipping or dying short.
   function drawPath(g) {
     if (!S.path) return;
     g.setLineDash([2, 5]); g.lineWidth = 2; g.strokeStyle = S.path.by === 0 ? 'rgba(144,202,249,0.75)' : 'rgba(255,204,128,0.8)';
     g.beginPath(); S.path.pts.forEach((b, i) => { const p = proj(b.x, b.y, b.z); i ? g.lineTo(p.X, p.Y) : g.moveTo(p.X, p.Y); }); g.stroke();
     g.setLineDash([]);
   }
+  // Where "Then" takes you: an arrow on the court from your feet to where you'll move after the shot.
+  function drawArrow(g) {
+    const A = S.arrow; if (!A || Math.hypot(A.to.x - A.from.x, A.to.y - A.from.y) < 0.3) return;
+    const a = proj(A.from.x, A.from.y), b = proj(A.to.x, A.to.y), ang = Math.atan2(b.Y - a.Y, b.X - a.X), hl = Math.max(8, 0.35 * b.s);
+    g.strokeStyle = 'rgba(100,181,246,0.9)'; g.fillStyle = 'rgba(100,181,246,0.9)'; g.lineWidth = 2.5; g.setLineDash([6, 4]);
+    g.beginPath(); g.moveTo(a.X, a.Y); g.lineTo(b.X - Math.cos(ang) * hl * 0.6, b.Y - Math.sin(ang) * hl * 0.6); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.moveTo(b.X, b.Y); g.lineTo(b.X - Math.cos(ang - 0.45) * hl, b.Y - Math.sin(ang - 0.45) * hl); g.lineTo(b.X - Math.cos(ang + 0.45) * hl, b.Y - Math.sin(ang + 0.45) * hl); g.closePath(); g.fill();
+    g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillText('THEN', b.X, b.Y + 16);
+  }
   function draw() {
     if (!V.g || !V.W) return;
-    const g = V.g; drawCourt(g); drawMarks(g); drawPath(g);
+    const g = V.g; drawCourt(g); drawMarks(g); drawPath(g); drawArrow(g);
     const ballFar = S.ball && S.ball.y >= 0;
     S.players.filter(p => p.y >= 0).forEach(p => drawPlayer(g, p)); if (ballFar) drawBall(g);
     drawNet(g);
@@ -315,29 +307,45 @@
     if (depth === 'short') return { x: side * 3.5, y: side ? 5.6 : 5.0 };
     return { x: side * 2.8, y: depth === 'mid' ? 7.6 : 9.9 };
   }
+  // How close to the lines you aim: safe pulls the ball in, on the lines paints the sideline and baseline (riskier, more winners).
+  const MARGINS = [['safe', 'Safe'], ['normal', 'Normal'], ['lines', 'On The Lines']];
+  function applyMargin(aim, margin) {
+    if (!margin || margin === 'normal') return aim;
+    const sx = Math.sign(aim.x), ax = Math.abs(aim.x), ay = aim.y;
+    if (margin === 'safe') return { x: sx * ax * 0.75, y: ay >= 8 ? ay - 0.9 : ay + 0.4 };
+    return { x: ax > 0.6 ? sx * Math.min(3.85, ax + (3.85 - ax) * 0.7) : aim.x, y: ay >= 8 ? Math.min(11.4, ay + (11.4 - ay) * 0.7) : ay < 3 ? Math.max(1.3, ay - 0.6) : ay };
+  }
+  // Where "Then" takes you after the shot: back to the middle of their angles, a step towards the side you're covering, or in to the net.
+  function thenSpot(st, meet, move) {
+    const c = meet.contact; let p = cbRecoverSpot(0, c, move === 'net' || st.atNet[0]);
+    if (move === 'cross' || move === 'line') { const sg = Math.sign(c.x) || 1; p = { x: p.x + (move === 'cross' ? -sg : sg) * 0.7, y: p.y }; }
+    return p;
+  }
   const segBtns = (key, items, cur0, cls = '') => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-  let lastShot = { type: 'topspin', dir: 'cross', depth: 'deep' };
+  let lastShot = { type: 'topspin', dir: 'cross', depth: 'deep', margin: 'normal' };
   // God Panel: "win/lose this point" while a decision is open.
   const godHook = (U, res, clean) => { U.godReq = g => { clean(); res({ god: g }); }; };
   // o.step: a play's planned shot (pre-filled); o.why: why the play stopped; o.play: the play; o.done: the play has finished.
   window.xpAskShot = (U, st, o = {}) => new Promise(res => {
-    let { type, dir, depth } = o.step || lastShot, move = (o.step && o.step.move) || 'recover', spot = null, dropped = false;
+    let { type, dir, depth, margin = 'normal' } = o.step || lastShot, move = (o.step && o.step.move) || 'recover', spot = null, dropped = false;
     const dirs = [...DIRS, ...(canAngle(st) ? [ANGLE] : []), ...(canCrossNet(st) ? [CROSSNET] : [])];
     if ((dir === 'angle' && !canAngle(st)) || (dir === 'crossnet' && !canCrossNet(st))) dir = 'cross';
     if (move === 'net' && st.atNet[0]) move = 'recover';
     const moves = [['recover', st.atNet[0] ? 'Hold The Net' : 'Recover To Middle'], ['cross', 'Cover Their Crosscourt'], ['line', 'Cover Their Line'], ...(st.atNet[0] ? [] : [['net', 'Come To The Net']])];
     const sit = `<div class="xpsit">${situation(st)}</div>`;
-    const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; U.panel(''); U.godReq = null; };
+    const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; S.arrow = null; U.panel(''); U.godReq = null; };
     const head = () => o.step && !dropped ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Audible?</b><p>${o.why}</p><p class="xphint">Planned: ${stepText(o.step)}. Change it below and press Hit It, or:</p>` +
         '<div class="xpseg"><button type="button" data-run>Run The Play</button><button type="button" data-dropplay>Drop The Play</button></div></div>'
       : o.done ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Play Complete</b><p>You're on your own from here.</p></div>` : '';
     const render = () => {
-      const aim = spot || aimFor(st, dir, depth, type), e = cbValue(st, 0, aim, type, move === 'net'), [rw, rc] = riskWord(e.pIn);
+      const aim = spot || applyMargin(aimFor(st, dir, depth, type), margin), e = cbValue(st, 0, aim, type, move === 'net'), [rw, rc] = riskWord(e.pIn);
       const sh = { wing: st.inc.wing, volley: st.inc.volley, type: e.t, aim, from: st.pos[0] };
       S.targets = [{ ...aim }]; S.path = previewPath(st, aim, type); // the flight of the shot you're building
+      S.arrow = { from: { ...st.pos[0] }, to: thenSpot(st, e.meet, move) }; // and where you'll go after it
       U.panel(head() + sit + '<h3>Shot</h3>' + segBtns('t', SHOTS, type, 'five') +
         '<h3>Direction</h3>' + segBtns('d', dirs, spot ? null : dir, 'three') +
         (type === 'drop' || type === 'lob' || dir === 'angle' || dir === 'crossnet' ? '' : '<h3>Depth</h3>' + segBtns('p', DEPTHS, spot ? null : depth, 'three')) +
+        (spot ? '' : '<h3>Margin</h3>' + segBtns('mg', MARGINS, margin, 'three')) +
         `<p class="xphint">${spot ? 'Aiming at the spot you tapped. Pick a direction to go back.' : 'Or tap any spot on their side of the court to aim there exactly.'}</p>` +
         '<h3>Then</h3>' + segBtns('m', moves, move) +
         `<p class="xphint">Covering a side gets you there early if you guess right, and wrong-footed if you don't.</p>` +
@@ -348,9 +356,10 @@
       P.querySelectorAll('[data-d]').forEach(b => { b.onclick = () => { dir = b.dataset.d; spot = null; render(); }; });
       P.querySelectorAll('[data-p]').forEach(b => { b.onclick = () => { depth = b.dataset.p; spot = null; render(); }; });
       P.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => { move = b.dataset.m; render(); }; });
+      P.querySelectorAll('[data-mg]').forEach(b => { b.onclick = () => { margin = b.dataset.mg; render(); }; });
       const rb = q(P, '[data-run]'); if (rb) rb.onclick = () => { clean(); res({ ...stepShot(st, o.step), run: true }); };
       const db = q(P, '[data-dropplay]'); if (db) db.onclick = () => { dropped = true; render(); };
-      q(P, '[data-hit]').onclick = () => { clean(); lastShot = { type, dir, depth }; res({ aim, type, move, dropped }); };
+      q(P, '[data-hit]').onclick = () => { clean(); lastShot = { type, dir, depth, margin }; res({ aim, type, move, dropped }); };
     };
     V.c.onclick = ev => { // tap their side of the court: aim at that spot
       const r = V.c.getBoundingClientRect(), p = unproj(ev.clientX - r.left, ev.clientY - r.top);
@@ -406,8 +415,8 @@
     { id: 'p6', kind: 'return', name: 'Pound The Backhand', read: null, steps: [{ type: 'topspin', dir: 'bh', depth: 'deep', move: 'cross' }, { type: 'topspin', dir: 'bh', depth: 'deep', move: 'recover' }, { type: 'flat', dir: 'open', depth: 'deep', move: 'recover' }] },
   ];
   function plays() { const d = cbData(); if (!Array.isArray(d.plays)) { d.plays = STARTER_PLAYS.map(p => ({ ...p, n: 0, won: 0 })); cbSave(d); } return d.plays; }
-  const stepText = p => `${TYPE_N[p.type]} ${DIR_N[p.dir]}${p.type === 'drop' || p.type === 'lob' ? '' : ` ${DEPTH_N[p.depth]}`} (${MOVES_N[p.move] || 'Recover'})`;
-  const stepShot = (st, p) => ({ aim: aimFor(st, p.dir, p.depth, p.type), type: p.type, move: st.atNet[0] && p.move === 'net' ? 'recover' : p.move });
+  const stepText = p => `${TYPE_N[p.type]} ${DIR_N[p.dir]}${p.type === 'drop' || p.type === 'lob' ? '' : ` ${DEPTH_N[p.depth]}`}${p.margin === 'lines' ? ' On The Lines' : p.margin === 'safe' ? ' (Safe)' : ''} (${MOVES_N[p.move] || 'Recover'})`;
+  const stepShot = (st, p) => ({ aim: applyMargin(aimFor(st, p.dir, p.depth, p.type), p.margin), type: p.type, move: st.atNet[0] && p.move === 'net' ? 'recover' : p.move });
   const playLine = p => [p.kind === 'serve' ? `${SPIN_N[p.serve.spin]} ${ZONE_N[p.serve.zone]}${p.serve.approach ? ' + Volley' : ''}` : p.read ? `Guess ${ZONE_N[p.read]}` : 'Return',
     ...p.steps.map(x => `${TYPE_N[x.type]} ${DIR_N[x.dir]}`)].join(' → ');
   // Why a play can't simply carry on here (null = it can).
@@ -459,7 +468,7 @@
             row('approach', [['', 'Stay Back'], ['1', 'Serve And Volley']], e.serve.approach ? '1' : '', -1, '')
             : '<h3>Return: Your Guess</h3>' + row('read', [...['wide', 'body', 't'].map(z => [z, ZONE_N[z]]), ['', 'Just React']], e.read || '', -1, '')) +
           e.steps.map((st0, i) => `<div class="xpstep"><h3>Shot ${i + 1}${e.steps.length > 1 ? ` <button type="button" class="link" data-pb="del" data-i="${i}">Remove</button>` : ''}</h3>` +
-            row('type', SHOTS, st0.type, i) + row('dir', [...DIRS, ANGLE], st0.dir, i) + (st0.type === 'drop' || st0.type === 'lob' || st0.dir === 'angle' ? '' : row('depth', DEPTHS, st0.depth, i)) +
+            row('type', SHOTS, st0.type, i) + row('dir', [...DIRS, ANGLE], st0.dir, i) + (st0.type === 'drop' || st0.type === 'lob' || st0.dir === 'angle' ? '' : row('depth', DEPTHS, st0.depth, i)) + row('margin', MARGINS, st0.margin || 'normal', i) +
             '<p class="xphint">Then</p>' + row('move', Object.entries(MOVES_N), st0.move, i, '') + '</div>').join('') +
           (e.steps.length < 4 ? '<button type="button" class="btn ghost small" data-pb="add">+ Add A Shot</button>' : '') +
           `<div class="btn-row"><button type="button" class="btn" data-pb="save">Save Play</button><button type="button" class="btn ghost" data-pb="back">Cancel</button></div>` +

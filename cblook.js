@@ -81,6 +81,7 @@ const XL = (() => {
     g.strokeStyle = fill(g, L.shorts, sx0, sy0, sx1, sy1); g.lineWidth = Math.max(3, 0.17 * s);
     for (const [lx, fx] of legs) { g.beginPath(); g.moveTo(...P(lx, 0.98)); g.lineTo(...P(lx + (fx - lx) * 0.35, 0.62)); g.stroke(); }
     // Shirt: broad shoulders tapering to the waist.
+    const drawShirt = () => {
     const [tx0, ty0] = P(-0.29, 1.5), [tx1, ty1] = P(0.29, 0.95);
     g.save(); g.beginPath(); g.moveTo(...P(-0.29, 1.5)); g.lineTo(...P(0.29, 1.5)); g.lineTo(...P(0.2, 0.95)); g.lineTo(...P(-0.2, 0.95)); g.closePath(); g.clip();
     const sh = L.shirt, pat = sh && typeof sh === 'object' ? sh : {}; // plain colours are strings (and strings have a .split method)
@@ -90,6 +91,7 @@ const XL = (() => {
     if (pat.stars) { g.fillStyle = '#fff'; for (const [u, v] of [[0.2, 0.25], [0.7, 0.4], [0.45, 0.7], [0.85, 0.15], [0.3, 0.85]]) g.fillRect(tx0 + u * (tx1 - tx0), ty0 + v * (ty1 - ty0), Math.max(1, s * 0.02), Math.max(1, s * 0.02)); }
     if (sh === 'gold') { g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(tx0 + (tx1 - tx0) * 0.15, ty0, (tx1 - tx0) * 0.08, ty1 - ty0); }
     g.restore();
+    };
     // Arms, wristbands and racket.
     // Arms: shoulder → elbow → hand. The elbow is found from the shoulder and hand (two-bone reach), bending down
     // and out the way a real elbow does; a hand too far away straightens the arm.
@@ -116,14 +118,19 @@ const XL = (() => {
     };
     const shw = o.turn ? 0.15 : 0.26; // side-on in a swing, so the shoulders look narrower
     const off = o.twoHands ? [hx, hz] : o.turn ? [-hd * 0.3, 1.02] : [-hd * 0.31, 0.9];
-    arm(hd * shw, 1.45, hx, hz);
-    arm(-hd * shw, 1.45, off[0], off[1]);
-    g.strokeStyle = '#333'; g.lineWidth = Math.max(1.5, 0.05 * s);
-    g.beginPath(); g.moveTo(...P(hx, hz)); g.lineTo(...P(hx + (rx - hx) * 0.45, hz + (rz - hz) * 0.45)); g.stroke();
-    const [cx, cy] = P(hx + (rx - hx) * 0.75, hz + (rz - hz) * 0.75);
-    g.strokeStyle = fill(g, L.racket, cx - 0.15 * s, cy - 0.17 * s, cx + 0.15 * s, cy + 0.17 * s); g.lineWidth = Math.max(2, 0.06 * s);
-    g.beginPath(); g.ellipse(cx, cy, 0.14 * s, 0.17 * s, Math.atan2(-(rz - hz), rx - hx) + Math.PI / 2, 0, 7); g.stroke();
-    if (L.racket === 'gold') { g.fillStyle = 'rgba(255,250,210,0.9)'; g.beginPath(); g.arc(cx + 0.09 * s, cy - 0.12 * s, Math.max(1.2, 0.03 * s), 0, 7); g.fill(); }
+    const drawRacket = () => {
+      g.strokeStyle = '#333'; g.lineWidth = Math.max(1.5, 0.05 * s);
+      g.beginPath(); g.moveTo(...P(hx, hz)); g.lineTo(...P(hx + (rx - hx) * 0.45, hz + (rz - hz) * 0.45)); g.stroke();
+      const [cx, cy] = P(hx + (rx - hx) * 0.75, hz + (rz - hz) * 0.75);
+      g.strokeStyle = fill(g, L.racket, cx - 0.15 * s, cy - 0.17 * s, cx + 0.15 * s, cy + 0.17 * s); g.lineWidth = Math.max(2, 0.06 * s);
+      g.beginPath(); g.ellipse(cx, cy, 0.14 * s, 0.17 * s, Math.atan2(-(rz - hz), rx - hx) + Math.PI / 2, 0, 7); g.stroke();
+      if (L.racket === 'gold') { g.fillStyle = 'rgba(255,250,210,0.9)'; g.beginPath(); g.arc(cx + 0.09 * s, cy - 0.12 * s, Math.max(1.2, 0.03 * s), 0, 7); g.fill(); }
+    };
+    // Seen from behind, a racket arm that has come across the body (a follow-through, a backhand) is in front of the
+    // chest, so the body hides it: draw it first and let the shirt cover it, leaving the racket peeking past the shoulder.
+    const across = o.side === 0 && (hx * hd < 0.12 || o.twoHands); // a two-handed backhand is always played in front of the chest
+    if (across) { arm(hd * shw, 1.45, hx, hz); if (o.twoHands) arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); drawShirt(); if (!o.twoHands) arm(-hd * shw, 1.45, off[0], off[1]); }
+    else { drawShirt(); arm(hd * shw, 1.45, hx, hz); arm(-hd * shw, 1.45, off[0], off[1]); drawRacket(); }
     // Neck, head, hair, then a hat or a headband.
     g.fillStyle = L.skin; g.fillRect(P(-0.05, 1.58)[0], P(0, 1.58)[1], 0.1 * s, 0.1 * s);
     g.beginPath(); g.arc(...P(0, 1.7), 0.12 * s, 0, 7); g.fill();
@@ -153,8 +160,43 @@ const XL = (() => {
     }
   }
   const REST = hd => [hd * 0.31, 0.9, hd * 0.37, 0.27]; // hand by the side, racket head down by the shin
+  // Swings: racket hand and racket head [hand across, hand height, head across, head height] at moments of the swing
+  // (0 = start, 0.4 = contact, 1 = finish). Across is measured towards the swing side (the forehand side for a
+  // forehand, the backhand side for a backhand). Forehands drop the racket below the hand before contact and come up
+  // through the ball: topspin swoops up over the head, flat comes through across the chest. Backhands start from a
+  // unit turn with the racket taken back on the backhand side, then finish over the racket shoulder.
+  const SWINGS = {
+    fh: {
+      topspin: [[0, 0.26, 0.4, 0.7, 1], [[0.55, 1.2, 0.95, 1.35], [0.5, 0.85, 0.85, 0.62], [0.38, 1.0, 0.78, 1.08], [0.05, 1.5, 0.25, 1.85], [-0.15, 1.75, -0.02, 2.25]]],
+      flat:    [[0, 0.26, 0.4, 0.7, 1], [[0.55, 1.15, 0.95, 1.2], [0.5, 0.92, 0.88, 0.8], [0.38, 1.02, 0.8, 1.05], [0.05, 1.25, -0.3, 1.35], [-0.25, 1.35, -0.55, 1.55]]],
+      slice:   [[0, 0.4, 1], [[0.5, 1.55, 0.8, 1.9], [0.4, 1.05, 0.8, 1.0], [-0.05, 0.95, -0.4, 1.0]]],
+      lob:     [[0, 0.4, 1], [[0.5, 0.8, 0.85, 0.5], [0.42, 0.95, 0.82, 1.1], [0.1, 1.9, 0.2, 2.45]]],
+      volley:  [[0, 0.4, 1], [[0.4, 1.3, 0.55, 1.75], [0.42, 1.18, 0.78, 1.45], [0.35, 1.1, 0.68, 1.35]]],
+      serve:   [[0, 0.4, 1], [[0.35, 1.2, 0.45, 0.7], [0.2, 1.98, 0.14, 2.6], [-0.3, 1.0, -0.55, 0.6]]],
+    },
+    bh: {
+      topspin: [[0, 0.26, 0.4, 0.7, 1], [[0.4, 1.25, 0.75, 1.45], [0.38, 0.9, 0.7, 0.72], [0.3, 1.02, 0.68, 1.05], [0.0, 1.45, 0.15, 1.8], [-0.18, 1.65, -0.08, 2.1]]],
+      flat:    [[0, 0.26, 0.4, 0.7, 1], [[0.4, 1.2, 0.75, 1.3], [0.38, 0.95, 0.72, 0.82], [0.3, 1.02, 0.68, 1.05], [0.0, 1.25, -0.25, 1.4], [-0.2, 1.35, -0.48, 1.5]]],
+      slice:   [[0, 0.4, 1], [[0.4, 1.5, 0.7, 1.85], [0.3, 1.05, 0.68, 1.0], [-0.1, 1.0, -0.4, 1.05]]],
+      lob:     [[0, 0.4, 1], [[0.38, 0.8, 0.7, 0.5], [0.32, 0.95, 0.66, 1.1], [0.05, 1.8, 0.15, 2.3]]],
+      volley:  [[0, 0.4, 1], [[0.3, 1.3, 0.45, 1.7], [0.34, 1.18, 0.66, 1.42], [0.28, 1.1, 0.56, 1.32]]],
+    },
+  };
+  const handDir = p => (p.side === 0 ? 1 : -1) * (p.lefty ? -1 : 1); // court-x direction of the racket hand
+  // Where the racket hand and head are for player p ({ side, lefty, pose, wing, pu }) at this moment of the swing.
+  function racketAt(p) {
+    const hd = handDir(p);
+    if (!p.pose) return REST(hd);
+    const bh = p.wing === 'bh' && p.pose !== 'serve', set = (bh && SWINGS.bh[p.pose]) || SWINGS.fh[p.pose] || SWINGS.fh.topspin;
+    const w = p.pose === 'serve' ? hd : bh ? -hd : hd, [T, K] = set, u = Math.max(0, Math.min(1, p.pu || 0));
+    let i = 0; while (i < T.length - 2 && u > T[i + 1]) i++;
+    const t = (u - T[i]) / ((T[i + 1] - T[i]) || 1), a = K[i], b = K[i + 1], m = j => a[j] + (b[j] - a[j]) * t;
+    return [m(0) * w, m(1), m(2) * w, m(3)];
+  }
+  // Both hands on the racket: two-handed backhand drives and lobs (slices and volleys are one-handed).
+  const twoHanded = p => !!p.pose && p.wing === 'bh' && !p.oneBh && ['topspin', 'flat', 'lob'].includes(p.pose);
   const owned = c => new Set([...Object.values(ALL).filter(x => !x.price).map(x => x.id), ...((c && c.wardrobe) || [])]);
-  return { REST, SKINS, RARITY, CATS, ITEMS, ALL, DEFAULT, look, resolve, randomFor, fill, css, drawBody, preview, owned };
+  return { REST, SWINGS, handDir, racketAt, twoHanded, SKINS, RARITY, CATS, ITEMS, ALL, DEFAULT, look, resolve, randomFor, fill, css, drawBody, preview, owned };
 })();
 
 // --- The Pro Shop and the creator's look picker (Extreme for now) -------------------------------------------------

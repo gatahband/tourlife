@@ -1974,10 +1974,12 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xpcall, .xpland, .xpplayln { position: absolute; left: 0; right: 444px; z-index: 2; margin: 0; text-shadow: 0 1px 3px #000; pointer-events: none; }
   .xpcall { bottom: 46px; font-size: 20px; } .xpland { bottom: 22px; font-size: 15px; } .xpplayln { bottom: 78px; font-size: 15px; }
   .xppanel { position: absolute; top: 80px; right: 16px; max-height: calc(100vh - 96px); width: 412px; z-index: 2; overflow-y: auto; margin: 0;
-    background: rgba(12, 20, 28, .86); backdrop-filter: blur(8px); border-radius: 16px; padding: 12px 14px 0; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+    background: rgba(12, 20, 28, .86); backdrop-filter: blur(8px); border-radius: 16px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
   .xppanel:empty { display: none; }
   .xppanel > :first-child { margin-top: 0; }
-  .xphitbar { background: rgba(12, 20, 28, .96); margin: 10px -14px 0; padding: 10px 14px 14px; }
+  .xppanel > :last-child { margin-bottom: 0; } /* even space top and bottom */
+  .xppanel .xpseg:last-child { margin-bottom: 0; }
+  .xphitbar { background: rgba(12, 20, 28, .98); margin: 10px -14px -14px; padding: 10px 14px 14px; border-radius: 0 0 16px 16px; bottom: -14px; } /* pinned flush to the panel's bottom edge */
   .xpmsg { inset: 35% calc(444px + 10%) auto 10%; }
   .xppanel .xpend { margin-bottom: 14px; }
 }
@@ -2035,3 +2037,4 @@ body.xmode #hOvr .ovrtop .ovrnum { order: 2; }
   body.xmode #hOvr .ovrnum { width: 70px; height: 70px; border-radius: 18px; }
   body.xmode #hOvr .ovrnum b { font-size: 24px; }
 }
+.bugrow .btn { margin: 6px 0 0; } .bugrow.fixed { opacity: .55; } .bugrow.fixed p { text-decoration: line-through; }

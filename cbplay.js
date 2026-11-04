@@ -568,7 +568,7 @@ function cbSwitchHtml() {
   // X-Treme carries a NEW badge until you've tried it, glows like fire on hover and drops down a short explanation.
   let seen = false; try { if (isExtreme()) localStorage.setItem('tourlife.xseen', '1'); seen = !!localStorage.getItem('tourlife.xseen'); } catch {}
   return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${isExtreme() ? 'on' : ''}">TourLife X-Treme${seen ? '' : '<i class="xnew">New</i>'}` +
-    `<span class="xmtip"><b>🔥 TourLife X-Treme</b>Play every point yourself. Build each shot, call plays from your Playbook and time your swings with the spacebar. A separate career with its own save, so your TourLife career stays safe.</span></button></div>`;
+    `<span class="xmtip"><b>🔥 TourLife X-Treme</b>Play Every Point Yourself. Build Each Shot. Use Your Playbook or Time Your Shots Perfectly. This will be a separate career with its own save. Enjoy!</span></button></div>`;
 }
 function cbHome() {
   for (const id of ['home', 'creator']) {

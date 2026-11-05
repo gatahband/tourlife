@@ -813,6 +813,7 @@ function createCourt() {
     return y1 - 2;
   }
 
+  const gait = [{ x: null, y: null, ph: 0, amp: 0 }, { x: null, y: null, ph: 0, amp: 0 }]; // per player: last spot, stride phase, stride size
   function drawPlayer(side) {
     const p = pos[side];
     const gold = prof[side] && prof[side].real; // real ATP players are drawn in gold
@@ -842,7 +843,10 @@ function createCourt() {
         else pl = { ...pl, pose: /slice/i.test(txt) ? 'slice' : /volley/i.test(txt) ? 'volley' : /lob/i.test(txt) ? 'lob' : /flat|drive/i.test(txt) ? 'flat' : 'topspin',
           wing: r === 'bh' || (r === 'prep' && lab.wingSide === 'bh') ? 'bh' : 'fh', pu: r === 'prep' ? 0.15 : Math.min(1, 0.35 + age * 1.6) };
       }
-      XL.drawBody(ctx, (dx, z) => [fx + dx * sc, fy - z * sc], sc, { side: pl.side, sw: 0, hand: XL.racketAt(pl), hd, twoHands: pl.pose ? XL.twoHanded(pl) : false, turn: !!pl.pose, look });
+      // Legs: a stride that follows how far they've moved since the last frame, easing back to standing when they stop.
+      const g = gait[side], md = g.x == null ? 0 : Math.hypot(p.x - g.x, p.y - g.y); g.x = p.x; g.y = p.y;
+      if (md < 1.5) { g.ph += md * 3.4; g.amp += ((md > 0.004 ? 1 : 0) - g.amp) * 0.18; }
+      XL.drawBody(ctx, (dx, z) => [fx + dx * sc, fy - z * sc], sc, { side: pl.side, sw: Math.sin(g.ph) * 0.22 * g.amp, hand: XL.racketAt(pl), hd, twoHands: pl.pose ? XL.twoHanded(pl) : false, turn: !!pl.pose, look });
       top = fy - 1.9 * sc; below = P(p.x, p.y, 0.8)[1];
     } else {
       const [, hy] = P(p.x, p.y, 1.45);

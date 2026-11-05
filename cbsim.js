@@ -207,7 +207,9 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   st.shots.push(shot);
   if (by === 0) st.mem.lanes[wing][shot.lane]++;
   const pNet = CB_SHOT[type].net * (1 + 1.8 * st.pr[by]) * cbSkf(volley ? st.ab[by].net : st.ab[by].ground) ** 2 * (Math.abs(aim.y) < 7 && type !== 'lob' ? 1.5 : 1) * (T.net || 1);
-  if ((!T.keepIn && rng() < pNet) || land.y * f < 0.3) { shot.err = 'net'; shot.land = { x: aim.x * 0.4 + from.x * 0.6, y: 0 }; return cbEnd(st, r, 'err', shot); }
+  // forceErr (cbtouch.js): you saw it go into the net or long in the timing game, so that's what happens.
+  if (T.forceErr === 'out') { land.y = f * (CB.HL + 0.3 + 0.8 * rng()); shot.land = land; shot.err = 'out'; return cbEnd(st, r, 'err', shot); }
+  if (T.forceErr === 'net' || (!T.keepIn && rng() < pNet) || land.y * f < 0.3) { shot.err = 'net'; shot.land = { x: aim.x * 0.4 + from.x * 0.6, y: 0 }; return cbEnd(st, r, 'err', shot); }
   if (Math.abs(land.x) > CB.HW || Math.abs(land.y) > CB.HL) { shot.err = 'out'; return cbEnd(st, r, 'err', shot); }
   // The receiver as the ball is struck: where they got to, leaning on a read of you.
   const read = cbReadOf(st, by, from, aim, wing);

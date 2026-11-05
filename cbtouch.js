@@ -438,8 +438,10 @@
     if (type === 'slice' && !R.early) e.net *= 1 + 1.5 * m;
     if (type === 'lob') { e.dy = R.early ? -2.5 * m : 1.8 * m; e.dx *= 0.5; }
     if (R.spin != null) e.dy += (0.5 - R.spin) * 1.6 * (R.early ? 1 : 0.6); // topspin: too little spin flies long, too much dips short
-    if (R.flight === 'net') e.net = Math.max(e.net, 8); // what you saw is what happens: into the net
-    if (R.flight === 'long') e.dy = Math.max(e.dy, 2.2);
+    if (R.flight === 'net') e.forceErr = 'net'; // what you saw is exactly what happens: into the net
+    if (R.flight === 'long') e.forceErr = 'out'; // or long
+    if (type === 'drop' && q < 0.15) e.forceErr = R.early ? 'out' : 'net'; // a botched drop shot: floated long or dumped in the net
+    if (type === 'lob' && q < 0.15 && !R.early) e.forceErr = 'out'; // a lob launched way too high sails long
     if (R.flight === 'in') e.keepIn = true;
     // The second meter means something different for each shot (lq: how close to its sweet spot).
     const lq = R.load == null ? 0 : Math.max(0, 1 - Math.abs(R.load - 0.62) / 0.45);

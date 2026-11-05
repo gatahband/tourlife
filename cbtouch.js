@@ -7,11 +7,11 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const GAMES = {
     drop:    { name: 'The Scoop', how: 'Tap as the ball kisses the strings' },
-    flat:    { name: 'The Contact', how: 'Tap as the marker hits the green' },
+    flat:    { name: 'The Contact', how: 'Hold to load the power · let go in the green' },
     topspin: { name: 'The Contact', how: 'Hold to load the spin · let go in the green' },
     slice:   { name: 'The Contact', how: 'Hold to take it high · let go in the green' },
     lob:     { name: 'The Lift', how: 'Hold to lift · let go in the green band' },
-    serve:   { name: 'The Toss', how: 'Hold to toss · let go as the marker hits the green' },
+    serve:   { name: 'The Toss', how: 'Press in the green to toss · let go in the green to hit' },
   };
   const touchOn = () => cbData().touch !== false;
   window.xpTouchOn = touchOn;
@@ -93,13 +93,15 @@
     const g = cv.getContext('2d'); g.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
     const t0 = performance.now(); let held = false, pressAt = null, relAt = null, done = null, alive = true;
     const now = () => (performance.now() - t0) / 1000;
-    const press = () => { if (done || held) return; held = true; pressAt = now(); game.press && game.press(pressAt); };
-    const release = () => { if (done || !held) return; held = false; relAt = now(); game.release && game.release(relAt); };
-    const kd = e => { if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) press(); } };
-    const ku = e => { if (e.code === 'Space') { e.preventDefault(); release(); } };
+    // Timed from the moment the key or finger actually went down (the event's own clock), not the next frame.
+    const evT = e => (e && e.timeStamp > 0 && Math.abs(e.timeStamp - performance.now()) < 500 ? (e.timeStamp - t0) / 1000 : now());
+    const press = e => { if (done || held) return; held = true; pressAt = evT(e); game.press && game.press(pressAt); };
+    const release = e => { if (done || !held) return; held = false; relAt = evT(e); game.release && game.release(relAt); };
+    const kd = e => { if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) press(e); } };
+    const ku = e => { if (e.code === 'Space') { e.preventDefault(); release(e); } };
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
     // Touch: tap or hold anywhere on the match screen (except the buttons along the top), not just on the card.
-    const ov = U.el, pd = e => { if (e.target.closest && e.target.closest('.xptopb, .xpdrop, button')) return; e.preventDefault(); press(); }, pu = () => release();
+    const ov = U.el, pd = e => { if (e.target.closest && e.target.closest('.xptopb, .xpdrop, button')) return; e.preventDefault(); press(e); }, pu = e => release(e);
     ov.addEventListener('pointerdown', pd); ov.addEventListener('pointerup', pu); ov.addEventListener('pointercancel', pu);
     const finish = (q, early, words) => { if (done) return; const [label, col] = grade(q, early, words); done = { q, early, label, col, at: now() }; };
 
@@ -138,20 +140,22 @@
       const spin = ch.spin || 'flat', ta = 0.85 * (1 - 0.3 * d), ideal = ta + ({ flat: 0, kick: -0.15, slice: 0.12 }[spin] || 0) * (1 - 0.3 * d), tol = 0.075 * (1 - 0.85 * d);
       const hx = W * 0.5, base = H - 40, topY = 24, tossH = u => (u <= ta ? 1 - (1 - u / ta) ** 2 : Math.max(0, 1 - ((u - ta) / ta) ** 2));
       const yOf = u => base - tossH(u) * (base - topY), zy = yOf(ideal);
-      if (window.__xpTest) window.__xpTest.ideal = { hit: ideal };
+      if (window.__xpTest) window.__xpTest.ideal = { hit: ideal, toss: 0.9 };
       const R = 66, aC = -Math.PI * 0.56, piv = { x: hx - R * Math.cos(aC), y: zy - R * Math.sin(aC) };
       const A_REST = Math.PI * 0.3, A_COCK = Math.PI * 0.58, A_END = aC - Math.PI * 0.85;
       const head = a => ({ x: piv.x + R * Math.cos(a), y: piv.y + R * Math.sin(a) });
       const drawRacket = a => { const h = head(a); racketPro(g, h.x, h.y, Math.atan2(piv.y - h.y, piv.x - h.x) - Math.PI / 2, 17, paint, 0.6); };
       const ease = x => x * x * (3 - 2 * x), key = el.querySelector('.xpmkey');
-      let toss = null, hitAt = null, hitU = 0;
-      const setKey = () => { key.innerHTML = phone ? (toss == null ? 'Hold anywhere to toss' : 'Let go in the green') : toss == null ? 'Hold <kbd>Space</kbd> to toss' : 'Let go in the green'; };
+      let toss = null, hitAt = null, hitU = 0, tossQ = 1;
+      // Meter one, the rhythm: before the toss a marker swings to and fro; press as it crosses the green for a clean toss.
+      const per = 1.3 * (1 - 0.3 * d), rw = 0.09 * (1 - 0.5 * d), osc = t => 0.5 + 0.5 * Math.sin(2 * Math.PI * (t - 0.9) / per); // first crosses the green 0.9 s in: time to get ready
+      const setKey = () => { key.innerHTML = phone ? (toss == null ? 'Press and hold in the green to toss' : 'Let go in the green') : toss == null ? 'Press and hold <kbd>Space</kbd> in the green' : 'Let go in the green'; };
       setKey();
       game = {
-        press: t => { if (toss == null) { toss = t; setKey(); } }, // press and hold: the toss goes up
+        press: t => { if (toss == null) { toss = t; tossQ = clamp(1 - Math.abs(osc(t) - 0.5) / (rw * 2.4), 0, 1); setKey(); } }, // press and hold: the toss goes up
         release: t => { // let go: the swing
           if (toss == null || hitAt != null) return;
-          hitAt = t; hitU = t - toss; const dt = hitU - ideal; finish(clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1), dt < 0, ['EARLY', 'LATE']);
+          hitAt = t; hitU = t - toss; const dt = hitU - ideal; finish(0.6 * clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1) + 0.4 * tossQ, dt < 0, ['EARLY', 'LATE']);
         },
         draw: t => {
           bg();
@@ -183,7 +187,12 @@
           // the meter: before the toss it waits; after it, hit as the marker crosses the green
           if (toss == null) {
             const pulse = 0.65 + 0.35 * Math.sin(t * 5);
-            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText(phone ? 'HOLD TO TOSS' : 'HOLD SPACE TO TOSS', W / 2 + 120, 80); g.globalAlpha = 1;
+            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText('PRESS IN THE GREEN', W / 2 + 120, 80); g.globalAlpha = 1;
+            const x0 = 40, x1 = W - 40, y = H - 13, u = osc(t), mx = x0 + (x1 - x0) * u;
+            g.fillStyle = 'rgba(5,10,15,0.78)'; roundRect(g, x0 - 12, y - 11, x1 - x0 + 24, 22, 11); g.fill();
+            g.fillStyle = 'rgba(255,152,0,0.8)'; roundRect(g, x0 + (x1 - x0) * (0.5 - rw * 2.4), y - 4, (x1 - x0) * rw * 4.8, 8, 3); g.fill();
+            g.fillStyle = '#3ddc84'; roundRect(g, x0 + (x1 - x0) * (0.5 - rw), y - 6, (x1 - x0) * rw * 2, 12, 4); g.fill();
+            g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 8; roundRect(g, mx - 2, y - 10, 4, 20, 2); g.fill(); g.shadowBlur = 0;
           } else meter(t, toss + ideal, tol, hitAt, 'LET GO', true, ideal, 0);
         },
       };
@@ -264,30 +273,30 @@
       // error, bigger the riskier the shot. The flight you see is the result: in, into the net (late) or long (early).
       const strike = t => {
         const dt = t - tc, qt = clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1), sp = type === 'topspin' ? depth : sp0;
-        const spinOff = type === 'topspin' && spinQ(depth) < 0.3;
+        const spinOff = spinQ(depth) < 0.3; // the load meter (spin, power or cut) way off
         let zone = Math.abs(dt) <= tol * 0.36 ? -1 : Math.abs(dt) <= tol * 0.96 ? 0 : qt > 0 ? 1 : 2; // -1: the white tick, perfect
         if (spinOff) zone = Math.min(2, zone + 1);
         // A big risk needs a near-perfect strike: just green can still miss, orange usually does.
         const errP = zone === -1 ? 0.25 * riskD ** 2 : zone === 0 ? 0.7 * riskD ** 1.5 : zone === 1 ? Math.min(0.97, 0.06 + 0.95 * riskD) : 0.5 + 0.5 * riskD;
         const err = Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
-        let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : 0);
-        const long = dt < 0 || (spinOff && depth < 0.62);
+        let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : (depth - 0.62) * 3); // more power or cut: it flies further
+        const long = dt < 0 || (spinOff && (type === 'topspin' ? depth < 0.62 : depth > 0.62));
         th = err ? (long ? Math.max(th, thB + 1.5) : Math.min(th, thA - 1.5)) : clamp(th, safe[0], safe[1]);
         const f = fly(th, sp), res = f.net ? 'net' : f.zl > 24.1 ? 'long' : 'in';
         const wide = tgt.x * (dt < 0 ? 1 + 1.2 * -dt : 1 - 1.2 * dt);
-        let q = type === 'topspin' ? 0.8 * qt + 0.2 * spinQ(depth) : qt;
+        let q = 0.65 * qt + 0.35 * spinQ(depth); // both meters: the release and the load
         if (res !== 'in') q = Math.min(q, 0.25); else q = Math.max(q, zone === 2 ? 0.15 : 0.3);
         flight = { at: t, f, res, wide, sp, rpm: type === 'topspin' ? Math.round((900 + 3300 * depth) / 10) * 10 : 0 };
-        const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : spinOff ? [depth < 0.62 ? 'NO SPIN' : 'TOO MUCH SPIN', 'TOO MUCH SPIN'] : ['EARLY', 'LATE'];
+        const lw = { topspin: ['NO SPIN', 'TOO MUCH SPIN'], flat: ['NO POWER', 'TOO MUCH POWER'], slice: ['NO BITE', 'TOO MUCH CUT'] }[type][depth < 0.62 ? 0 : 1];
+        const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : spinOff ? [lw, lw] : ['EARLY', 'LATE'];
         finish(q, dt < 0, words); done.spin = sp; done.flight = res;
       };
       const ideal = tc - swingT; // when to press (flat) or let go (topspin, slice)
       if (window.__xpTest) window.__xpTest.ideal = { release: ideal, hold: 0.62 * 0.75 };
       const key = el.querySelector('.xpmkey');
-      key.innerHTML = type === 'flat' ? (phone ? 'Tap when the marker hits the green' : '<kbd>Space</kbd> when the marker hits the green')
-        : (phone ? 'Hold anywhere, let go in the green' : 'Hold <kbd>Space</kbd>, let go in the green');
+      key.innerHTML = phone ? 'Hold anywhere, let go in the green' : 'Hold <kbd>Space</kbd>, let go in the green';
       game = {
-        press: t => { if (type === 'flat') { mode = 'swing'; swingAt = t; } else { mode = 'load'; loadAt = t; } },
+        press: t => { mode = 'load'; loadAt = t; },
         release: t => { if (mode === 'load') { mode = 'swing'; swingAt = t; } },
         draw: t => {
           const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0f1b26'); gr.addColorStop(1, '#0b141c'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
@@ -310,7 +319,7 @@
           // the racket: waits, takes back as their ball comes (topspin and slice load as you hold), swings along its own path
           if (mode === 'load') depth = clamp((t - loadAt) / 0.75, 0, 1.15);
           const ease = x => x * x * (3 - 2 * x);
-          const takeBack = type === 'flat' ? ease(clamp((t - 0.35) / (ideal - 0.6), 0, 1)) : mode === 'idle' ? 0.25 * ease(clamp((t - 0.35) / 0.8, 0, 1)) : Math.min(1, depth / 0.62);
+          const takeBack = mode === 'idle' ? 0.25 * ease(clamp((t - 0.35) / 0.8, 0, 1)) : Math.min(1, depth / 0.62);
           const rp0 = L3(READY, SW.back, takeBack);
           if (!flight && mode === 'load' && t > tc + tol * 3) { mode = 'swing'; swingAt = t; }
           if (mode === 'swing' && from === READY) from = rp0; // the swing starts from wherever the racket was
@@ -345,15 +354,15 @@
           racketPro(g, rP.X, rP.Y, ang, Math.max(14, 0.3 * rP.s), paint, SW.face);
           if (!ballFirst) ballPro(g, bp.X, bp.Y, Math.max(3.5, 0.09 * bp.s), t * (6 + bs * 30), live ? 1 : 0);
           // topspin: the spin meter fills as you hold (the green band is the sweet spot); RPM shows once you've hit it
-          if (type === 'topspin') {
+          { // the load meter: spin, power or cut fills as you hold (the green band is the sweet spot)
             const mx = W - 26, my = H - 40, mh = 110, band = [0.62 - 0.12 * (1 - 0.4 * d), 0.62 + 0.12 * (1 - 0.4 * d)];
             g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(mx - 5, my - mh, 10, mh);
             g.fillStyle = 'rgba(124,255,178,0.55)'; g.fillRect(mx - 5, my - mh * band[1] / 1.15, 10, mh * (band[1] - band[0]) / 1.15);
             g.fillStyle = depth > band[1] ? '#ff8a65' : '#ffd54f'; g.fillRect(mx - 3, my - mh * Math.min(depth, 1.15) / 1.15, 6, mh * Math.min(depth, 1.15) / 1.15);
-            g.fillStyle = '#9fb3c8'; g.font = '700 10px system-ui'; g.textAlign = 'center'; g.fillText('SPIN', mx, my + 13);
+            g.fillStyle = '#9fb3c8'; g.font = '700 10px system-ui'; g.textAlign = 'center'; g.fillText({ topspin: 'SPIN', flat: 'POWER', slice: 'CUT' }[type], mx, my + 13);
             if (flight && flight.rpm) { g.fillStyle = '#e8eef4'; g.font = '800 14px system-ui'; g.textAlign = 'right'; g.fillText(`${flight.rpm.toLocaleString('en-US')} RPM`, mx - 14, my + 10); }
           }
-          meter(t, ideal, tol, swingAt, type === 'flat' ? 'HIT' : 'LET GO', mode === 'load');
+          meter(t, ideal, tol, swingAt, 'LET GO', mode === 'load');
         },
       };
     } else {

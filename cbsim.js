@@ -8,12 +8,14 @@ const CB = { HL: 11.885, HW: 4.115, DW: 5.485, SL: 6.40 };
 // Ball types. v: average speed (m/s); sig: aim scatter at skill 50 (metres); net: chance of the net;
 // bounce: how far it carries after the bounce (m); apex: height over the net (for drawing); q: how heavy it is deep.
 const CB_SHOT = {
-  topspin: { v: 24, sig: 0.95, net: 0.022, bounce: 3.6, apex: 2.4, q: 0.2 },
+  topspin: { v: 27, sig: 0.95, net: 0.022, bounce: 3.6, apex: 2.4, q: 0.2 },
   flat:    { v: 30, sig: 1.3, net: 0.045, bounce: 3.3, apex: 1.3, q: 0.18 },
   slice:   { v: 20, sig: 0.95, net: 0.03, bounce: 2.4, apex: 1.5, q: 0.08 },
   lob:     { v: 12.5, sig: 1.4, net: 0.004, bounce: 4.4, apex: 7, q: 0 },
   drop:    { v: 10, sig: 1.25, net: 0.1, bounce: 0.8, apex: 1.4, q: 0 },
 };
+// When a ball is a winner: past `hard` seconds short of getting there it always is; inside `edge` it's a chance that grows.
+let CB_WIN = { hard: -0.25, edge: 0.2, base: 0.12, k: 2.4 }; // 2026-11-04: was −0.5 / 0 / 0.1 / 1.6 (rallies too long, too few winners)
 const CB_TYPES = ['topspin', 'flat', 'slice', 'lob'];
 const CB_SERVES = ['flat', 'slice', 'kick'];
 const CB_ZONES = ['wide', 'body', 't'];
@@ -157,7 +159,8 @@ function cbCoverSpot(st, by, oppContact) {
   return { x: p.x + (st.cover === 'cross' ? -sg : sg) * 0.7, y: p.y };
 }
 // How far a hitter gets towards that spot before the reply is struck (a stretched player is slower to get back).
-const cbRecoverReach = (st, by, meet) => Math.max(0, meet.time - 0.22 - 0.3 * Math.min(1, st.pr[by])) * st.ab[by].spd * (st.atNet[by] ? 1 : 0.92);
+// st.recK: controller play gives you smarter recovery (cbpad.js), so the game is about shot choice, not scrambling.
+const cbRecoverReach = (st, by, meet) => Math.max(0, meet.time - 0.22 - 0.3 * Math.min(1, st.pr[by])) * st.ab[by].spd * (st.atNet[by] ? 1 : 0.92) * ((st.recK && st.recK[by]) || 1);
 function cbMoveToward(pos, to, dist) {
   const d = cbDist(pos, to);
   if (d <= dist || d < 1e-6) return { ...to };
@@ -229,12 +232,14 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   shot.after = { ...st.pos[by] };
   // A lob over someone at (or coming to) the net: they have to turn and run back, so a deep one usually wins outright.
   // The deeper it lands and the closer in they were, the less chance they have; from the baseline they just run it down.
-  if (type === 'lob' && Math.abs(shot.rcvFrom.y) < 7.5) {
-    const deep = Math.abs(land.y), inNet = (7.5 - Math.abs(shot.rcvFrom.y)) / 7.5;
+  // Someone still running in to the net (they came in behind their last ball) is caught out as far back as 9.5 m.
+  const lobIn = st.atNet[r] ? 9.5 : 7.5;
+  if (type === 'lob' && Math.abs(shot.rcvFrom.y) < lobIn) {
+    const deep = Math.abs(land.y), inNet = (lobIn - Math.abs(shot.rcvFrom.y)) / lobIn;
     const pWin = cbClamp(0.15 + 0.3 * (deep - 8) + 0.35 * inNet - 0.004 * ((st.ab[r].spd || 5) * 10 - 50), 0, 0.9);
     if (deep > 8 && rng() < pWin) return cbEnd(st, by, 'winner', shot);
   }
-  if (meet.slack < -0.5 || (meet.slack < 0 && rng() > 0.9 + meet.slack * 1.6)) return cbEnd(st, by, 'winner', shot);
+  if (meet.slack < CB_WIN.hard || (meet.slack < CB_WIN.edge && rng() < CB_WIN.base + CB_WIN.k * (CB_WIN.edge - meet.slack))) return cbEnd(st, by, 'winner', shot);
   st.pos[r] = meet.contact; st.pr[r] = meet.pr; st.atNet[r] = Math.abs(meet.contact.y) < 6.2;
   st.inc = { by, type, volley: meet.volley, rcvPos: meet.contact, wing: meet.wing };
   st.smash = type === 'lob' && Math.abs(meet.contact.y) < 9.5 && meet.slack > 0.15;

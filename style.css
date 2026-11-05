@@ -2204,3 +2204,37 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xppanel .xppre { white-space: normal; } .xppanel .xppre span { font-size: 12px; }
   .xpcall, .xpland, .xpplayln { right: 340px; left: 340px; }
 }
+/* Extreme: controller play (cbpad.js): one timing word over your player */
+.xpadtag { position: absolute; transform: translate(-50%, -100%); pointer-events: none; font: 800 15px system-ui; letter-spacing: .03em; padding: 3px 9px; border-radius: 9px; background: rgba(10, 20, 30, .78); color: #e8eef4; text-transform: uppercase; z-index: 3; }
+.xpadtag.good { color: #69f0ae; } .xpadtag.meh { color: #ffd54f; } .xpadtag.bad { color: #ff7961; }
+.xpadtag[hidden], .xpadbtn[hidden] { display: none; }
+.xpadbtn.off { opacity: .55; }
+/* Extreme Training Room: the controller drawn on screen (a pad you can drag anywhere), lighting up as you press */
+.xpctl { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 46; width: 250px; cursor: grab; touch-action: none; user-select: none; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45)); }
+.xpctl.drag { cursor: grabbing; opacity: .9; }
+.xpcsvg { display: block; width: 100%; height: auto; }
+.xpcsvg .body { fill: #e9edf2; stroke: #9aa7b4; stroke-width: 1.5; }
+.xpcsvg .pad { fill: #cfd6de; }
+.xpcsvg .sh { fill: #2a3846; }
+.xpcsvg .dpad rect { fill: #3b4d61; }
+.xpcsvg .face circle { fill: #2a3846; }
+.xpcsvg .well { fill: #1b2631; }
+.xpcsvg .stick { fill: #3b4d61; stroke: #10171f; stroke-width: 2; }
+.xpcsvg .stick.on { fill: #64b5f6; }
+.xpcsvg text { fill: #e8eef4; font: 700 10px system-ui; text-anchor: middle; pointer-events: none; }
+.xpcsvg text.sm { font-size: 8px; }
+.xpcsvg .face text { font-size: 12px; }
+.xpcsvg .sh.on { fill: #ffd54f; }
+.xpcsvg [data-b="3"].on { fill: #2ecc8f; } .xpcsvg [data-b="1"].on { fill: #ff6b6b; } .xpcsvg [data-b="2"].on { fill: #f48fb1; } .xpcsvg [data-b="0"].on { fill: #4ea8f5; }
+.xpcmsg { margin: 2px 0 0; text-align: center; font-size: 12px; color: #ffd54f; background: rgba(10,20,30,.8); border-radius: 8px; padding: 3px 6px; }
+.xpcmsg:empty { display: none; }
+.xpckeys p { margin: 6px 0; }
+@media (min-width: 1100px) { .xpctl { left: auto; right: 24px; transform: none; bottom: 24px; } }
+/* Live Tennis Extreme (beta): the third tab in the mode switch */
+.xswitch { max-width: 560px; }
+.xswitch button.xlv { position: relative; overflow: visible; }
+.xswitch button.xlv.on { background: linear-gradient(90deg, #0a84ff, #30d158); color: #fff; }
+.xbeta { position: absolute; top: -9px; right: -6px; font: 800 10px/1 system-ui; font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: #fff; padding: 4px 7px; border-radius: 999px; background: linear-gradient(135deg, #0a84ff, #30d158); box-shadow: 0 2px 8px rgba(10, 132, 255, .5); }
+@media (hover: hover) { .xswitch button.xlv:hover .xmtip { display: block; } }
+@media (max-width: 560px) { .xswitch button { font-size: 13px; padding: 0 4px; } }
+.xbeta.inl { position: static; display: inline-block; vertical-align: middle; margin-left: 6px; }

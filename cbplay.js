@@ -567,8 +567,10 @@ function cbSwitchHtml() {
   if (typeof isCoachMode === 'function' && isCoachMode()) return ''; // open to everyone (the God Panel stays owner-only)
   // X-Treme carries a NEW badge until you've tried it, glows like fire on hover and drops down a short explanation.
   let seen = false; try { if (isExtreme()) localStorage.setItem('tourlife.xseen', '1'); seen = !!localStorage.getItem('tourlife.xseen'); } catch {}
-  return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${isExtreme() ? 'on' : ''}">TourLife X-Treme${seen ? '' : '<i class="xnew">New</i>'}` +
-    `<span class="xmtip"><b>🔥 TourLife X-Treme</b>Play Every Point Yourself. Build Each Shot. Use Your Playbook or Time Your Shots Perfectly. This will be a separate career with its own save. Enjoy!</span></button></div>`;
+  const live = typeof isLiveTennis === 'function' && isLiveTennis(), xOn = isExtreme() && !live;
+  return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${xOn ? 'on' : ''}">TourLife X-Treme${seen ? '' : '<i class="xnew">New</i>'}` +
+    `<span class="xmtip"><b>🔥 TourLife X-Treme</b>Play Every Point Yourself. Build Each Shot. Use Your Playbook or Time Your Shots Perfectly. This will be a separate career with its own save. Enjoy!</span></button>` +
+    `<button type="button" data-xlive class="xlv ${live ? 'on' : ''}">Live Tennis Extreme<i class="xbeta">Beta</i><span class="xmtip"><b>🎮 Live Tennis Extreme</b>Plug In A Controller (PlayStation, Xbox Or Any Other) And Hit Live Shots In The Training Room. Nothing Here Changes Your Careers.</span></button></div>`;
 }
 function cbHome() {
   for (const id of ['home', 'creator']) {
@@ -591,7 +593,12 @@ function cbHome() {
   card.onclick = e => { const b = e.target.closest('[data-cbp]'); if (!b) return; if (b.dataset.cbp === 'howto') cbTutorial('turns', true); else if (b.dataset.cbp === 'book') { if (window.xpPlaybook) xpPlaybook(); } else cbPractice(b.dataset.cbp); };
   $('cbFeed').onchange = e => { const x = cbData(); x.feedback = e.target.checked; cbSave(x); };
 }
-document.addEventListener('click', e => { const b = e.target.closest('[data-xmode]'); if (!b || b.classList.contains('on')) return; try { localStorage.setItem('tourlife.mode', b.dataset.xmode); } catch {} location.reload(); });
+document.addEventListener('click', e => {
+  const lv = e.target.closest('[data-xlive]');
+  if (lv) { if (!lv.classList.contains('on')) { try { sessionStorage.setItem('tl.live', '1'); } catch {} location.reload(); } return; } // Live Tennis Extreme: this tab only
+  const b = e.target.closest('[data-xmode]'); if (!b || b.classList.contains('on')) return;
+  try { sessionStorage.removeItem('tl.live'); localStorage.setItem('tourlife.mode', b.dataset.xmode); } catch {} location.reload();
+});
 
 // --- God Panel (owner only: Extreme + local link + admin) ------------------------------------------------------
 function cbGodSave(k, v) { const d = cbData(); d.god[k] = v; cbSave(d); }

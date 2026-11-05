@@ -154,11 +154,42 @@
   function drawErrs(g) {
     for (const m of S.marks) {
       if (m.kind !== 'net' && m.kind !== 'out') continue;
-      const p = proj(m.x, m.y), r = Math.max(5, 0.25 * p.s), ly = m.kind === 'net' ? proj(m.x, m.y, 1.3).Y : p.Y - r - 4;
-      g.strokeStyle = '#ff5252'; g.lineWidth = 2; seg(g, { X: p.X - r, Y: p.Y - r * 0.5 }, { X: p.X + r, Y: p.Y + r * 0.5 }); seg(g, { X: p.X - r, Y: p.Y + r * 0.5 }, { X: p.X + r, Y: p.Y - r * 0.5 });
-      g.font = '800 13px system-ui'; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(m.kind === 'net' ? 'NET' : 'OUT', p.X, ly);
-      g.fillStyle = '#ff5252'; g.fillText(m.kind === 'net' ? 'NET' : 'OUT', p.X, ly);
+      // Where it landed: a ring with a dark red middle, and a small label (no cross).
+      const p = proj(m.x, m.y), r = Math.max(5, 0.17 * p.s);
+      g.fillStyle = 'rgba(120,16,16,0.6)'; g.strokeStyle = 'rgba(255,82,82,0.9)'; g.lineWidth = 1.5;
+      g.beginPath(); g.ellipse(p.X, p.Y, r, r * 0.45, 0, 0, 7); g.fill(); g.stroke();
+      g.font = '600 11px system-ui'; g.textAlign = 'center'; g.fillStyle = '#ff7b7b'; g.fillText(m.kind === 'net' ? 'NET' : 'OUT', p.X, p.Y - r * 0.45 - 5);
     }
+  }
+  // Controller shot meter (cbpad.js sets S.meter): a bar under your feet. The marker slides along it in real time and
+  // reaches the middle of the green exactly when you should let go. Green = this shot's perfect window, yellow = still a
+  // decent hit (red with L1, the lines: only green counts). After the hit it holds where you let go, outlined in the result.
+  function drawMeter(g) {
+    const m = S.meter, p0 = S.players[0]; if (!m || !p0) return;
+    const t = performance.now();
+    if (m.done && t - m.done > 650) { S.meter = null; return; }
+    const F = proj(p0.x, p0.y, 0), W = 168, H = 12, x0 = Math.max(6, Math.min(V.W - W - 6, F.X - W / 2)), y0 = Math.min(V.H - H - 18, F.Y + 16);
+    const xOf = at => x0 + (Math.max(m.start, Math.min(m.end, at)) - m.start) / (m.end - m.start) * W; // real time, from the press
+    g.globalAlpha = m.done ? Math.min(1, (650 - (t - m.done)) / 250) : 1;
+    g.fillStyle = 'rgba(10,20,30,.82)'; g.beginPath(); g.roundRect(x0 - 3, y0 - 3, W + 6, H + 6, 7); g.fill();
+    if (m.Z) { g.fillStyle = m.lines ? 'rgba(255,121,97,.55)' : 'rgba(255,213,79,.6)'; g.fillRect(xOf(m.ideal - m.Z), y0, xOf(m.ideal + m.Z) - xOf(m.ideal - m.Z), H); }
+    if (m.P) { g.fillStyle = '#4cdf8f'; g.fillRect(xOf(m.ideal - m.P), y0, Math.max(2, xOf(m.ideal + m.P) - xOf(m.ideal - m.P)), H); }
+    const mx = xOf(m.done ? m.at : t);
+    g.fillStyle = '#fff'; g.fillRect(mx - 1.5, y0 - 5, 3, H + 10);
+    if (m.done) { g.strokeStyle = m.col; g.lineWidth = 2.5; g.beginPath(); g.roundRect(x0 - 3, y0 - 3, W + 6, H + 6, 7); g.stroke(); }
+    if (m.label && !m.done) { g.font = '700 11px system-ui'; g.textAlign = 'center'; g.fillStyle = m.done ? m.col : '#e8eef4'; g.fillText(m.label, x0 + W / 2, y0 + H + 16); }
+    g.globalAlpha = 1;
+  }
+  // Controller feedback (cbpad.js sets S.fb): one thin word under your feet (PERFECT, GOOD, EARLY, LATE), fading out.
+  function drawFb(g) {
+    const f = S.fb, p0 = S.players[0]; if (!f || !p0) return;
+    const age = performance.now() - f.t0; if (age > 900) { S.fb = null; return; }
+    const F = proj(p0.x, p0.y, 0), y = Math.min(V.H - 6, F.Y + (S.meter ? 52 : 26));
+    g.globalAlpha = Math.min(1, (900 - age) / 300); g.font = '300 17px system-ui'; g.textAlign = 'center';
+    if ('letterSpacing' in g) g.letterSpacing = '3px';
+    g.fillStyle = f.col; g.fillText(f.text.toUpperCase(), F.X, y);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.globalAlpha = 1;
   }
   // ACE! / DOUBLE FAULT! / WINNER! / DROPPER!: big in the middle of the court with a shake, as on the main court.
   function drawPop(g) {
@@ -184,11 +215,11 @@
     S.players.filter(p => p.y >= 0).forEach(p => drawPlayer(g, p)); if (ballFar) drawBall(g);
     drawNet(g);
     S.players.filter(p => p.y < 0).forEach(p => drawPlayer(g, p)); if (!ballFar) drawBall(g);
-    drawErrs(g); drawPop(g);
+    drawErrs(g); drawMeter(g); drawFb(g); drawPop(g);
     g.restore();
   }
   const popFor = (over, sh) => {
-    const t = over.how === 'ace' ? 'ACE!' : over.how === 'df' ? 'DOUBLE FAULT!' : over.how === 'winner' ? (sh.type === 'drop' ? 'DROPPER!' : 'WINNER!') : null;
+    const t = over.how === 'ace' ? 'ACE!' : over.how === 'df' ? 'DOUBLE FAULT!' : over.how === 'winner' ? (sh.type === 'drop' ? 'DROPPER!' : sh.type === 'lob' ? 'LOB WINNER!' : 'WINNER!') : null;
     if (t) { S.bubbles = [null, null]; S.pop = { text: t, t0: performance.now(), bad: over.w !== 0, life: over.how === 'ace' ? 2300 : 1600, sub: over.how === 'ace' && sh.kmh ? `${sh.kmh} km/h` : '' }; if (over.how === 'ace' || over.how === 'df') S.shake = performance.now(); }
   };
   const loop = () => { if (!V.on) return; draw(); requestAnimationFrame(loop); };
@@ -217,48 +248,65 @@
     const aim = sh.by === 0 && !sh.serve && sh.aim ? ` (${m(Math.hypot(L.x - sh.aim.x, L.y - sh.aim.y))} off your aim)` : '';
     return `${who} landed ${where}${side}${aim}.`;
   }
+  // The flight of each shot has its own look: topspin climbs and dips hard (its peak comes early), slice floats and
+  // hangs (late peak, slower through the air), flat goes straight and quick, a drop shot pops up and dies.
+  const PEAK = { topspin: 0.4, slice: 0.6, flat: 0.5, drop: 0.36, lob: 0.5 };
+  const ARC_K = { flat: 0.75 }, AIR_K = { flat: 0.9, slice: 1.0, drop: 1.08 };
+  const HUMP = { topspin: 1.5, flat: 0.7, slice: 0.32, lob: 2.6, drop: 0.28 };
+  // 0 → 1 → 0 like 4u(1−u), but peaking at p.
+  const arcF = (u, p = 0.5) => { const w = u < p ? 0.5 * u / p : 0.5 + 0.5 * (u - p) / (1 - p); return 4 * w * (1 - w); };
   // Plays shot sh. freeze: stop just after the bounce as you arrive (your decision), finish with resume().
   async function playShot(sh, res, freeze = false) {
     const U = cur.U, H = S.players[sh.by], R = S.players[1 - sh.by], slow = speed();
+    const padV = window.xpPadLive && xpPadLive(); // controller play: one continuous flight, no labels over the court
     const v = Math.max(8, (sh.kmh || 100) * (sh.serve ? 0.76 : 0.78) / 3.6);
-    const z0 = sh.serve ? 2.75 : sh.volley ? 1.2 : 0.95, p0 = { x: sh.from.x, y: sh.from.y, z: z0 };
+    // With a controller the ball leaves from wherever it really is (a late swing meets it a little further on), so it never jumps.
+    const cont = padV && !sh.serve && S.ball && Math.hypot(S.ball.x - sh.from.x, S.ball.y - sh.from.y) < 4;
+    const z0 = cont ? cbClamp(S.ball.z, 0.3, 2.6) : sh.serve ? 2.75 : sh.volley ? 1.2 : 0.95, p0 = cont ? { x: S.ball.x, y: S.ball.y, z: z0 } : { x: sh.from.x, y: sh.from.y, z: z0 };
     H.pose = poseOf(sh); H.wing = sh.wing; H.pu = 0;
-    if (sh.serve) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 1.2 }; S.trail = []; await tween(380 * slow, u => { S.ball.z = lerp(1.2, 2.9, Math.sin(u * Math.PI / 2)); H.pu = u * 0.4; }); }
+    if (sh.serve && window.xpPadLive && xpPadLive() && sh.by === 0) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 2.9 }; S.trail = []; H.pu = 0.4; } // you tossed it yourself (cbpad.js)
+    else if (sh.serve) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 1.2 }; S.trail = []; await tween(380 * slow, u => { S.ball.z = lerp(1.2, 2.9, Math.sin(u * Math.PI / 2)); H.pu = u * 0.4; }); }
+    else if (padV) H.pu = 0.4; // controller: the swing already happened as the ball arrived, no stop at the racket
     else await tween(150 * slow, u => { H.pu = u * 0.4; }); // a quick take-back, not a pause
     S.bubbles[1 - sh.by] = null;
-    S.bubbles[sh.by] = { t1: shotName(sh), t2: '', until: performance.now() + 2600 * slow / 1.6 }; // just the shot; the rest is noise mid-rally
+    S.bubbles[sh.by] = padV ? null : { t1: shotName(sh), t2: '', until: performance.now() + 2600 * slow / 1.6 }; // just the shot; the rest is noise mid-rally
     U.call(`<b class="${sh.by === 0 ? 'me' : 'op'}">${sh.by === 0 ? 'You' : esc(S.players[1].name)}</b> ${shotName(sh)}`);
     const land = sh.land, shotN = ++S.n;
     S.marks = []; S.path = null; // only the shot being played is marked
-    if (sh.by === 0) { S.marks = S.marks.filter(m => m.kind !== 'aim'); const a = sh.serve ? cbServeTarget(cur.st, sh.zone) : sh.aim; if (a) S.marks.push({ kind: 'aim', by: 0, n: shotN, x: a.x, y: a.y }); }
+    if (sh.by === 0 && !padV) { S.marks = S.marks.filter(m => m.kind !== 'aim'); const a = sh.serve ? cbServeTarget(cur.st, sh.zone) : sh.aim; if (a) S.marks.push({ kind: 'aim', by: 0, n: shotN, x: a.x, y: a.y }); }
     const dA = Math.hypot(land.x - p0.x, land.y - p0.y) || 1;
     const apex = sh.serve ? 0.4 : (CB_SHOT[sh.type] || { apex: 1.5 }).apex;
     let end = null, tB = 0;
-    if (sh.err === 'net') tB = 0;
+    if (sh.err === 'net') tB = (dA / v) * 0.8; // time to drop off the tape and bounce
     else if (sh.contact && !sh.err) {
       const reach = !res.over || res.over.how === 'fe' || res.over.how === 'ue' || res.over.how === 'unreturned'; // unreturned: they got a racket to it
       end = reach ? { ...sh.contact, z: sh.met ? 1.2 : 0.95 } : { x: land.x + (sh.contact.x - land.x) * 2, y: land.y + (sh.contact.y - land.y) * 2, z: 0.3 };
       tB = Math.max(0.25, (sh.time || 1) - dA / v) * (reach ? 1 : 1.6);
     } else { end = { x: land.x + (land.x - p0.x) / dA * 4, y: land.y + (land.y - p0.y) / dA * 4, z: 0.2 }; tB = 0.5; }
-    const hump = { topspin: 1.3, flat: 0.8, slice: 0.45, lob: 2.6, drop: 0.5 }[sh.type] || (sh.spin === 'kick' ? 1.5 : 0.9);
+    const hump = HUMP[sh.type] || (sh.spin === 'kick' ? 1.5 : 0.9), pk = sh.serve ? 0.5 : PEAK[sh.type] || 0.5;
     if (sh.met) tB = 0; // a volley: met before the bounce
-    const tA = (sh.met ? Math.hypot(sh.contact.x - p0.x, sh.contact.y - p0.y) : dA) / v;
+    const tA = (sh.met ? Math.hypot(sh.contact.x - p0.x, sh.contact.y - p0.y) : dA) / v * (sh.serve ? 1 : AIR_K[sh.type] || 1);
     // Pace you can feel: a big ball flies visibly quicker than a rally ball, so the firepower grows with the level.
     const punch = sh.type === 'lob' || sh.type === 'drop' ? 1 : cbClamp(Math.pow((sh.kmh || 110) / 110, 1.1), 0.85, 1.7);
-    const T = (tA + tB) * 1000 * Math.max(0.92, slow / punch), gA = tA / (tA + tB);
+    // Controller play: a touch more time for every ball (the engine's outcome is unchanged), so there's room to choose.
+    const T = (tA + tB) * 1000 * Math.max(0.92, slow / punch) * (padV ? 1.2 : 1), gA = tA / (tA + tB);
     const h0 = { x: H.x, y: H.y }, hTo = sh.after || h0, r0 = { x: R.x, y: R.y };
     let rTo = r0;
     if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); const giveUp = sh.type === 'lob' || sh.type === 'drop' ? 0.3 : 0.7; rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, giveUp), y: lerp(r0.y, s2.y, giveUp) } : s2; } // beaten by a lob or drop shot: they stop and watch it
     const netEnd = sh.met ? { x: sh.contact.x, y: sh.contact.y, z: 1.2 } : null;
     // Any ball that goes over clears the tape where it crosses (the drawn arc gets lifted if it would dip through).
-    const tgtA = netEnd || { ...land, z: 0 }, un = (p0.y - 0) / ((p0.y - tgtA.y) || 1), arc = apex * (netEnd ? 0.5 : 1.15);
+    const tgtA = netEnd || { ...land, z: 0 }, un = (p0.y - 0) / ((p0.y - tgtA.y) || 1), arc = apex * (netEnd ? 0.5 : 1.15) * (sh.serve ? 1 : ARC_K[sh.type] || 1);
     let lift = 0;
-    if (sh.err !== 'net' && un > 0.02 && un < 0.98) { const zN = lerp(z0, tgtA.z, un) + arc * 4 * un * (1 - un); if (zN < 1.12) lift = (1.12 - zN) / (4 * un * (1 - un)); }
-    if (window.__xpNetLog && sh.err !== 'net' && un > 0.02 && un < 0.98) window.__xpNetLog.push(+(lerp(z0, tgtA.z, un) + (arc + lift) * 4 * un * (1 - un)).toFixed(2)); // tests only
+    if (sh.err !== 'net' && un > 0.02 && un < 0.98) { const zN = lerp(z0, tgtA.z, un) + arc * arcF(un, pk); if (zN < 1.12) lift = (1.12 - zN) / arcF(un, pk); }
+    if (window.__xpNetLog && sh.err !== 'net' && un > 0.02 && un < 0.98) window.__xpNetLog.push(+(lerp(z0, tgtA.z, un) + (arc + lift) * arcF(un, pk)).toFixed(2)); // tests only
     function ballAt(gl) {
       let b;
-      if (sh.err === 'net') b = { x: lerp(p0.x, land.x, gl), y: lerp(p0.y, 0, gl), z: lerp(z0, 0.55, gl) + 0.6 * 4 * gl * (1 - gl) };
-      else if (gl <= gA) { const u = gl / gA, tgt = netEnd || { ...land, z: 0 }; b = { x: lerp(p0.x, tgt.x, u), y: lerp(p0.y, tgt.y, u), z: lerp(z0, tgt.z, u) + (arc + lift) * 4 * u * (1 - u) }; }
+      if (sh.err === 'net') { // into the tape, then it drops back on the hitter's side and bounces
+        const nz = 0.55 + 0.3 * ((shotN * 7) % 10) / 10, sg = Math.sign(p0.y) || -1;
+        if (gl < 0.55) { const u = gl / 0.55; b = { x: lerp(p0.x, land.x, u), y: lerp(p0.y, 0, u), z: lerp(z0, nz, u) + 0.5 * 4 * u * (1 - u) }; }
+        else { const u = (gl - 0.55) / 0.45, y = sg * 0.9 * Math.min(1, u * 1.4); b = { x: land.x, y, z: u < 0.55 ? nz * (1 - (u / 0.55) ** 2) : 0.16 * 4 * ((u - 0.55) / 0.45) * (1 - (u - 0.55) / 0.45) }; }
+      }
+      else if (gl <= gA) { const u = gl / gA, tgt = netEnd || { ...land, z: 0 }; b = { x: lerp(p0.x, tgt.x, u), y: lerp(p0.y, tgt.y, u), z: lerp(z0, tgt.z, u) + (arc + lift) * arcF(u, pk) }; }
       else { const u = (gl - gA) / (1 - gA); b = { x: lerp(land.x, end.x, u), y: lerp(land.y, end.y, u), z: lerp(0, end.z, u) + hump * 4 * u * (1 - u) }; }
       return b;
     }
@@ -268,7 +316,7 @@
       const hu = Math.min(1, gl * 1.1); moveP(H, lerp(h0.x, hTo.x, hu), lerp(h0.y, hTo.y, hu));
       const ru = Math.max(0, Math.min(1, (gl - 0.12) / 0.88)); moveP(R, lerp(r0.x, rTo.x, ru), lerp(r0.y, rTo.y, ru));
       const b = ballAt(gl);
-      S.ball = b; S.trail.push({ ...b }); if (S.trail.length > (punch > 1.25 ? 14 : 9)) S.trail.shift(); // a longer streak behind a heavy ball
+      S.ball = b; S.trail.push({ ...b }); if (S.trail.length > (padV ? 4 : punch > 1.25 ? 14 : 9)) S.trail.shift(); // a longer streak behind a heavy ball
       if (!landed && !sh.met && sh.err !== 'net' && gl >= gA) { // the bounce: mark it and say where it landed
         landed = true; S.marks = S.marks.filter(m => m.kind === 'aim');
         S.marks.push({ x: land.x, y: land.y, kind: sh.err ? 'out' : 'land', by: sh.by, n: shotN });
@@ -279,10 +327,11 @@
     const fin = async g0 => {
       await run(g0, 1);
       if (res && res.over) popFor(res.over, sh);
-      if (sh.err === 'net') { S.marks.push({ x: land.x, y: land.y, kind: 'net', by: sh.by }); U.land(`${sh.by === 0 ? '<b class="me">Your ball</b>' : `<b class="op">${esc(S.players[1].name)}'s ball</b>`} hit the <b class="bad">net</b>.`); }
+      if (sh.err === 'net') { S.marks.push({ x: land.x, y: (Math.sign(p0.y) || -1) * 0.9, kind: 'net', by: sh.by }); U.land(`${sh.by === 0 ? '<b class="me">Your ball</b>' : `<b class="op">${esc(S.players[1].name)}'s ball</b>`} hit the <b class="bad">net</b>.`); }
       H.pose = null; R.pose = null;
     };
-    if (freeze && !sh.err) { const gN = sh.met ? 0.75 : Math.max(gA + 0.05, 0.86); await run(0, gN); cur.pending = () => { S.path = null; return fin(gN); }; return; }
+    // Controller play (cbpad.js): stop just after they hit, so their ball flies in live while you time your swing.
+    if (freeze && !sh.err) { const gN = window.xpPadLive && xpPadLive() ? 0.04 : sh.met ? 0.75 : Math.max(gA + 0.05, 0.86); await run(0, gN); cur.pendingMs = (1 - gN) * T; cur.pending = () => { S.path = null; return fin(gN); }; return; }
     cur.pending = null; await fin(0);
   }
   async function resume() { const p = cur.pending; cur.pending = null; if (p) await p(); }
@@ -385,9 +434,9 @@
     let lift = 0;
     if (un > 0.02 && un < 0.98) { const zN = p0.z * (1 - un) + arc * 4 * un * (1 - un); if (zN < 1.12) lift = (1.12 - zN) / (4 * un * (1 - un)); }
     const pts = [];
-    for (let k = 0; k <= 30; k++) { const u = k / 30; pts.push({ x: lerp(p0.x, aim.x, u), y: lerp(p0.y, aim.y, u), z: p0.z * (1 - u) + (arc + lift) * 4 * u * (1 - u) }); }
+    for (let k = 0; k <= 30; k++) { const u = k / 30; pts.push({ x: lerp(p0.x, aim.x, u), y: lerp(p0.y, aim.y, u), z: p0.z * (1 - u) + (arc + lift) * arcF(u, PEAK[t] || 0.5) }); }
     const dx = aim.x - p0.x, dy = aim.y - p0.y, L = Math.hypot(dx, dy) || 1, bl = T.bounce * (st.surf ? st.surf.bounce : 1);
-    const hump = { topspin: 1.3, flat: 0.8, slice: 0.45, lob: 2.6, drop: 0.5 }[t] || 0.9;
+    const hump = HUMP[t] || 0.9;
     for (let k = 1; k <= 12; k++) { const u = k / 12; pts.push({ x: aim.x + dx / L * bl * u, y: aim.y + dy / L * bl * u, z: hump * Math.sin(u * Math.PI * 0.8) }); }
     return { by: 0, pts };
   }
@@ -747,6 +796,14 @@
         } else ch = await window.xpAskShot(U, st, play ? { play, done: true } : {});
         if (ch.god) { await resume(); return godEnd(ch.god); }
         await resume();
+        // Controller: you never swung, so their ball goes past you for a winner (and carries on to the back fence).
+        if (ch.missed) {
+          const ls = [...st.shots].reverse().find(s => s.by === 1);
+          cbEnd(st, 1, ls && ls.serve ? 'ace' : 'winner', ls); popFor(st.over, ls || {});
+          const t1 = S.trail[S.trail.length - 1], t0 = S.trail[S.trail.length - 2];
+          if (S.ball && t1 && t0) { const dx = t1.x - t0.x, dy = t1.y - t0.y; await tween(600, u => { S.ball = { x: S.ball.x + dx * (1 - u), y: S.ball.y + dy * (1 - u), z: Math.max(0, S.ball.z - 0.02) }; }); }
+          break;
+        }
         // Touch: a shot you built yourself gets its mini-game as the ball arrives (a called play runs straight through).
         if (!scripted && window.xpAskTouch && window.xpTouchOn && xpTouchOn()) {
           const R = await window.xpAskTouch(U, st, ch);
@@ -866,5 +923,7 @@
 
   // Extreme matches and practice use this screen in place of the first version.
   cbOverlay = xpOverlay; cbRunPoint = xpRunPoint; cbShowPoint = xpShowPoint;
+  // For controller play (cbpad.js): the drawing state and the paused rest of the incoming ball.
+  window.xpLive = { S, cur, proj, take: () => { const p = cur.pending; cur.pending = null; return p; }, put: f => { cur.pending = f; }, ms: () => cur.pendingMs || 0 };
   if (/[?&]raf=timer/.test(location.search)) { window.requestAnimationFrame = f => setTimeout(() => f(performance.now()), 16); window.__xpS = S; } // headless tests
 })();

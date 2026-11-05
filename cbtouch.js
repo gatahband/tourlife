@@ -234,13 +234,17 @@
       const rA = raw(1.0, 0.7), rB = raw(0, 24), Fv = (H * 0.5) / (rB.v / rB.dd - rA.v / rA.dd), Y0 = H * 0.12 + Fv * rB.v / rB.dd;
       // Where you meet it: forehand or backhand side (mirrored for a lefty), and the height their ball gets to.
       const inc = st.inc || {}, hand = st.ab[0].lefty ? -1 : 1, sx = (inc.wing === 'bh' ? -1 : 1) * hand;
-      const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: 0.62, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
+      const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: lt, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
+      // Where the load meter's sweet spot sits depends on the shot: a deep flat drive wants more power, a short angle or
+      // a dipping ball wants more topspin, a short slice a softer cut; plus a little variety so it's never memorised.
+      const ay = Math.abs(ch.aim.y), shortB = ay < 7, netOpp = !!(st.atNet && st.atNet[1]);
+      const lt = clamp(({ flat: shortB ? 0.42 : 0.72, topspin: shortB || netOpp ? 0.82 : 0.6, slice: shortB ? 0.35 : 0.62 })[type] + (Math.random() - 0.5) * 0.16, 0.28, 0.9);
       const C = { x: sx * 0.8, y: cy, z: 0.7 }, xs = C.x * 0.55; // the view leans a little towards your hitting side
       const P3 = (x, y, z) => { const r = raw(y, z), dd = Math.max(0.3, r.dd), s = Fv / dd; return { X: W / 2 + (x - xs) * s, Y: Y0 - Fv * r.v / dd, s }; };
       const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.85 * d), swingT = 0.05; // the swing lands almost the moment you press
       // their ball: from where they are to a bounce, then up into your ring (a volley comes straight at you)
       const ox = st.pos && st.pos[1] ? clamp(-st.pos[1].x, -4, 4) : -1.6;
-      const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * 0.62;
+      const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * lt;
       const ballIn = t => {
         if (inc.volley) { const u = t / tc; return { x: lerp(B0.x, C.x, u), z: lerp(B0.z, C.z, u), y: lerp(B0.y, C.y, u) + 0.8 * 4 * u * (1 - u) }; }
         if (t <= tb) { const u = t / tb; return { x: lerp(B0.x, BB.x, u), z: lerp(B0.z, BB.z, u), y: lerp(B0.y, 0, u) + 2.3 * 4 * u * (1 - u) }; }
@@ -268,7 +272,7 @@
       }[type];
       const READY = at(0.45, 0.05, -0.7), SHOULDER = { x: sx * 0.15, y: 1.35, z: -0.6 };
       let mode = 'idle', loadAt = null, depth = 0, swingAt = null, flight = null, from = READY;
-      const spinQ = sp => clamp(1 - Math.abs(sp - 0.62) / (0.12 * (1 - 0.4 * d) * 2.4), 0, 1);
+      const spinQ = sp => clamp(1 - Math.abs(sp - lt) / (0.12 * (1 - 0.4 * d) * 2.4), 0, 1);
       // Where the marker stopped decides the shot. Green: it goes in. Orange (just off): a normal shot still goes in,
       // only less cleanly; a risky one usually goes out, now and then it squeaks in. Off the meter: a real chance of an
       // error, bigger the riskier the shot. The flight you see is the result: in, into the net (late) or long (early).
@@ -281,20 +285,20 @@
         const errP = zone === -1 ? 0.25 * riskD ** 2 : zone === 0 ? 0.7 * riskD ** 1.5 : zone === 1 ? Math.min(0.97, 0.06 + 0.95 * riskD) : 0.5 + 0.5 * riskD;
         // Both meters wrong is never forgiven: it's a miss. One right still gets you a playable ball.
         const err = (zone >= 1 && spinOff) || Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
-        let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : (depth - 0.62) * 3); // more power or cut: it flies further
-        const long = dt < 0 || (spinOff && (type === 'topspin' ? depth < 0.62 : depth > 0.62));
+        let th = th0 - dt * tiltK + (type === 'topspin' ? (lt - depth) * 4 : (depth - lt) * 3); // more power or cut: it flies further
+        const long = dt < 0 || (spinOff && (type === 'topspin' ? depth < lt : depth > lt));
         th = err ? (long ? Math.max(th, thB + 1.5) : Math.min(th, thA - 1.5)) : clamp(th, safe[0], safe[1]);
         const f = fly(th, sp), res = f.net ? 'net' : f.zl > 24.1 ? 'long' : 'in';
         const wide = tgt.x * (dt < 0 ? 1 + 1.2 * -dt : 1 - 1.2 * dt);
         let q = 0.65 * qt + 0.35 * spinQ(depth); // both meters: the release and the load
         if (res !== 'in') q = Math.min(q, 0.25); else q = Math.max(q, zone === 2 ? 0.15 : 0.3);
         flight = { at: t, f, res, wide, sp, rpm: type === 'topspin' ? Math.round((900 + 3300 * depth) / 10) * 10 : 0 };
-        const lw = { topspin: ['NO SPIN', 'TOO MUCH SPIN'], flat: ['NO POWER', 'TOO MUCH POWER'], slice: ['NO BITE', 'TOO MUCH CUT'] }[type][depth < 0.62 ? 0 : 1];
+        const lw = { topspin: ['NO SPIN', 'TOO MUCH SPIN'], flat: ['NO POWER', 'TOO MUCH POWER'], slice: ['NO BITE', 'TOO MUCH CUT'] }[type][depth < lt ? 0 : 1];
         const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : spinOff ? [lw, lw] : ['EARLY', 'LATE'];
-        finish(q, dt < 0, words); done.spin = sp; done.flight = res; done.load = depth;
+        finish(q, dt < 0, words); done.spin = sp; done.flight = res; done.load = depth; done.loadT = lt;
       };
       const ideal = tc - swingT; // when to press (flat) or let go (topspin, slice)
-      if (window.__xpTest) window.__xpTest.ideal = { release: ideal, hold: 0.62 * 0.75 };
+      if (window.__xpTest) window.__xpTest.ideal = { release: ideal, hold: lt * 0.75 };
       const key = el.querySelector('.xpmkey');
       key.innerHTML = phone ? 'Hold anywhere, let go in the green' : 'Hold <kbd>Space</kbd>, let go in the green';
       game = {
@@ -321,7 +325,7 @@
           // the racket: waits, takes back as their ball comes (topspin and slice load as you hold), swings along its own path
           if (mode === 'load') depth = clamp((t - loadAt) / 0.75, 0, 1.15);
           const ease = x => x * x * (3 - 2 * x);
-          const takeBack = mode === 'idle' ? 0.25 * ease(clamp((t - 0.35) / 0.8, 0, 1)) : Math.min(1, depth / 0.62);
+          const takeBack = mode === 'idle' ? 0.25 * ease(clamp((t - 0.35) / 0.8, 0, 1)) : Math.min(1, depth / lt);
           const rp0 = L3(READY, SW.back, takeBack);
           if (!flight && mode === 'load' && t > tc + tol * 3) { mode = 'swing'; swingAt = t; }
           if (mode === 'swing' && from === READY) from = rp0; // the swing starts from wherever the racket was
@@ -357,7 +361,7 @@
           if (!ballFirst) ballPro(g, bp.X, bp.Y, Math.max(3.5, 0.09 * bp.s), t * (6 + bs * 30), live ? 1 : 0);
           // topspin: the spin meter fills as you hold (the green band is the sweet spot); RPM shows once you've hit it
           { // the load meter: spin, power or cut fills as you hold (the green band is the sweet spot)
-            const mx = W - 26, my = H - 40, mh = 110, band = [0.62 - 0.12 * (1 - 0.4 * d), 0.62 + 0.12 * (1 - 0.4 * d)];
+            const mx = W - 26, my = H - 40, mh = 110, band = [lt - 0.12 * (1 - 0.4 * d), lt + 0.12 * (1 - 0.4 * d)];
             g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(mx - 5, my - mh, 10, mh);
             g.fillStyle = 'rgba(124,255,178,0.55)'; g.fillRect(mx - 5, my - mh * band[1] / 1.15, 10, mh * (band[1] - band[0]) / 1.15);
             g.fillStyle = depth > band[1] ? '#ff8a65' : '#ffd54f'; g.fillRect(mx - 3, my - mh * Math.min(depth, 1.15) / 1.15, 6, mh * Math.min(depth, 1.15) / 1.15);
@@ -407,7 +411,7 @@
         const a = clamp((t - done.at) / 0.15, 0, 1), sc = 1 + (1 - a) * 0.4;
         g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `italic 900 ${Math.round(34 * sc)}px system-ui`;
         g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(done.label, W / 2, 34); g.fillStyle = done.col; g.fillText(done.label, W / 2, 34); g.restore();
-        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight, load: done.load, bad: done.q === 0 && type === 'serve' }); }
+        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight, load: done.load, loadT: done.loadT, bad: done.q === 0 && type === 'serve' }); }
       }
       requestAnimationFrame(tick);
     };
@@ -438,15 +442,15 @@
     if (type === 'topspin' && !R.early) e.net *= 1 + 1.2 * m;
     if (type === 'slice' && !R.early) e.net *= 1 + 1.5 * m;
     if (type === 'lob') { e.dy = R.early ? -2.5 * m : 1.8 * m; e.dx *= 0.5; }
-    if (R.spin != null) e.dy += (0.5 - R.spin) * 1.6 * (R.early ? 1 : 0.6); // topspin: too little spin flies long, too much dips short
+    if (R.spin != null && type === 'topspin') e.dy += ((R.loadT || 0.5) - R.spin) * 1.6 * (R.early ? 1 : 0.6); // topspin: too little spin flies long, too much dips short
     if (R.flight === 'net') e.forceErr = 'net'; // what you saw is exactly what happens: into the net
     if (R.flight === 'long') e.forceErr = 'out'; // or long
     if (type === 'drop' && q < 0.15) e.forceErr = R.early ? 'out' : 'net'; // a botched drop shot: floated long or dumped in the net
     if (type === 'lob' && q < 0.15 && !R.early) e.forceErr = 'out'; // a lob launched way too high sails long
     if (R.flight === 'in') e.keepIn = true;
     // The second meter means something different for each shot (lq: how close to its sweet spot).
-    const lq = R.load == null ? 0 : Math.max(0, 1 - Math.abs(R.load - 0.62) / 0.45);
-    if (type === 'flat' && R.load != null) e.pace = 0.92 + 0.2 * Math.min(1.1, R.load) * (0.5 + 0.5 * q); // more power: quicker, still returnable
+    const lq = R.load == null ? 0 : Math.max(0, 1 - Math.abs(R.load - (R.loadT || 0.62)) / 0.45);
+    if (type === 'flat' && R.load != null) e.pace = 0.92 + 0.2 * Math.min(1.1, R.load) * (0.5 + 0.3 * q + 0.2 * lq); // more power: quicker, still returnable
     if (type === 'slice') { e.sig *= 1.2 - 0.45 * lq; e.press = 0.06 * lq; } // a clean cut floats true and stays low
     if (type === 'topspin') e.press = 0.14 * lq * q; // a heavy, high-kicking ball
     if (type === 'drop') e.slackCut = 0.55 * q * q; // a perfect touch dies before they get there

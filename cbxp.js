@@ -7,7 +7,7 @@
   const q = (el, s) => el.querySelector(s);
   const pause = ms => new Promise(r => setTimeout(r, ms));
   // How slowly the ball travels (1 = real time). The saved setting keeps its old values; they now mean quicker speeds.
-  const SPEED_OF = { 2.4: 1.7, 1.6: 1.3, 1.1: 1.05 };
+  const SPEED_OF = { 2.4: 1.3, 1.6: 1.0, 1.1: 0.92 }; // Medium is real tennis speed
   const speed = () => { const v = +(cbData().speed || 1.6); return SPEED_OF[v] || v; };
   const speedKey = () => +(cbData().speed || 1.6);
 
@@ -223,8 +223,8 @@
     const v = Math.max(8, (sh.kmh || 100) * (sh.serve ? 0.76 : 0.78) / 3.6);
     const z0 = sh.serve ? 2.75 : sh.volley ? 1.2 : 0.95, p0 = { x: sh.from.x, y: sh.from.y, z: z0 };
     H.pose = poseOf(sh); H.wing = sh.wing; H.pu = 0;
-    if (sh.serve) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 1.2 }; S.trail = []; await tween(420 * Math.min(1.6, slow / 1.6), u => { S.ball.z = lerp(1.2, 2.9, Math.sin(u * Math.PI / 2)); H.pu = u * 0.4; }); }
-    else await tween(300 * Math.min(1.6, slow / 1.6), u => { H.pu = u * 0.4; });
+    if (sh.serve) { S.ball = { x: H.x + handDir(H) * 0.1, y: H.y, z: 1.2 }; S.trail = []; await tween(380 * slow, u => { S.ball.z = lerp(1.2, 2.9, Math.sin(u * Math.PI / 2)); H.pu = u * 0.4; }); }
+    else await tween(150 * slow, u => { H.pu = u * 0.4; }); // a quick take-back, not a pause
     S.bubbles[1 - sh.by] = null;
     S.bubbles[sh.by] = { t1: shotName(sh), t2: '', until: performance.now() + 2600 * slow / 1.6 }; // just the shot; the rest is noise mid-rally
     U.call(`<b class="${sh.by === 0 ? 'me' : 'op'}">${sh.by === 0 ? 'You' : esc(S.players[1].name)}</b> ${shotName(sh)}`);
@@ -245,7 +245,7 @@
     const tA = (sh.met ? Math.hypot(sh.contact.x - p0.x, sh.contact.y - p0.y) : dA) / v;
     // Pace you can feel: a big ball flies visibly quicker than a rally ball, so the firepower grows with the level.
     const punch = sh.type === 'lob' || sh.type === 'drop' ? 1 : cbClamp(Math.pow((sh.kmh || 110) / 110, 1.1), 0.85, 1.7);
-    const T = (tA + tB) * 1000 * Math.max(1, slow / punch), gA = tA / (tA + tB);
+    const T = (tA + tB) * 1000 * Math.max(0.92, slow / punch), gA = tA / (tA + tB);
     const h0 = { x: H.x, y: H.y }, hTo = sh.after || h0, r0 = { x: R.x, y: R.y };
     let rTo = r0;
     if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); const giveUp = sh.type === 'lob' || sh.type === 'drop' ? 0.3 : 0.7; rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, giveUp), y: lerp(r0.y, s2.y, giveUp) } : s2; } // beaten by a lob or drop shot: they stop and watch it

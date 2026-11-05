@@ -277,7 +277,7 @@ function cbServe(st, zone, spin, guess, approach, rng = Math.random) {
   if (s === 0) st.mem.serve[st.deuce ? 'd' : 'a'][zone]++;
   const kmh = Math.round((158 + 0.62 * A.serve) - ({ flat: 0, slice: 18, kick: 32 })[spin] - (second ? 10 : 0) + (T.pace || 0) + cbGauss(rng) * 4);
   const shot = { by: s, from, serve: true, zone, spin, kmh, guess, second, approach: !!approach };
-  if (rng() < cbClamp(pf, 0.03, 0.75)) {
+  if (rng() < cbClamp(pf, 0.03, T.fault >= 99 ? 1 : 0.75)) { // a botched toss and swing (cbtouch.js) always faults
     shot.err = T.miss === 'long' ? 'out' : T.miss === 'net' ? (rng() < 0.8 ? 'net' : 'out') : rng() < 0.55 ? 'net' : 'out';
     shot.land = shot.err === 'net' ? { x: (from.x + tgt.x) / 2, y: 0 } : { x: tgt.x * 1.05, y: f * (CB.SL + 0.5) };
     st.shots.push(shot);

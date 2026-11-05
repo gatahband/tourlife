@@ -155,7 +155,7 @@
         press: t => { if (toss == null) { toss = t; tossQ = clamp(1 - Math.abs(osc(t) - 0.5) / (rw * 2.4), 0, 1); setKey(); } }, // press and hold: the toss goes up
         release: t => { // let go: the swing
           if (toss == null || hitAt != null) return;
-          hitAt = t; hitU = t - toss; const dt = hitU - ideal; finish(0.6 * clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1) + 0.4 * tossQ, dt < 0, ['EARLY', 'LATE']);
+          hitAt = t; hitU = t - toss; const dt = hitU - ideal; const bad = Math.abs(dt) > tol * 0.96 && tossQ < 0.3; finish(bad ? 0 : 0.6 * clamp(1 - Math.abs(dt) / (tol * 2.4), 0, 1) + 0.4 * tossQ, dt < 0, ['EARLY', 'LATE']);
         },
         draw: t => {
           bg();
@@ -278,7 +278,8 @@
         if (spinOff) zone = Math.min(2, zone + 1);
         // A big risk needs a near-perfect strike: just green can still miss, orange usually does.
         const errP = zone === -1 ? 0.25 * riskD ** 2 : zone === 0 ? 0.7 * riskD ** 1.5 : zone === 1 ? Math.min(0.97, 0.06 + 0.95 * riskD) : 0.5 + 0.5 * riskD;
-        const err = Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
+        // Both meters wrong is never forgiven: it's a miss. One right still gets you a playable ball.
+        const err = (zone >= 1 && spinOff) || Math.random() < errP, safe = [thA + (thB - thA) * 0.18, thB - (thB - thA) * 0.18];
         let th = th0 - dt * tiltK + (type === 'topspin' ? (0.62 - depth) * 4 : (depth - 0.62) * 3); // more power or cut: it flies further
         const long = dt < 0 || (spinOff && (type === 'topspin' ? depth < 0.62 : depth > 0.62));
         th = err ? (long ? Math.max(th, thB + 1.5) : Math.min(th, thA - 1.5)) : clamp(th, safe[0], safe[1]);
@@ -405,7 +406,7 @@
         const a = clamp((t - done.at) / 0.15, 0, 1), sc = 1 + (1 - a) * 0.4;
         g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `italic 900 ${Math.round(34 * sc)}px system-ui`;
         g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(done.label, W / 2, 34); g.fillStyle = done.col; g.fillText(done.label, W / 2, 34); g.restore();
-        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight, load: done.load }); }
+        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight, load: done.load, bad: done.q === 0 && type === 'serve' }); }
       }
       requestAnimationFrame(tick);
     };
@@ -419,6 +420,7 @@
   // you were: nearly perfect lands where you aimed, a little off lands a little off (early long, late short), way off faults.
   window.xpServeEffect = (R, spin) => {
     const q = R.q, m = 1 - q, sgn = R.early ? 1 : -1;
+    if (R.bad) return { fault: 99, sd: 1.5, pace: -6, dy: sgn * 0.6, dx: 0, miss: R.early ? 'long' : 'net' }; // bad toss and mistimed: a sure fault
     // A well-timed serve rarely faults, and when it does it just misses long or wide, never into the net.
     // A big serve stays a gamble even when timed well: flat keeps more of its fault chance than kick.
     const floor = { flat: 0.6, slice: 0.5, kick: 0.38 }[spin] || 0.5;

@@ -6,7 +6,7 @@
 // 'extreme': TourLife Extreme (cbplay.js), its own career in its own saves (tourlife.extreme.*). Test link only: on any
 // other address it falls back to the normal game, so it can't appear on the live site even if it's deployed.
 const TL_LOCAL = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)$/.test(location.hostname);
-const TL_MODE = (() => { try { const v = localStorage.getItem('tourlife.mode'); return v === 'coach' || v === 'test' || (v === 'extreme' && TL_LOCAL) ? v : 'player'; } catch { return 'player'; } })();
+const TL_MODE = (() => { try { const v = localStorage.getItem('tourlife.mode'); return v === 'coach' || v === 'test' || v === 'extreme' ? v : 'player'; } catch { return 'player'; } })();
 const TL_NS = TL_MODE === 'coach' ? 'tourlife.coach.' : TL_MODE === 'test' ? 'tourlife.test.' : TL_MODE === 'extreme' ? 'tourlife.extreme.' : 'tourlife.';
 const isTestMatch = () => TL_MODE === 'test';
 const isCoachMode = () => TL_MODE === 'coach';

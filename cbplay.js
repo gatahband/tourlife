@@ -564,7 +564,7 @@ function cbTutorial(key, force = false) {
 
 // --- Home: the TourLife / TourLife Extreme switch and the practice card ---------------------------------------
 function cbSwitchHtml() {
-  if (!cbLocal() || (typeof isCoachMode === 'function' && isCoachMode())) return '';
+  if (typeof isCoachMode === 'function' && isCoachMode()) return ''; // open to everyone (the God Panel stays owner-only)
   // X-Treme carries a NEW badge until you've tried it, glows like fire on hover and drops down a short explanation.
   let seen = false; try { if (isExtreme()) localStorage.setItem('tourlife.xseen', '1'); seen = !!localStorage.getItem('tourlife.xseen'); } catch {}
   return `<div class="xswitch"><button type="button" data-xmode="player" class="${isExtreme() ? '' : 'on'}">TourLife</button><button type="button" data-xmode="extreme" class="xm ${isExtreme() ? 'on' : ''}">TourLife X-Treme${seen ? '' : '<i class="xnew">New</i>'}` +

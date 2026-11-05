@@ -837,8 +837,8 @@ function createCourt() {
       const lab = labels[side], age = lab && lab.side === side && lab.racket ? (clock() - lab.t0) / lab.life : 1;
       let pl = { side: side === 0 ? 0 : 1, lefty: prof[side] && prof[side].hand === 'left', pose: null, wing: 'fh', pu: 0 };
       if (age < 1) {
-        const r = lab.racket, txt = String(lab.text || lab.t || '');
-        if (r === 'serve' || r === 'trophy' || r === 'underarm' || r === 'underarmPrep') pl = { ...pl, pose: 'serve', pu: r === 'trophy' || r === 'underarmPrep' ? 0.3 * (lab.sw || 0) : Math.min(1, 0.4 + age * 1.5) };
+        const r = lab.racket, txt = String(lab.type || lab.text || '');
+        if (r === 'serve' || r === 'trophy' || r === 'underarm' || r === 'underarmPrep') pl = { ...pl, pose: 'serve', pu: r === 'trophy' || r === 'underarmPrep' ? 0.33 * (lab.sw || 0) : Math.min(1, 0.36 + age * 1.5) }; // the toss carries you to the trophy and the drop
         else pl = { ...pl, pose: /slice/i.test(txt) ? 'slice' : /volley/i.test(txt) ? 'volley' : /lob/i.test(txt) ? 'lob' : /flat|drive/i.test(txt) ? 'flat' : 'topspin',
           wing: r === 'bh' || (r === 'prep' && lab.wingSide === 'bh') ? 'bh' : 'fh', pu: r === 'prep' ? 0.15 : Math.min(1, 0.35 + age * 1.6) };
       }

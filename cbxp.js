@@ -417,7 +417,8 @@
   const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l, tip]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint ? (hint.has(k) ? ' hint' : ' safe') : ''}"${tip ? ` title="${tip}" aria-label="${tip}"` : ''}>${l}</button>`).join('')}</div>`;
   // Icon mode (the 🔣 button): the shot panel in pictures. An arrow drawn the way the ball (or you) will go, seen from behind you.
   const iconsOn = () => !!cbData().icons;
-  const arrowSvg = deg => `<svg class="xpico" viewBox="-12 -12 24 24"><g transform="rotate(${Math.round(deg)})"><path d="M0 9V-7M-5.5-1.5L0-8L5.5-1.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+  // len (0..1): a shorter arrow for a shorter move. Drawn from the middle so short and long arrows both look centred.
+  const arrowSvg = (deg, len = 1) => { const h = 8.5 * Math.max(0.4, Math.min(1, len)), y0 = h, y1 = -h; return `<svg class="xpico" viewBox="-12 -12 24 24"><g transform="rotate(${Math.round(deg)})"><path d="M0 ${y0.toFixed(1)}V${(y1 + 1).toFixed(1)}M-5.5 ${(y1 + 6.5).toFixed(1)}L0 ${y1.toFixed(1)}L5.5 ${(y1 + 6.5).toFixed(1)}" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`; };
   const degTo = (from, to) => { const A = proj(from.x, from.y), B = proj(to.x, to.y); return Math.atan2(B.X - A.X, A.Y - B.Y) * 180 / Math.PI; }; // as it looks on screen
   const racketSvg = n => `<svg class="xpico" viewBox="0 0 24 24"><ellipse cx="12" cy="8" rx="5.5" ry="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 14.5V23" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>${n === 2 ? '<circle cx="8.6" cy="20.4" r="2.6" fill="#ffd54f"/><circle cx="15.4" cy="20.4" r="2.6" fill="#ffd54f"/>' : '<circle cx="12" cy="20.4" r="2.8" fill="#ffd54f"/>'}</svg>`;
   const SHOT_ICO = { lob: '🌈', slice: '🔪', drop: '🪶', topspin: '🌀', flat: '⚡' };
@@ -457,11 +458,15 @@
         for (const [k, l] of dirs) {
           if (k === 'bh' || k === 'fh') { dirsI.push([k, racketSvg(k === 'bh' ? 2 : 1), l]); continue; }
           const dg = degTo(me, aimFor(st, k, depth, type));
-          if (seen.some(x => Math.abs(x - dg) < 9) && k !== dir) continue;
+          if (seen.some(x => Math.abs(x - dg) < 14) && k !== dir) continue;
           seen.push(dg); dirsI.push([k, arrowSvg(dg), l]);
         }
         depthsI = DEPTHS.map(([k, l]) => [k, DEPTH_ICO[k], l]); marginsI = MARGINS.map(([k, l]) => [k, MARGIN_ICO[k], l]);
-        movesI = moves.map(([k, l]) => { const to = thenSpot(st, e.meet, k), far = Math.hypot(to.x - me.x, to.y - me.y) < 0.4; return [k, far ? '⏺️' : arrowSvg(degTo(me, to)), l]; });
+        // Then: from where you'll be after the shot, an arrow to each spot; its length is how far, and the angles are
+        // spread a little around their average so different spots read as different directions.
+        const from = me, tos = moves.map(([k]) => thenSpot(st, e.meet, k)), ds = tos.map(t => Math.hypot(t.x - from.x, t.y - from.y)), dmax = Math.max(...ds, 1);
+        const angs = tos.map(t => degTo(from, t)), mean = angs.reduce((a, b) => a + b, 0) / angs.length;
+        movesI = moves.map(([k, l], i) => [k, ds[i] < 0.4 ? '⏺️' : arrowSvg(mean + (angs[i] - mean) * 2.6, 0.3 + 0.7 * ds[i] / dmax), l]);
       }
       U.panel(head() + '<h3>Shot</h3>' + segBtns('t', shotsI, type, ic ? 'diamond icons' : 'five', hintT) +
         '<h3>Direction</h3>' + segBtns('d', dirsI, spot ? null : dir, ic ? 'three icons' : 'three', hintD) +

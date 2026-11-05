@@ -2197,3 +2197,10 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 /* Holding a finger down for the timing games must never select text or pop up the iPhone/iPad menu */
 .xpov, .xpov * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .xpov { touch-action: manipulation; }
+/* Tablets: every button's words fit (they wrap to two lines if needed) and the panel never slides sideways */
+@media (pointer: coarse) and (min-width: 768px) and (orientation: landscape) and (max-width: 1400px) {
+  .xppanel { width: 320px; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y; }
+  .xppanel .xpseg button, .xppanel .xpseg.three button, .xppanel .xpseg.four button { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; font-size: 12px; padding: 6px 4px; min-width: 0; }
+  .xppanel .xppre { white-space: normal; } .xppanel .xppre span { font-size: 12px; }
+  .xpcall, .xpland, .xpplayln { right: 340px; left: 340px; }
+}

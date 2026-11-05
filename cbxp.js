@@ -48,7 +48,7 @@
     // On a computer the score column sits on the left and the decisions on the right: the court is centred in between.
     // A tablet held sideways gets the computer layout with a slimmer panel; the court uses the whole width.
     const tab = matchMedia('(pointer: coarse) and (min-width: 768px) and (orientation: landscape)').matches && window.innerWidth <= 1400;
-    const desk = window.innerWidth >= 1100 || tab, side = tab ? 310 : desk ? 392 : 0, left = tab ? 0 : desk ? 362 : 0;
+    const desk = window.innerWidth >= 1100 || tab, side = tab ? 310 : desk ? 392 : 0, left = tab ? 310 : desk ? 362 : 0; // on a tablet: equal room both sides, so the court sits dead centre
     const W = V.W - side - left; V.cx = left + W / 2;
     // Framed from your feet standing Very Deep (about 15.5 m back) to the far player's head (drawn a little larger).
     const dn = -17.3 - CAM.y, df = 13.4 - CAM.y, top0 = 5.6;

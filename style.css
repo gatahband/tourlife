@@ -2175,13 +2175,14 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 /* Tablets in landscape: the computer layout, but the court gets the room. The score sits over the court's top-left
    corner, the shot panel is a slim column on the right, and the mini-game card is big. */
 @media (pointer: coarse) and (min-width: 768px) and (orientation: landscape) and (max-width: 1400px) {
-  .xptop .xpleft { width: 250px; } .xptop .xpsb { padding: 8px 12px; } .xbrow { font-size: 17px; }
+  .xptop .xpleft { width: 240px; } .xptop .xpsb { padding: 6px 10px; } .xbrow { font-size: 14px; line-height: 1.4; } .xbrow b { min-width: 20px; } .xbrow b.p { min-width: 32px; }
+  .xpedgebar button { width: 30px; height: 30px; font-size: 14px; }
   .xppanel { width: 290px; padding: 10px; top: 70px; right: 10px; max-height: calc(100vh - 80px); }
   .xppanel h3 { font-size: 11px; margin: 8px 0 4px; }
   .xpseg { gap: 5px; } .xpseg button { min-height: 40px; padding: 6px 3px; font-size: 13px; }
   .xppanel .xpseg.three button, .xppanel .xpseg.four button { font-size: 12px; }
-  .xpcall, .xpland, .xpplayln { left: 0; right: 310px; }
-  .xpmsg { inset: 35% calc(310px + 6%) auto 6%; }
-  .xpmini { width: min(calc(100vw - 340px), 900px); left: calc((100% - 310px) / 2); }
+  .xpcall, .xpland, .xpplayln { left: 310px; right: 310px; }
+  .xpmsg { inset: 35% calc(310px + 2%) auto calc(310px + 2%); }
+  .xpmini { width: min(calc(100vw - 80px), 900px); left: 50%; } /* centred on the screen, over the court */
   .xpmhead b { font-size: 20px; } .xpmhead span { font-size: 15px; } .xpmkey { font-size: 15px; }
 }

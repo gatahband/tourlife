@@ -234,7 +234,7 @@
       const rA = raw(1.0, 0.7), rB = raw(0, 24), Fv = (H * 0.5) / (rB.v / rB.dd - rA.v / rA.dd), Y0 = H * 0.12 + Fv * rB.v / rB.dd;
       // Where you meet it: forehand or backhand side (mirrored for a lefty), and the height their ball gets to.
       const inc = st.inc || {}, hand = st.ab[0].lefty ? -1 : 1, sx = (inc.wing === 'bh' ? -1 : 1) * hand;
-      const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: lt, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
+      const cy = inc.volley ? 1.15 : ({ topspin: 1.3, flat: 0.95, slice: 0.62, lob: 1.5, drop: 0.55 }[inc.type] || 1.0);
       // Where the load meter's sweet spot sits depends on the shot: a deep flat drive wants more power, a short angle or
       // a dipping ball wants more topspin, a short slice a softer cut; plus a little variety so it's never memorised.
       const ay = Math.abs(ch.aim.y), shortB = ay < 7, netOpp = !!(st.atNet && st.atNet[1]);
@@ -244,7 +244,7 @@
       const tc = 2.0 - 0.3 * d, tol = 0.085 * (1 - 0.85 * d), swingT = 0.05; // the swing lands almost the moment you press
       // their ball: from where they are to a bounce, then up into your ring (a volley comes straight at you)
       const ox = st.pos && st.pos[1] ? clamp(-st.pos[1].x, -4, 4) : -1.6;
-      const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * lt;
+      const B0 = { x: ox, y: 1.1, z: 24 }, BB = { x: C.x * 0.6, y: 0, z: 6.6 }, tb = tc * 0.62;
       const ballIn = t => {
         if (inc.volley) { const u = t / tc; return { x: lerp(B0.x, C.x, u), z: lerp(B0.z, C.z, u), y: lerp(B0.y, C.y, u) + 0.8 * 4 * u * (1 - u) }; }
         if (t <= tb) { const u = t / tb; return { x: lerp(B0.x, BB.x, u), z: lerp(B0.z, BB.z, u), y: lerp(B0.y, 0, u) + 2.3 * 4 * u * (1 - u) }; }

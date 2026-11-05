@@ -236,7 +236,7 @@
     let end = null, tB = 0;
     if (sh.err === 'net') tB = 0;
     else if (sh.contact && !sh.err) {
-      const reach = !res.over || res.over.how === 'fe' || res.over.how === 'ue';
+      const reach = !res.over || res.over.how === 'fe' || res.over.how === 'ue' || res.over.how === 'unreturned'; // unreturned: they got a racket to it
       end = reach ? { ...sh.contact, z: sh.met ? 1.2 : 0.95 } : { x: land.x + (sh.contact.x - land.x) * 2, y: land.y + (sh.contact.y - land.y) * 2, z: 0.3 };
       tB = Math.max(0.25, (sh.time || 1) - dA / v) * (reach ? 1 : 1.6);
     } else { end = { x: land.x + (land.x - p0.x) / dA * 4, y: land.y + (land.y - p0.y) / dA * 4, z: 0.2 }; tB = 0.5; }

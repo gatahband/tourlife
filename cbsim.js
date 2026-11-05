@@ -319,7 +319,8 @@ function cbServe(st, zone, spin, guess, approach, rng = Math.random) {
   if (wing === 'bh' && B.bh < B.fh) pr += cbClamp((B.fh - B.bh) / 50, 0, 0.18);
   if (spin === 'slice') pr += st.surf.low;
   pr += P.weak; // returning from far back: safe, but a weak reply
-  if (slack < 0.05 && rng() > 0.86 + (slack - 0.05) * 2) return { shot, over: cbEnd(st, s, 'unret', shot).over };
+  // Not returned: if they never got there it's an ace; if they just got a racket to it, it's unreturned.
+  if (slack < 0.05 && rng() > 0.86 + (slack - 0.05) * 2) return { shot, over: cbEnd(st, s, slack < 0 ? 'ace' : 'unret', shot).over };
   shot.pr2 = cbClamp(pr, 0, 1.5); shot.wing = wing;
   // The server recovers from the follow-through (or comes in behind it).
   st.atNet[s] = !!approach;

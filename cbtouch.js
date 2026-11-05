@@ -183,7 +183,7 @@
           // the meter: before the toss it waits; after it, hit as the marker crosses the green
           if (toss == null) {
             const pulse = 0.65 + 0.35 * Math.sin(t * 5);
-            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText(phone ? 'HOLD TO TOSS' : 'HOLD SPACE TO TOSS', W / 2 + 90, H / 2); g.globalAlpha = 1;
+            g.globalAlpha = pulse; g.fillStyle = '#e8eef4'; g.font = '800 17px system-ui'; g.textAlign = 'center'; g.fillText(phone ? 'HOLD TO TOSS' : 'HOLD SPACE TO TOSS', W / 2 + 120, 80); g.globalAlpha = 1;
           } else meter(t, toss + ideal, tol, hitAt, 'LET GO', true, ideal, 0);
         },
       };

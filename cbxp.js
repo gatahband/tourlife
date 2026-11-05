@@ -414,7 +414,14 @@
     const t = { ...st, atNet: [st.atNet[0] || move === 'net', st.atNet[1]], cover: move === 'cross' || move === 'line' ? move : null };
     return cbMoveToward(st.pos[0], cbCoverSpot(t, 0, meet.contact), cbRecoverReach(t, 0, meet));
   }
-  const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint ? (hint.has(k) ? ' hint' : ' safe') : ''}">${l}</button>`).join('')}</div>`;
+  const segBtns = (key, items, cur0, cls = '', hint = null) => `<div class="xpseg ${cls}">${items.map(([k, l, tip]) => `<button type="button" data-${key}="${k}" class="${k === cur0 ? 'on' : ''}${hint ? (hint.has(k) ? ' hint' : ' safe') : ''}"${tip ? ` title="${tip}" aria-label="${tip}"` : ''}>${l}</button>`).join('')}</div>`;
+  // Icon mode (the 🔣 button): the shot panel in pictures. An arrow drawn the way the ball (or you) will go, seen from behind you.
+  const iconsOn = () => !!cbData().icons;
+  const arrowSvg = deg => `<svg class="xpico" viewBox="-12 -12 24 24"><g transform="rotate(${Math.round(deg)})"><path d="M0 9V-7M-5.5-1.5L0-8L5.5-1.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+  const degTo = (from, to) => { const A = proj(from.x, from.y), B = proj(to.x, to.y); return Math.atan2(B.X - A.X, A.Y - B.Y) * 180 / Math.PI; }; // as it looks on screen
+  const racketSvg = n => `<svg class="xpico" viewBox="0 0 24 24"><ellipse cx="12" cy="8" rx="5.5" ry="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 14.5V23" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>${n === 2 ? '<circle cx="8.6" cy="20.4" r="2.6" fill="#ffd54f"/><circle cx="15.4" cy="20.4" r="2.6" fill="#ffd54f"/>' : '<circle cx="12" cy="20.4" r="2.8" fill="#ffd54f"/>'}</svg>`;
+  const SHOT_ICO = { lob: '🌈', slice: '🔪', drop: '🪶', topspin: '🌀', flat: '⚡' };
+  const DEPTH_ICO = { deep: '⏫', mid: '🔼', short: '📐' }, MARGIN_ICO = { safe: '🛡️', normal: '⚖️', lines: '🎯' };
   let lastShot = { type: 'topspin', dir: 'cross', depth: 'deep', margin: 'normal' };
   // God Panel: "win/lose this point" while a decision is open.
   const godHook = (U, res, clean) => { U.godReq = g => { clean(); res({ god: g }); }; };
@@ -427,7 +434,7 @@
     const moves = [['recover', st.atNet[0] ? 'Hold The Net' : 'Recover To Middle'], ['cross', 'Cover Their Crosscourt'], ['line', 'Cover Their Line'], ...(st.atNet[0] ? [] : [['net', 'Come To The Net']])];
     U.setRead(situation(st)); // the rally read lives in the drop-down under the scoreboard, not with the controls
     let moveSet = false; // the Then arrow stays hidden until you tap a Then
-    const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; S.arrow = null; U.panel(''); U.godReq = null; };
+    const clean = () => { V.c.onclick = null; S.targets = []; S.path = null; S.arrow = null; U.panel(''); U.godReq = null; cur.rerender = null; };
     // A faint dot on the choices that this ball makes risky right now (a hint, not a number).
     // Only the choices clearly riskier than the safest one in their row are marked, so the dot means "not this one, here".
     const pInOf = (k, kind) => cbValue(st, 0, kind === 't' ? (spot || applyMargin(aimFor(st, dir, depth, k), margin)) : applyMargin(aimFor(st, k, depth, type), margin), kind === 't' ? k : type, move === 'net').pIn;
@@ -435,17 +442,32 @@
     const head = () => o.step && !dropped ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Audible?</b><p>${o.why}</p><p class="xphint">Planned: ${stepText(o.step)}. Change it below and press Hit It, or:</p>` +
         '<div class="xpseg"><button type="button" data-run>Run The Play</button><button type="button" data-dropplay>Drop The Play</button></div></div>'
       : o.done ? `<div class="xpaud"><b>📖 ${esc(o.play.name)}: Play Complete</b><p>You're on your own from here.</p></div>` : '';
+    cur.rerender = () => render(); // the 🔣 button redraws the panel in words or pictures
     const render = () => {
       const aim = spot || applyMargin(aimFor(st, dir, depth, type), margin), e = cbValue(st, 0, aim, type, move === 'net'), [rw, rc] = riskWord(e.pIn);
       const sh = { wing: st.inc.wing, volley: st.inc.volley, type: e.t, aim, from: st.pos[0] };
       S.targets = [{ ...aim }]; S.path = previewPath(st, aim, type); // the flight of the shot you're building
       S.arrow = moveSet ? { from: { ...st.pos[0] }, to: thenSpot(st, e.meet, move) } : null; // where you'll go after it, once you've picked a Then
       const hintT = riskySet(SHOTS.map(([k]) => k), 't'), hintD = spot ? new Set() : riskySet(dirs.map(([k]) => k), 'd');
-      U.panel(head() + '<h3>Shot</h3>' + segBtns('t', SHOTS, type, 'five', hintT) +
-        '<h3>Direction</h3>' + segBtns('d', dirs, spot ? null : dir, 'three', hintD) +
-        (type === 'drop' || type === 'lob' || dir === 'angle' || dir === 'crossnet' ? '' : '<h3>Depth</h3>' + segBtns('p', DEPTHS, spot ? null : depth, 'three')) +
-        (spot ? '<p class="xphint">Aiming at the spot you tapped.</p>' : '<h3>Margin</h3>' + segBtns('mg', MARGINS, margin, 'three')) +
-        '<h3>Then</h3>' + segBtns('m', moves, move) +
+      const ic = iconsOn(), me = st.pos[0];
+      let shotsI = SHOTS, dirsI = dirs, depthsI = DEPTHS, marginsI = MARGINS, movesI = moves;
+      if (ic) { // pictures; directions that would land in the same place show once
+        shotsI = SHOTS.map(([k, l]) => [k, SHOT_ICO[k], l]);
+        const seen = []; dirsI = [];
+        for (const [k, l] of dirs) {
+          if (k === 'bh' || k === 'fh') { dirsI.push([k, racketSvg(k === 'bh' ? 2 : 1), l]); continue; }
+          const dg = degTo(me, aimFor(st, k, depth, type));
+          if (seen.some(x => Math.abs(x - dg) < 9) && k !== dir) continue;
+          seen.push(dg); dirsI.push([k, arrowSvg(dg), l]);
+        }
+        depthsI = DEPTHS.map(([k, l]) => [k, DEPTH_ICO[k], l]); marginsI = MARGINS.map(([k, l]) => [k, MARGIN_ICO[k], l]);
+        movesI = moves.map(([k, l]) => { const to = thenSpot(st, e.meet, k), far = Math.hypot(to.x - me.x, to.y - me.y) < 0.4; return [k, far ? '⏺️' : arrowSvg(degTo(me, to)), l]; });
+      }
+      U.panel(head() + '<h3>Shot</h3>' + segBtns('t', shotsI, type, ic ? 'diamond icons' : 'five', hintT) +
+        '<h3>Direction</h3>' + segBtns('d', dirsI, spot ? null : dir, ic ? 'three icons' : 'three', hintD) +
+        (type === 'drop' || type === 'lob' || dir === 'angle' || dir === 'crossnet' ? '' : '<h3>Depth</h3>' + segBtns('p', depthsI, spot ? null : depth, ic ? 'three icons' : 'three')) +
+        (spot ? '<p class="xphint">Aiming at the spot you tapped.</p>' : '<h3>Margin</h3>' + segBtns('mg', marginsI, margin, ic ? 'three icons' : 'three')) +
+        '<h3>Then</h3>' + segBtns('m', movesI, move, ic ? 'four icons' : '') +
         `<div class="xphitbar"><div class="xppre"><b>${shotName(sh)}</b><span>${shotWhere(sh)}</span><em><u class="${rc}">${rw}</u> ${hurtWord(e.v)}</em></div>` +
         '<button type="button" class="xpbig" data-hit>Hit It</button></div>');
       const P = U.pan;
@@ -789,7 +811,7 @@
     el.className = 'xpov';
     el.innerHTML = `<div class="xptop"><div class="xpleft"><div class="xpsb"><div class="xbscore" data-tip="Tap for the rally read and every point so far"></div><div class="xpnote" hidden></div></div><div class="xpedgebar"></div></div>` +
       `<div class="xptopb"><button type="button" data-x="read" aria-label="Rally read" data-tip="Rally read and every point so far (what your coach can tell you)">🔍</button>` +
-      `<button type="button" data-x="touch" aria-label="Shot mini-games on or off"></button><button type="button" data-x="speed"></button>` +
+      `<button type="button" data-x="touch" aria-label="Shot mini-games on or off"></button><button type="button" data-x="icons" aria-label="Words or icons" data-tip="Shot buttons: words or icons">🔣</button><button type="button" data-x="speed"></button>` +
       `${cbGod() ? '<button type="button" data-x="god" aria-label="God Panel" data-tip="God Panel: win or lose points while testing">⚡</button>' : ''}${exit ? '<button type="button" data-x="exit" aria-label="Leave" data-tip="Leave for the draw (finished points are saved)">✕</button>' : ''}</div></div>` +
       `<div class="xpdrop" hidden><div class="xpdread"></div><div class="xpdedges"></div><h3 class="xpdph">Points</h3><ol class="xpdpts"></ol></div>` +
       `<div class="xpstage"><canvas class="xpcourt"></canvas><div class="xpmsg" hidden></div></div><div class="xpcall"></div><div class="xpland"></div><div class="xpplayln"></div><div class="xppanel"></div>`;
@@ -826,6 +848,7 @@
     U.setPause = () => {};
     U.close = () => { V.on = false; window.removeEventListener('resize', fit); el.remove(); document.body.classList.remove('xbopen'); V.c = null; };
     q(el, '.xptopb').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return;
+      if (b.dataset.x === 'icons') { const d = cbData(); d.icons = !d.icons; cbSave(d); if (cur.rerender) cur.rerender(); }
       if (b.dataset.x === 'speed') { const d = cbData(), order = [2.4, 1.6, 1.1]; d.speed = order[(order.indexOf(speedKey()) + 1) % 3]; cbSave(d); spLabel(); }
       if (b.dataset.x === 'read') toggleDrop();
       if (b.dataset.x === 'touch') { const d = cbData(); d.touch = d.touch === false; cbSave(d); tLabel(); }

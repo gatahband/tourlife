@@ -2186,3 +2186,11 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xpmini { width: min(calc(100vw - 80px), 900px); left: 50%; } /* centred on the screen, over the court */
   .xpmhead b { font-size: 20px; } .xpmhead span { font-size: 15px; } .xpmkey { font-size: 15px; }
 }
+
+/* Icon mode (🔣): pictures instead of words on the shot panel; shots in a diamond (lob top, slice left, drop middle, topspin right, flat bottom) */
+.xpseg.icons button { font-size: 22px; line-height: 1; min-height: 46px; display: flex; align-items: center; justify-content: center; }
+.xpico { width: 30px; height: 30px; display: block; }
+.xpseg.diamond { grid-template-columns: repeat(3, 1fr); grid-template-areas: ". l ." "s d t" ". f ."; }
+.xpseg.diamond [data-t="lob"] { grid-area: l; } .xpseg.diamond [data-t="slice"] { grid-area: s; } .xpseg.diamond [data-t="drop"] { grid-area: d; }
+.xpseg.diamond [data-t="topspin"] { grid-area: t; } .xpseg.diamond [data-t="flat"] { grid-area: f; }
+.xpseg.four.icons { grid-template-columns: repeat(4, 1fr); }

@@ -82,8 +82,8 @@ const XL = (() => {
     for (const [lx, fx] of legs) { g.beginPath(); g.moveTo(...P(lx, 0.98)); g.lineTo(...P(lx + (fx - lx) * 0.35, 0.62)); g.stroke(); }
     // Shirt: broad shoulders tapering to the waist.
     const drawShirt = () => {
-    const [tx0, ty0] = P(-0.29, 1.5), [tx1, ty1] = P(0.29, 0.95);
-    g.save(); g.beginPath(); g.moveTo(...P(-0.29, 1.5)); g.lineTo(...P(0.29, 1.5)); g.lineTo(...P(0.2, 0.95)); g.lineTo(...P(-0.2, 0.95)); g.closePath(); g.clip();
+    const [tx0, ty0] = P(-0.245, 1.5), [tx1, ty1] = P(0.245, 0.95);
+    g.save(); g.beginPath(); g.moveTo(...P(-0.245, 1.5)); g.lineTo(...P(0.245, 1.5)); g.lineTo(...P(0.2, 0.95)); g.lineTo(...P(-0.2, 0.95)); g.closePath(); g.clip();
     const sh = L.shirt, pat = sh && typeof sh === 'object' ? sh : {}; // plain colours are strings (and strings have a .split method)
     if (pat.split) { g.fillStyle = sh.split[0]; g.fillRect(tx0, ty0, (tx1 - tx0) / 2, ty1 - ty0); g.fillStyle = sh.split[1]; g.fillRect((tx0 + tx1) / 2, ty0, (tx1 - tx0) / 2, ty1 - ty0); }
     else if (pat.hoops) { const h = (ty1 - ty0) / 6; for (let i = 0; i < 6; i++) { g.fillStyle = sh.hoops[i % 2]; g.fillRect(tx0, ty0 + i * h, tx1 - tx0, h + 0.5); } }
@@ -95,7 +95,7 @@ const XL = (() => {
     // Arms, wristbands and racket.
     // Arms: shoulder → elbow → hand. The elbow is found from the shoulder and hand (two-bone reach), bending down
     // and out the way a real elbow does; a hand too far away straightens the arm.
-    const UPPER = 0.29, FORE = 0.27;
+    const UPPER = 0.245, FORE = 0.27;
     const elbowOf = (x0, z0, x1, z1) => {
       const dx = x1 - x0, dz = z1 - z0, d = Math.hypot(dx, dz) || 1e-6;
       if (d >= UPPER + FORE - 0.005) return [x0 + dx * UPPER / (UPPER + FORE), z0 + dz * UPPER / (UPPER + FORE)];
@@ -118,7 +118,7 @@ const XL = (() => {
         g.save(); g.lineCap = 'butt'; g.strokeStyle = fill(g, L.wrist, ax - nx, ay - ny, ax + nx, ay + ny); g.lineWidth = Math.max(1.5, 0.045 * s);
         g.beginPath(); g.moveTo(ax - nx, ay - ny); g.lineTo(ax + nx, ay + ny); g.stroke(); g.restore(); }
     };
-    const shw = o.turn ? 0.15 : 0.26; // side-on in a swing, so the shoulders look narrower
+    const shw = o.turn ? 0.13 : 0.22; // side-on in a swing, so the shoulders look narrower
     // The free arm: by the side at rest; in a swing it reaches forward across the chest for balance (hidden by the body from behind).
     const off = o.twoHands ? [hx, hz] : o.turn ? [hd * 0.05, 1.28] : [-hd * 0.31, 0.9];
     const drawRacket = () => {

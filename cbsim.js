@@ -227,6 +227,13 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   const spot = cbCoverSpot(st, by, meet.contact);
   st.pos[by] = cbMoveToward(from, spot, cbRecoverReach(st, by, meet)); // stretched: slower to get back
   shot.after = { ...st.pos[by] };
+  // A lob over someone at (or coming to) the net: they have to turn and run back, so a deep one usually wins outright.
+  // The deeper it lands and the closer in they were, the less chance they have; from the baseline they just run it down.
+  if (type === 'lob' && Math.abs(shot.rcvFrom.y) < 7.5) {
+    const deep = Math.abs(land.y), inNet = (7.5 - Math.abs(shot.rcvFrom.y)) / 7.5;
+    const pWin = cbClamp(0.15 + 0.3 * (deep - 8) + 0.35 * inNet - 0.004 * ((st.ab[r].spd || 5) * 10 - 50), 0, 0.9);
+    if (deep > 8 && rng() < pWin) return cbEnd(st, by, 'winner', shot);
+  }
   if (meet.slack < -0.5 || (meet.slack < 0 && rng() > 0.9 + meet.slack * 1.6)) return cbEnd(st, by, 'winner', shot);
   st.pos[r] = meet.contact; st.pr[r] = meet.pr; st.atNet[r] = Math.abs(meet.contact.y) < 6.2;
   st.inc = { by, type, volley: meet.volley, rcvPos: meet.contact, wing: meet.wing };

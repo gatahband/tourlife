@@ -196,7 +196,7 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   // Touch (cbtouch.js): how well you timed the shot's mini-game. sig scales the scatter, dy moves the depth (metres
   // further on), net scales the chance of the net, pace the speed of the ball. Used once, then cleared.
   const T = (by === 0 && st.touch) || {}; st.touch = null;
-  const sg = cbSigma(st, by, type, wing, volley, ret) * (T.sig || 1);
+  const sg = cbSigma(st, by, type, wing, volley, ret) * (T.sig || 1) * cbAngleK(aim, volley);
   const short = type === 'lob' || type === 'drop' ? 0 : Math.min(1.2, st.pr[by]) * 0.8 * f; // under pressure the ball lands shorter
   // dx pushes the ball wider (+) or back towards the middle (−): a mistimed shot misses in the way it was mistimed.
   const land = { x: aim.x + (T.dx || 0) * (Math.sign(aim.x) || 1) + cbGauss(rng) * sg, y: aim.y - short + (T.dy || 0) * f + cbGauss(rng) * sg * 1.1 };
@@ -341,11 +341,17 @@ function cbCandidates(by) {
 }
 // How good a shot is on paper: the chance it goes in, times how much trouble it puts the receiver in,
 // less the court it leaves open behind the hitter. Also used to coach you after the point.
+// A short, sharp angle is one of the hardest shots in tennis: the ball has to dip in short and wide at once. The
+// scatter grows the shorter and wider you go (less so on a volley from the net, where the angle is natural).
+function cbAngleK(aim, volley) {
+  const w = cbClamp((Math.abs(aim.x) - 3.0) / 1.2, 0, 1), sh = cbClamp((6.5 - Math.abs(aim.y)) / 3, 0, 1);
+  return 1 + (volley ? 0.45 : 1.1) * w * sh;
+}
 function cbValue(st, by, aim, type, approach) {
   const from = st.pos[by], volley = !!(st.inc && st.inc.volley);
   const t = type === 'slice' && Math.abs(aim.y) < 4.8 && !volley ? 'drop' : type;
   const wing = st.inc ? st.inc.wing : 'fh';
-  const sg = cbSigma(st, by, t, wing, volley, st.shots.length === 1);
+  const sg = cbSigma(st, by, t, wing, volley, st.shots.length === 1) * cbAngleK(aim, volley);
   const sx = sg, sy = sg * 1.1, ay = Math.abs(aim.y);
   const pIn = (cbPhi((CB.HW - aim.x) / sx) - cbPhi((-CB.HW - aim.x) / sx)) * (cbPhi((CB.HL - ay) / sy) - cbPhi((0.3 - ay) / sy))
     * (1 - CB_SHOT[t].net * (1 + 1.8 * st.pr[by]) * cbSkf(st.ab[by].ground) ** 2);

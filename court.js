@@ -833,7 +833,16 @@ function createCourt() {
       const look = side === 0 && current.player ? XL.resolve(current.player.look) : XL.randomFor(names[side] || 'Opponent');
       ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(fx, fy, 0.4 * sc, 0.12 * sc, 0, 0, Math.PI * 2); ctx.fill();
       if (gold) { ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(fx, fy, 0.45 * sc, 0.14 * sc, 0, 0, Math.PI * 2); ctx.stroke(); }
-      XL.drawBody(ctx, (dx, z) => [fx + dx * sc, fy - z * sc], sc, { side: side === 0 ? 0 : 1, sw: 0, hand: XL.REST(hd), hd, twoHands: false, look });
+      // Mid-shot, the arms and racket follow the same swings as X-Treme (cblook.js SWINGS); otherwise they rest.
+      const lab = labels[side], age = lab && lab.side === side && lab.racket ? (clock() - lab.t0) / lab.life : 1;
+      let pl = { side: side === 0 ? 0 : 1, lefty: prof[side] && prof[side].hand === 'left', pose: null, wing: 'fh', pu: 0 };
+      if (age < 1) {
+        const r = lab.racket, txt = String(lab.text || lab.t || '');
+        if (r === 'serve' || r === 'trophy' || r === 'underarm' || r === 'underarmPrep') pl = { ...pl, pose: 'serve', pu: r === 'trophy' || r === 'underarmPrep' ? 0.3 * (lab.sw || 0) : Math.min(1, 0.4 + age * 1.5) };
+        else pl = { ...pl, pose: /slice/i.test(txt) ? 'slice' : /volley/i.test(txt) ? 'volley' : /lob/i.test(txt) ? 'lob' : /flat|drive/i.test(txt) ? 'flat' : 'topspin',
+          wing: r === 'bh' || (r === 'prep' && lab.wingSide === 'bh') ? 'bh' : 'fh', pu: r === 'prep' ? 0.15 : Math.min(1, 0.35 + age * 1.6) };
+      }
+      XL.drawBody(ctx, (dx, z) => [fx + dx * sc, fy - z * sc], sc, { side: pl.side, sw: 0, hand: XL.racketAt(pl), hd, twoHands: pl.pose ? XL.twoHanded(pl) : false, turn: !!pl.pose, look });
       top = fy - 1.9 * sc; below = P(p.x, p.y, 0.8)[1];
     } else {
       const [, hy] = P(p.x, p.y, 1.45);
@@ -948,7 +957,7 @@ function createCourt() {
     const color = side === 0 ? COLORS.me : COLORS.opp;
     const top = camera() === 'top';
     ctx.globalAlpha = alpha;
-    if (label.racket) {
+    if (label.racket && !(typeof XL === 'object' && XL.drawBody && !top)) { // the full-body players swing their own racket
       const pose = racketPose(side, label, age);
       const sc = top ? 2.2 : 1;
       const at = q => P(p.x + q.x * sc, p.y + q.y * sc, top ? 0 : q.z);

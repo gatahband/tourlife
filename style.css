@@ -2194,3 +2194,6 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xpseg.diamond [data-t="lob"] { grid-area: l; } .xpseg.diamond [data-t="slice"] { grid-area: s; } .xpseg.diamond [data-t="drop"] { grid-area: d; }
 .xpseg.diamond [data-t="topspin"] { grid-area: t; } .xpseg.diamond [data-t="flat"] { grid-area: f; }
 .xpseg.four.icons { grid-template-columns: repeat(4, 1fr); }
+/* Holding a finger down for the timing games must never select text or pop up the iPhone/iPad menu */
+.xpov, .xpov * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.xpov { touch-action: manipulation; }

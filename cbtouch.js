@@ -102,6 +102,7 @@
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
     // Touch: tap or hold anywhere on the match screen (except the buttons along the top), not just on the card.
     const ov = U.el, pd = e => { if (e.target.closest && e.target.closest('.xptopb, .xpdrop, button')) return; e.preventDefault(); press(e); }, pu = e => release(e);
+    const cm = e => e.preventDefault(); ov.addEventListener('contextmenu', cm); // no long-press menu
     ov.addEventListener('pointerdown', pd); ov.addEventListener('pointerup', pu); ov.addEventListener('pointercancel', pu);
     const finish = (q, early, words) => { if (done) return; const [label, col] = grade(q, early, words); done = { q, early, label, col, at: now() }; };
 
@@ -410,7 +411,7 @@
       }
       requestAnimationFrame(tick);
     };
-    const cleanup = () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); ov.removeEventListener('pointerdown', pd); ov.removeEventListener('pointerup', pu); ov.removeEventListener('pointercancel', pu); el.hidden = true; };
+    const cleanup = () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); ov.removeEventListener('pointerdown', pd); ov.removeEventListener('contextmenu', cm); ov.removeEventListener('pointerup', pu); ov.removeEventListener('pointercancel', pu); el.hidden = true; };
     U.godReq = gq => { if (!alive) return; alive = false; cleanup(); res({ god: gq }); };
     requestAnimationFrame(tick);
   });

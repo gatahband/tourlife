@@ -46,7 +46,9 @@
     V.c.width = Math.round(r.width * dpr); V.c.height = Math.round(r.height * dpr); V.g.setTransform(dpr, 0, 0, dpr, 0, 0);
     V.W = r.width; V.H = r.height;
     // On a computer the score column sits on the left and the decisions on the right: the court is centred in between.
-    const desk = window.innerWidth >= 1100, side = desk ? 392 : 0, left = desk ? 362 : 0;
+    // A tablet held sideways gets the computer layout with a slimmer panel; the court uses the whole width.
+    const tab = matchMedia('(pointer: coarse) and (min-width: 768px) and (orientation: landscape)').matches && window.innerWidth <= 1400;
+    const desk = window.innerWidth >= 1100 || tab, side = tab ? 310 : desk ? 392 : 0, left = tab ? 0 : desk ? 362 : 0;
     const W = V.W - side - left; V.cx = left + W / 2;
     // Framed from your feet standing Very Deep (about 15.5 m back) to the far player's head (drawn a little larger).
     const dn = -17.3 - CAM.y, df = 13.4 - CAM.y, top0 = 5.6;
@@ -807,7 +809,7 @@
     const drop = q(el, '.xpdrop'); U.hist = [];
     U.setRead = html => { q(drop, '.xpdread').innerHTML = html || ''; };
     U.addPoint = (won, line) => { U.hist.unshift({ won, line }); q(drop, '.xpdpts').innerHTML = U.hist.slice(0, 40).map((h, i) => `<li class="${h.won ? 'good' : 'bad'}"><b>${h.won ? 'Won' : 'Lost'}</b> ${h.line}</li>`).join(''); };
-    const toggleDrop = () => { drop.hidden = !drop.hidden; if (window.innerWidth >= 1100) drop.style.top = `${q(el, '.xpleft').getBoundingClientRect().bottom + 8}px`; else drop.style.top = ''; }; // sits just under the score box
+    const toggleDrop = () => { drop.hidden = !drop.hidden; if (window.innerWidth >= 1100 || matchMedia('(pointer: coarse) and (min-width: 768px) and (orientation: landscape)').matches) drop.style.top = `${q(el, '.xpleft').getBoundingClientRect().bottom + 8}px`; else drop.style.top = ''; }; // sits just under the score box
     q(el, '.xbscore').onclick = toggleDrop;
     // Your edges this match (preparation, team, racket deal): small badges under the score, the details in the drop-down.
     U.setEdges = list => {

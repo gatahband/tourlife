@@ -84,7 +84,7 @@
     const phone = matchMedia('(hover: none)').matches;
     el.querySelector('b').textContent = `${type === 'serve' ? `${{ flat: 'Flat', slice: 'Slice', kick: 'Kick' }[ch.spin] || ''} Serve` : { drop: 'Drop Shot', flat: 'Flat', topspin: 'Topspin', slice: 'Slice', lob: 'Lob' }[type]} · ${G.name}`;
     el.querySelector('span').innerHTML = `${G.how}${rw ? ` · <u class="${rc}">${rw}</u>` : ''}`;
-    el.querySelector('.xpmkey').innerHTML = phone ? 'Tap / hold the card' : '<kbd>Space</kbd>';
+    el.querySelector('.xpmkey').innerHTML = phone ? 'Tap / hold anywhere' : '<kbd>Space</kbd>';
     el.hidden = false;
     // Every game is drawn on a 460 × 220 stage and scaled to however big the card is (much bigger on a computer), so
     // the racket, ball and text all grow together and stay sharp.
@@ -98,7 +98,9 @@
     const kd = e => { if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) press(); } };
     const ku = e => { if (e.code === 'Space') { e.preventDefault(); release(); } };
     window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
-    el.onpointerdown = e => { e.preventDefault(); press(); }; el.onpointerup = el.onpointercancel = el.onpointerleave = () => release();
+    // Touch: tap or hold anywhere on the match screen (except the buttons along the top), not just on the card.
+    const ov = U.el, pd = e => { if (e.target.closest && e.target.closest('.xptopb, .xpdrop, button')) return; e.preventDefault(); press(); }, pu = () => release();
+    ov.addEventListener('pointerdown', pd); ov.addEventListener('pointerup', pu); ov.addEventListener('pointercancel', pu);
     const finish = (q, early, words) => { if (done) return; const [label, col] = grade(q, early, words); done = { q, early, label, col, at: now() }; };
 
     // Background: a dark glass panel with a faint court underneath.
@@ -143,7 +145,7 @@
       const drawRacket = a => { const h = head(a); racketPro(g, h.x, h.y, Math.atan2(piv.y - h.y, piv.x - h.x) - Math.PI / 2, 17, paint, 0.6); };
       const ease = x => x * x * (3 - 2 * x), key = el.querySelector('.xpmkey');
       let toss = null, hitAt = null, hitU = 0;
-      const setKey = () => { key.innerHTML = phone ? (toss == null ? 'Hold the card to toss' : 'Let go in the green') : toss == null ? 'Hold <kbd>Space</kbd> to toss' : 'Let go in the green'; };
+      const setKey = () => { key.innerHTML = phone ? (toss == null ? 'Hold anywhere to toss' : 'Let go in the green') : toss == null ? 'Hold <kbd>Space</kbd> to toss' : 'Let go in the green'; };
       setKey();
       game = {
         press: t => { if (toss == null) { toss = t; setKey(); } }, // press and hold: the toss goes up
@@ -283,7 +285,7 @@
       if (window.__xpTest) window.__xpTest.ideal = { release: ideal, hold: 0.62 * 0.75 };
       const key = el.querySelector('.xpmkey');
       key.innerHTML = type === 'flat' ? (phone ? 'Tap when the marker hits the green' : '<kbd>Space</kbd> when the marker hits the green')
-        : (phone ? 'Hold the card, let go in the green' : 'Hold <kbd>Space</kbd>, let go in the green');
+        : (phone ? 'Hold anywhere, let go in the green' : 'Hold <kbd>Space</kbd>, let go in the green');
       game = {
         press: t => { if (type === 'flat') { mode = 'swing'; swingAt = t; } else { mode = 'load'; loadAt = t; } },
         release: t => { if (mode === 'load') { mode = 'swing'; swingAt = t; } },
@@ -398,7 +400,7 @@
       }
       requestAnimationFrame(tick);
     };
-    const cleanup = () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); el.onpointerdown = el.onpointerup = el.onpointercancel = el.onpointerleave = null; el.hidden = true; };
+    const cleanup = () => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); ov.removeEventListener('pointerdown', pd); ov.removeEventListener('pointerup', pu); ov.removeEventListener('pointercancel', pu); el.hidden = true; };
     U.godReq = gq => { if (!alive) return; alive = false; cleanup(); res({ god: gq }); };
     requestAnimationFrame(tick);
   });

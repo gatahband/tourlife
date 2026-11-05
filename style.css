@@ -1963,7 +1963,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xplbl input { font: 16px system-ui; padding: 10px; border-radius: 10px; border: 1px solid #3a4b5c; background: #16222e; color: #e8eef4; }
 
 /* Extreme match screen on a computer: the court fills the screen and everything floats over it, like a game. */
-@media (min-width: 1100px) {
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) {
   .xpov { padding: 0; overflow: hidden; }
   .xpstage { position: absolute; inset: 0; margin: 0; }
   .xpcourt { width: 100%; height: 100vh; border-radius: 0; }
@@ -2059,7 +2059,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xpseg button.hint { position: relative; }
 .xpseg button.hint::after { content: '⚠️'; position: absolute; top: -9px; right: -7px; font-size: 15px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); pointer-events: none; } /* a risky choice right now */
 .xpseg button.hint { vertical-align: top; }
-@media (min-width: 1100px) {
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) {
   .xpdrop { position: absolute; top: 84px; left: 16px; width: 380px; max-height: 60vh; z-index: 3; margin: 0; }
 }
 .xpdrop:has(.xpdpts:empty) .xpdph { display: none; }
@@ -2076,7 +2076,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xpmkey { text-align: center; padding: 6px 0 10px; font-size: 12px; color: #9fb3c8; background: #0b141c; }
 .xpmkey kbd { display: inline-block; min-width: 120px; padding: 3px 10px; border-radius: 6px; border: 1px solid #3a4b5c; border-bottom-width: 3px; color: #e8eef4; font: 700 12px system-ui; letter-spacing: .08em; text-transform: uppercase; }
 .xptopb button.off { opacity: .55; }
-@media (min-width: 1100px) { .xpmini { left: calc((100% - 444px) / 2); } }
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) { .xpmini { left: calc((100% - 444px) / 2); } }
 @media (max-width: 520px) { .xplbl { display: none; } .xptopb { gap: 4px; } .xptopb button { min-width: 40px; padding: 0 6px; } }
 .xptopb button { white-space: nowrap; }
 @media (min-width: 521px) { .xptopb .xplbl { display: inline; } }
@@ -2091,7 +2091,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xpnote[hidden] { display: none; }
 .xpdedges p { margin: 3px 0; } .xpdedges p.idle { opacity: .5; }
 .xpedge { margin: 0 0 6px; font-size: 14px; color: #ffd54f; }
-@media (min-width: 1100px) { .xptop { align-items: flex-start; } }
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) { .xptop { align-items: flex-start; } }
 
 /* risk steps beyond High Risk */
 .xppre u.rr { color: #ff5252; } .xppre u.x { color: #e040fb; text-shadow: 0 0 8px rgba(224,64,251,.45); }
@@ -2113,11 +2113,11 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xpedgebar [data-tip]:hover::after, .xbscore[data-tip]:hover::after { left: 0; }
   .xptopb [data-tip]:hover::after { right: 0; }
 }
-@media (min-width: 1100px) { .xptop .xpleft { flex: 0 0 auto; width: 300px; } .xptop .xpsb { min-width: 0; width: 100%; } }
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) { .xptop .xpleft { flex: 0 0 auto; width: 300px; } .xptop .xpsb { min-width: 0; width: 100%; } }
 
 /* Mini-game card: the stage keeps its shape and scales; on a computer it's much bigger, centred over the court */
 .xpmini canvas { height: auto; aspect-ratio: 460 / 220; }
-@media (min-width: 1100px) {
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) {
   .xpmini { width: clamp(640px, calc(100vw - 700px), 1000px); left: calc(330px + (100% - 774px) / 2); }
   .xpmhead { padding: 16px 18px 10px; } .xpmhead b { font-size: 21px; } .xpmhead span { font-size: 15px; }
   .xpmkey { padding: 10px 0 14px; font-size: 14px; } .xpmkey kbd { font-size: 14px; min-width: 160px; padding: 5px 12px; }
@@ -2127,7 +2127,7 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
 .xpcard { align-items: center; justify-content: center; text-align: center; }
 .xppanel .xpseg.three .xpcard { white-space: normal; }
 .xpcard span { font-size: 11px; line-height: 1.25; color: #9fb3c8; }
-@media (min-width: 1100px) {
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) {
   .xptop .xpleft { width: 330px; }
   .xptop .xpsb { padding: 12px 18px; }
   .xbrow { font-size: 21px; line-height: 1.45; } .xbrow b { min-width: 28px; } .xbrow b.p { min-width: 44px; } .xbrow .sv { width: 10px; height: 10px; }
@@ -2170,4 +2170,18 @@ body.xmode [data-fold="d-weekplan"], body.xmode [data-fold="d-plan"], body.xmode
   .xswitch button.xm:hover .xmtip { display: block; }
 }
 .xpseg button.safe:not(.on) { box-shadow: inset 0 0 0 1px rgba(124, 255, 178, .28); } /* a safe choice right now: the faintest green edge */
-@media (min-width: 1100px) { .xptop { z-index: 6; } } /* hover labels on the top buttons sit over the shot panel */
+@media (min-width: 1100px), (pointer: coarse) and (min-width: 768px) and (orientation: landscape) { .xptop { z-index: 6; } } /* hover labels on the top buttons sit over the shot panel */
+
+/* Tablets in landscape: the computer layout, but the court gets the room. The score sits over the court's top-left
+   corner, the shot panel is a slim column on the right, and the mini-game card is big. */
+@media (pointer: coarse) and (min-width: 768px) and (orientation: landscape) and (max-width: 1400px) {
+  .xptop .xpleft { width: 250px; } .xptop .xpsb { padding: 8px 12px; } .xbrow { font-size: 17px; }
+  .xppanel { width: 290px; padding: 10px; top: 70px; right: 10px; max-height: calc(100vh - 80px); }
+  .xppanel h3 { font-size: 11px; margin: 8px 0 4px; }
+  .xpseg { gap: 5px; } .xpseg button { min-height: 40px; padding: 6px 3px; font-size: 13px; }
+  .xppanel .xpseg.three button, .xppanel .xpseg.four button { font-size: 12px; }
+  .xpcall, .xpland, .xpplayln { left: 0; right: 310px; }
+  .xpmsg { inset: 35% calc(310px + 6%) auto 6%; }
+  .xpmini { width: min(calc(100vw - 340px), 900px); left: calc((100% - 310px) / 2); }
+  .xpmhead b { font-size: 20px; } .xpmhead span { font-size: 15px; } .xpmkey { font-size: 15px; }
+}

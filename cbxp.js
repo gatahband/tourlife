@@ -248,7 +248,7 @@
     const T = (tA + tB) * 1000 * Math.max(1, slow / punch), gA = tA / (tA + tB);
     const h0 = { x: H.x, y: H.y }, hTo = sh.after || h0, r0 = { x: R.x, y: R.y };
     let rTo = r0;
-    if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, 0.7), y: lerp(r0.y, s2.y, 0.7) } : s2; }
+    if (sh.contact && !sh.err) { const s2 = standFor(R, sh.contact, cur.st.inc ? cur.st.inc.wing : 'fh'); const giveUp = sh.type === 'lob' || sh.type === 'drop' ? 0.3 : 0.7; rTo = res.over && res.over.how !== 'fe' && res.over.how !== 'ue' ? { x: lerp(r0.x, s2.x, giveUp), y: lerp(r0.y, s2.y, giveUp) } : s2; } // beaten by a lob or drop shot: they stop and watch it
     const netEnd = sh.met ? { x: sh.contact.x, y: sh.contact.y, z: 1.2 } : null;
     // Any ball that goes over clears the tape where it crosses (the drawn arc gets lifted if it would dip through).
     const tgtA = netEnd || { ...land, z: 0 }, un = (p0.y - 0) / ((p0.y - tgtA.y) || 1), arc = apex * (netEnd ? 0.5 : 1.15);

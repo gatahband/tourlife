@@ -289,7 +289,7 @@
         flight = { at: t, f, res, wide, sp, rpm: type === 'topspin' ? Math.round((900 + 3300 * depth) / 10) * 10 : 0 };
         const lw = { topspin: ['NO SPIN', 'TOO MUCH SPIN'], flat: ['NO POWER', 'TOO MUCH POWER'], slice: ['NO BITE', 'TOO MUCH CUT'] }[type][depth < 0.62 ? 0 : 1];
         const words = res === 'net' ? ['NET', 'NET'] : res === 'long' ? ['LONG', 'LONG'] : spinOff ? [lw, lw] : ['EARLY', 'LATE'];
-        finish(q, dt < 0, words); done.spin = sp; done.flight = res;
+        finish(q, dt < 0, words); done.spin = sp; done.flight = res; done.load = depth;
       };
       const ideal = tc - swingT; // when to press (flat) or let go (topspin, slice)
       if (window.__xpTest) window.__xpTest.ideal = { release: ideal, hold: 0.62 * 0.75 };
@@ -405,7 +405,7 @@
         const a = clamp((t - done.at) / 0.15, 0, 1), sc = 1 + (1 - a) * 0.4;
         g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `italic 900 ${Math.round(34 * sc)}px system-ui`;
         g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(done.label, W / 2, 34); g.fillStyle = done.col; g.fillText(done.label, W / 2, 34); g.restore();
-        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight }); }
+        if (t - done.at > 0.75) { alive = false; cleanup(); return res({ q: done.q, early: done.early, label: done.label, type, spin: done.spin, flight: done.flight, load: done.load }); }
       }
       requestAnimationFrame(tick);
     };
@@ -438,7 +438,14 @@
     if (R.spin != null) e.dy += (0.5 - R.spin) * 1.6 * (R.early ? 1 : 0.6); // topspin: too little spin flies long, too much dips short
     if (R.flight === 'net') e.net = Math.max(e.net, 8); // what you saw is what happens: into the net
     if (R.flight === 'long') e.dy = Math.max(e.dy, 2.2);
-    if (R.flight === 'in') e.keepIn = true; // it went in on the timing game, so it goes in on court
+    if (R.flight === 'in') e.keepIn = true;
+    // The second meter means something different for each shot (lq: how close to its sweet spot).
+    const lq = R.load == null ? 0 : Math.max(0, 1 - Math.abs(R.load - 0.62) / 0.45);
+    if (type === 'flat' && R.load != null) e.pace = 0.92 + 0.2 * Math.min(1.1, R.load) * (0.5 + 0.5 * q); // more power: quicker, still returnable
+    if (type === 'slice') { e.sig *= 1.2 - 0.45 * lq; e.press = 0.06 * lq; } // a clean cut floats true and stays low
+    if (type === 'topspin') e.press = 0.14 * lq * q; // a heavy, high-kicking ball
+    if (type === 'drop') e.slackCut = 0.55 * q * q; // a perfect touch dies before they get there
+    if (type === 'lob') e.slackCut = 0.75 * q * q; // a perfect lob drops in over their head // it went in on the timing game, so it goes in on court
     return e;
   };
 })();

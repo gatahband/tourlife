@@ -215,6 +215,10 @@ function cbHit(st, by, aim, type, approach, rng = Math.random) {
   st.touchPace = T.pace || 0;
   const meet = cbMeet(st, by, from, land, type, st.pos[r], read);
   st.touchPace = 0;
+  // From the timing games (cbtouch.js): press adds pressure on whoever has to play it (a heavy topspin, a skidding
+  // slice); cut takes time away (a perfect lob over a net player, a perfect drop shot against someone deep).
+  if (T.press) meet.pr = Math.min(1.4, meet.pr + T.press);
+  if (T.slackCut) meet.slack -= T.slackCut * (type === 'lob' && st.atNet[r] ? 1.6 : type === 'drop' && Math.abs(st.pos[r].y) > 10.5 ? 1.5 : 1);
   Object.assign(shot, { met: meet.volley, read, slack: meet.slack, pr2: meet.pr, contact: meet.contact, time: meet.time, kmh: Math.round(meet.v * 3.6 / 0.78) });
   // The hitter recovers while the ball travels (a fast ball gives you less time to get back too).
   st.atNet[by] = st.atNet[by] || approach;
